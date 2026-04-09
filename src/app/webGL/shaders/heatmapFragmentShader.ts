@@ -1,60 +1,108 @@
 /**
- * Generates a shader for rendering a weighted signal map.
+ * Genererar en shader för viktad signalkarta med väggdämpning.
  *
- * Each point contributes signal based on inverse-distance weighting (IDW).
- * The result is normalized and mapped through a color LUT.
+ * Varje punkt bidrar med signal baserat på invers-distansviktning (IDW).
+ * Väggar mellan pixel och mätpunkt dämpar signalen.
+ * Resultatet normaliseras och mappas genom en färg-LUT.
  *
- * @param pointCount - Number of max point uniforms; sets array + loop bounds
+ * @param pointCount - Antal max punkt-uniforms
+ * @param wallCount - Antal väggar (max 64)
  */
-const generateHeatmapFragmentShader = (pointCount: number): string => {
+const MAX_WALLS = 64;
+
+const generateHeatmapFragmentShader = (
+  pointCount: number,
+  wallCount: number = 0,
+): string => {
   const clampedPointCount = Math.max(1, pointCount);
+  const clampedWallCount = Math.min(Math.max(0, wallCount), MAX_WALLS);
   return `
   precision mediump float;
 
-  varying vec2 v_uv; // Normalized coordinates from vertex shader, in [0, 1]
+  varying vec2 v_uv;
 
-  uniform float u_radius;       // Radius of influence for each point
-  uniform float u_power;        // Weight falloff exponent (higher = faster decay)
-  uniform float u_maxSignal;    // Maximum expected signal value (used for normalization)
-  uniform float u_opacity;      // Final fragment opacity
-  uniform float u_minOpacity;   // opacity when signal = 0
-  uniform float u_maxOpacity;   // opacity when signal = max
-  uniform vec2 u_resolution;    // Pixel dimensions of output framebuffer
-  uniform int u_pointCount;     // Actual number of active points (may be < ${clampedPointCount})
-  uniform vec3 u_points[${clampedPointCount}]; // Each point = (x, y, value) in pixel-space
-  uniform sampler2D u_lut;      // 1D LUT texture mapping signal to RGB color
+  uniform float u_radius;
+  uniform float u_power;
+  uniform float u_maxSignal;
+  uniform float u_opacity;
+  uniform float u_minOpacity;
+  uniform float u_maxOpacity;
+  uniform vec2 u_resolution;
+  uniform int u_pointCount;
+  uniform vec3 u_points[${clampedPointCount}];
+  uniform sampler2D u_lut;
+
+  // Väggdata: varje vägg är en vec4(x1, y1, x2, y2)
+  uniform int u_wallCount;
+  ${clampedWallCount > 0 ? `uniform vec4 u_walls[${clampedWallCount}];` : ""}
+
+  // Dämpningsfaktor per korsad vägg (0.3 = 70% signalförlust per vägg)
+  const float WALL_ATTENUATION = 0.3;
+
+  /**
+   * Kontrollera om två linjesegment korsar varandra.
+   * Returnerar 1.0 om de korsar, annars 0.0.
+   */
+  float segmentsIntersect(vec2 a1, vec2 a2, vec2 b1, vec2 b2) {
+    vec2 d1 = a2 - a1;
+    vec2 d2 = b2 - b1;
+    float denom = d1.x * d2.y - d1.y * d2.x;
+    if (abs(denom) < 0.0001) return 0.0;
+    vec2 d3 = b1 - a1;
+    float t = (d3.x * d2.y - d3.y * d2.x) / denom;
+    float u = (d3.x * d1.y - d3.y * d1.x) / denom;
+    if (t > 0.001 && t < 0.999 && u > 0.001 && u < 0.999) return 1.0;
+    return 0.0;
+  }
+
+  /**
+   * Räkna antal väggar som korsar linjen mellan två punkter.
+   */
+  float countWallCrossings(vec2 from, vec2 to) {
+    float count = 0.0;
+    ${
+      clampedWallCount > 0
+        ? `
+    for (int i = 0; i < ${clampedWallCount}; ++i) {
+      if (i >= u_wallCount) break;
+      vec4 w = u_walls[i];
+      count += segmentsIntersect(from, to, w.xy, w.zw);
+    }
+    `
+        : ""
+    }
+    return count;
+  }
 
   void main() {
-    // Example: if v_uv = (0.5, 0.5) and resolution = (800, 600), then pixel = (400, 300)
     vec2 pixel = v_uv * u_resolution;
 
-    float weightedSum = 0.0; // Sum of (weight * value)
-    float weightTotal = 0.0; // Sum of weights
+    float weightedSum = 0.0;
+    float weightTotal = 0.0;
 
-    // Iterate over all provided points (vec3: x, y, value)
     for (int i = 0; i < ${clampedPointCount}; ++i) {
-      if (i >= u_pointCount) break; // Prevent reading undefined data
+      if (i >= u_pointCount) break;
 
-      vec2 point = u_points[i].xy;  // Point position in pixels
-      float value = u_points[i].z;  // Scalar signal at that point
+      vec2 point = u_points[i].xy;
+      float value = u_points[i].z;
 
       vec2 diff = pixel - point;
-      float distSq = dot(diff, diff); // Squared Euclidean distance (cheaper than sqrt)
+      float distSq = dot(diff, diff);
 
-      // Example: if pixel == point, distSq == 0 → use this point's value directly
       if (distSq < 1e-6) {
         weightedSum = value;
         weightTotal = 1.0;
         break;
       }
 
-      // Skip points outside of influence radius
-      // Example: if u_radius = 100, skip if dist > 100 → distSq > 100^2 = 10000
       if (distSq > u_radius * u_radius) continue;
 
-      // Inverse-distance weighting with power falloff
-      // Example: distSq = 25, u_power = 2 → weight = 1 / 25 = 0.04
       float weight = 1.0 / pow(distSq, u_power * 0.5);
+
+      // Dämpa vikten baserat på antal korsade väggar
+      float walls = countWallCrossings(pixel, point);
+      float attenuation = pow(WALL_ATTENUATION, walls);
+      weight *= attenuation;
 
       weightedSum += weight * value;
       weightTotal += weight;
@@ -63,16 +111,10 @@ const generateHeatmapFragmentShader = (pointCount: number): string => {
     if (weightTotal == 0.0) {
       discard;
     }
-    // Normalize signal to [0, 1] range
-    // Example: if weightedSum = 3, weightTotal = 5 → signal = 0.6
+
     float signal = weightedSum / weightTotal;
     float normalized = clamp(signal / u_maxSignal, 0.0, 1.0);
-
-    // Lookup color from LUT texture using normalized signal
-    // Example: normalized = 0.75 → texture2D(u_lut, vec2(0.75, 0.5))
     vec3 color = texture2D(u_lut, vec2(normalized, 0.5)).rgb;
-
-    // Output the final fragment color with given opacity
     float alpha = mix(u_minOpacity, u_maxOpacity, normalized);
     gl_FragColor = vec4(color, alpha);
   }
@@ -80,3 +122,4 @@ const generateHeatmapFragmentShader = (pointCount: number): string => {
 };
 
 export default generateHeatmapFragmentShader;
+export { MAX_WALLS };

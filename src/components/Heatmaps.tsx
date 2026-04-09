@@ -346,6 +346,7 @@ export function Heatmaps() {
           glCanvas,
           heatmapData,
           settings.gradient,
+          settings.walls || [],
         );
         await renderer.render({
           points: heatmapData,
@@ -358,6 +359,22 @@ export function Heatmaps() {
         });
 
         ctx.drawImage(glCanvas, 0, 20);
+
+        // Rita väggar ovanpå heatmappen
+        if (settings.walls && settings.walls.length > 0) {
+          ctx.save();
+          ctx.translate(0, 20); // Matcha heatmap-offset
+          ctx.strokeStyle = "#1a1a1a";
+          ctx.lineWidth = 3;
+          ctx.lineCap = "round";
+          for (const wall of settings.walls) {
+            ctx.beginPath();
+            ctx.moveTo(wall.x1, wall.y1);
+            ctx.lineTo(wall.x2, wall.y2);
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
 
         if (!heatmapData || heatmapData.length === 0) {
           const lines = ["No heatmap:", `${metric} tests`, "not performed"];
@@ -445,7 +462,13 @@ export function Heatmaps() {
       }
     }
     setHeatmaps(newHeatmaps);
-  }, [renderHeatmap, selectedMetrics, selectedProperties, generateHeatmapData]);
+  }, [
+    renderHeatmap,
+    selectedMetrics,
+    selectedProperties,
+    generateHeatmapData,
+    settings.walls,
+  ]);
 
   const openHeatmapModal = (src: string, alt: string) => {
     setSelectedHeatmap({ src, alt });

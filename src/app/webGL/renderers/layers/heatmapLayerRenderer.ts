@@ -1,6 +1,8 @@
-import { Gradient } from "@/lib/types";
+import { Gradient, Wall } from "@/lib/types";
 import { HeatmapPoint } from "../mainRenderer";
-import generateFragmentShader from "../../shaders/heatmapFragmentShader";
+import generateFragmentShader, {
+  MAX_WALLS,
+} from "../../shaders/heatmapFragmentShader";
 import {
   createShaderProgram,
   createFullScreenQuad,
@@ -15,21 +17,34 @@ export const createHeatmapLayerRenderer = (
   gl: WebGLRenderingContext,
   points: HeatmapPoint[],
   gradient: Gradient,
+  walls: Wall[] = [],
 ) => {
+  const clampedWalls = walls.slice(0, MAX_WALLS);
   const program = createShaderProgram(
     gl,
     fullscreenQuadVertexShaderFlipY,
-    generateFragmentShader(points.length),
+    generateFragmentShader(points.length, clampedWalls.length),
   );
   const positionBuffer = createFullScreenQuad(gl);
   const attribs = getAttribLocations(gl, program);
   const uniforms = getUniformLocations(gl, program);
+
+  // Vägg-uniforms
+  const u_wallCount = gl.getUniformLocation(program, "u_wallCount");
+  const u_walls =
+    clampedWalls.length > 0 ? gl.getUniformLocation(program, "u_walls") : null;
 
   const colorLUT = createGradientLUTTexture(gl, gradient);
   const maxSignal = _.maxBy(points, "value")?.value ?? 0;
   const flatData = Float32Array.from(
     points.flatMap(({ x, y, value }) => [x, y, value]),
   );
+
+  // Platta ut väggdata till Float32Array (4 floats per vägg: x1, y1, x2, y2)
+  const wallData =
+    clampedWalls.length > 0
+      ? Float32Array.from(clampedWalls.flatMap((w) => [w.x1, w.y1, w.x2, w.y2]))
+      : null;
 
   const draw = (options: {
     width: number;
@@ -55,6 +70,12 @@ export const createHeatmapLayerRenderer = (
     gl.uniform2f(uniforms.u_resolution, width, height);
     gl.uniform1i(uniforms.u_pointCount, Math.min(points.length, points.length));
     gl.uniform3fv(uniforms.u_points, flatData);
+
+    // Skicka väggdata till shadern
+    gl.uniform1i(u_wallCount, clampedWalls.length);
+    if (u_walls && wallData) {
+      gl.uniform4fv(u_walls, wallData);
+    }
 
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, colorLUT);

@@ -6,6 +6,7 @@ import SettingsEditor from "@/components/SettingsEditor";
 import ClickableFloorplan from "@/components/Floorplan";
 import { Heatmaps } from "@/components/Heatmaps";
 import PointsTable from "@/components/PointsTable";
+import WallEditor from "@/components/WallEditor";
 
 export default function TabPanel() {
   const [activeTab, setActiveTab] = useState("tab1"); // State to track the active tab
@@ -45,6 +46,13 @@ export default function TabPanel() {
           >
             Survey&nbsp;Points
           </Tabs.Trigger>
+          <Tabs.Trigger
+            value="tab5"
+            data-radix-collection-item
+            className="px-4 py-2.5 text-base font-medium bg-gray-300 text-gray-800 border border-gray-400 border-b-0 rounded-t-md cursor-pointer transition-all duration-300 ease-in-out hover:bg-gray-200 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:font-semibold data-[state=active]:border-gray-500"
+          >
+            Walls
+          </Tabs.Trigger>
         </Tabs.List>
 
         {/* Tab Content */}
@@ -66,6 +74,10 @@ export default function TabPanel() {
             surveyPointActions={surveyPointActions}
             apMapping={settings.apMapping}
           />
+        </Tabs.Content>
+
+        <Tabs.Content value="tab5" className="p-4">
+          <WallEditor />
         </Tabs.Content>
       </Tabs.Root>
     </div>

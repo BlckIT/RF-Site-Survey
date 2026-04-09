@@ -99,6 +99,7 @@ export interface HeatmapSettings {
   blur: number;
   gradient: Gradient;
   iperfCommands: IperfCommands;
+  walls: Wall[];
   // these two props were used for the "scan-wifi" branch
   // that has been (temporarily?) abandoned
   // sameSSID: string; // "same", "best"
@@ -157,6 +158,18 @@ export type ScannerSettings = {
 };
 
 export type OS = "macos" | "windows" | "linux";
+
+/**
+ * Wall — en vägg som blockerar signalinterpolation
+ * Definieras av två punkter (x1,y1) och (x2,y2) i pixelkoordinater
+ */
+export interface Wall {
+  id: string;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
 
 export interface SurveyPointActions {
   add: (newPoint: SurveyPoint) => void;

@@ -1,4 +1,4 @@
-import { Gradient } from "@/lib/types";
+import { Gradient, Wall } from "@/lib/types";
 
 import { createWebGLContext } from "../utils/webGLUtils";
 import { createBackgroundLayerRenderer } from "./layers/imageLayerRenderer";
@@ -11,16 +11,22 @@ export type HeatmapPoint = {
 };
 
 /**
- * Render both the BG Image & Heatmap Layers
+ * Rendera både bakgrundsbild och heatmap-lager med väggdämpning
  */
 const mainRenderer = (
   canvas: HTMLCanvasElement,
   points: HeatmapPoint[],
   gradient: Gradient,
+  walls: Wall[] = [],
 ) => {
   const gl = createWebGLContext(canvas);
   const bgRenderer = createBackgroundLayerRenderer(gl);
-  const heatmapRenderer = createHeatmapLayerRenderer(gl, points, gradient);
+  const heatmapRenderer = createHeatmapLayerRenderer(
+    gl,
+    points,
+    gradient,
+    walls,
+  );
 
   const render = async (props: {
     points: HeatmapPoint[];
