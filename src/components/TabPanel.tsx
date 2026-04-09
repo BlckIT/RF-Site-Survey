@@ -30,28 +30,28 @@ export default function TabPanel() {
             data-radix-collection-item
             className="px-4 py-2.5 text-base font-medium bg-gray-300 text-gray-800 border border-gray-400 border-b-0 rounded-t-md cursor-pointer transition-all duration-300 ease-in-out hover:bg-gray-200 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:font-semibold data-[state=active]:border-gray-500"
           >
-            Floor&nbsp;Plan
+            Walls
           </Tabs.Trigger>
           <Tabs.Trigger
             value="tab3"
             data-radix-collection-item
             className="px-4 py-2.5 text-base font-medium bg-gray-300 text-gray-800 border border-gray-400 border-b-0 rounded-t-md cursor-pointer transition-all duration-300 ease-in-out hover:bg-gray-200 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:font-semibold data-[state=active]:border-gray-500"
           >
-            Heat&nbsp;Maps
+            Floor&nbsp;Plan
           </Tabs.Trigger>
           <Tabs.Trigger
             value="tab4"
             data-radix-collection-item
             className="px-4 py-2.5 text-base font-medium bg-gray-300 text-gray-800 border border-gray-400 border-b-0 rounded-t-md cursor-pointer transition-all duration-300 ease-in-out hover:bg-gray-200 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:font-semibold data-[state=active]:border-gray-500"
           >
-            Survey&nbsp;Points
+            Heat&nbsp;Maps
           </Tabs.Trigger>
           <Tabs.Trigger
             value="tab5"
             data-radix-collection-item
             className="px-4 py-2.5 text-base font-medium bg-gray-300 text-gray-800 border border-gray-400 border-b-0 rounded-t-md cursor-pointer transition-all duration-300 ease-in-out hover:bg-gray-200 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:font-semibold data-[state=active]:border-gray-500"
           >
-            Walls
+            Survey&nbsp;Points
           </Tabs.Trigger>
         </Tabs.List>
 
@@ -61,23 +61,23 @@ export default function TabPanel() {
         </Tabs.Content>
 
         <Tabs.Content value="tab2" className="p-4">
-          <ClickableFloorplan />
+          <WallEditor />
         </Tabs.Content>
 
         <Tabs.Content value="tab3" className="p-4">
-          <Heatmaps />
+          <ClickableFloorplan />
         </Tabs.Content>
 
         <Tabs.Content value="tab4" className="p-4">
+          <Heatmaps />
+        </Tabs.Content>
+
+        <Tabs.Content value="tab5" className="p-4">
           <PointsTable
             data={settings.surveyPoints}
             surveyPointActions={surveyPointActions}
             apMapping={settings.apMapping}
           />
-        </Tabs.Content>
-
-        <Tabs.Content value="tab5" className="p-4">
-          <WallEditor />
         </Tabs.Content>
       </Tabs.Root>
     </div>

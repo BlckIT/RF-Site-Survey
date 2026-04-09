@@ -1,17 +1,17 @@
 /**
- * wallUtils.ts — Geometrifunktioner för vägghantering
+ * wallUtils.ts — Geometry functions for wall handling
  *
- * Används för att räkna ut om en vägg korsar linjen mellan två punkter,
- * och för att dämpa signalstyrkan baserat på antal korsade väggar.
+ * Used to determine if a wall crosses the line between two points,
+ * and to attenuate signal strength based on the number of crossed walls.
  */
 
 import { Wall } from "./types";
 
 /**
- * Kontrollera om två linjesegment korsar varandra.
+ * Check if two line segments intersect.
  * Segment 1: (p1x,p1y)-(p2x,p2y)
  * Segment 2: (p3x,p3y)-(p4x,p4y)
- * Returnerar true om de korsar varandra.
+ * Returns true if they intersect.
  */
 export function segmentsIntersect(
   p1x: number,
@@ -29,7 +29,7 @@ export function segmentsIntersect(
   const d2y = p4y - p3y;
 
   const denom = d1x * d2y - d1y * d2x;
-  if (Math.abs(denom) < 1e-10) return false; // Parallella linjer
+  if (Math.abs(denom) < 1e-10) return false; // Parallel lines
 
   const t = ((p3x - p1x) * d2y - (p3y - p1y) * d2x) / denom;
   const u = ((p3x - p1x) * d1y - (p3y - p1y) * d1x) / denom;
@@ -38,7 +38,7 @@ export function segmentsIntersect(
 }
 
 /**
- * Räkna antal väggar som korsar linjen mellan två punkter.
+ * Count the number of walls crossing the line between two points.
  */
 export function countWallCrossings(
   x1: number,
@@ -57,8 +57,8 @@ export function countWallCrossings(
 }
 
 /**
- * Dämpningsfaktor baserat på antal korsade väggar.
- * Varje vägg multiplicerar signalen med WALL_ATTENUATION_FACTOR.
+ * Attenuation factor based on the number of crossed walls.
+ * Each wall multiplies the signal by WALL_ATTENUATION_FACTOR.
  */
 const WALL_ATTENUATION_FACTOR = 0.3;
 

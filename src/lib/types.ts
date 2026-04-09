@@ -160,8 +160,8 @@ export type ScannerSettings = {
 export type OS = "macos" | "windows" | "linux";
 
 /**
- * Wall — en vägg som blockerar signalinterpolation
- * Definieras av två punkter (x1,y1) och (x2,y2) i pixelkoordinater
+ * Wall — a wall that blocks signal interpolation
+ * Defined by two points (x1,y1) and (x2,y2) in pixel coordinates
  */
 export interface Wall {
   id: string;
