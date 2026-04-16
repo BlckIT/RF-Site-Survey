@@ -15,6 +15,8 @@ import { Label } from "@/components/ui/label";
 import { PopoverHelper } from "@/components/PopoverHelpText";
 import { HeatmapSettings, WifiResults } from "@/lib/types";
 import { rgbaToHex, hexToRgba } from "@/lib/utils-gradient";
+import { Button } from "@/components/ui/button";
+import { getDefaults } from "@/components/GlobalSettings";
 
 const tabTriggerClass =
   "px-4 py-2.5 text-base font-medium bg-gray-300 text-gray-800 border border-gray-400 border-b-0 rounded-t-md cursor-pointer transition-all duration-300 ease-in-out hover:bg-gray-200 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:font-semibold data-[state=active]:border-gray-500";
@@ -303,22 +305,26 @@ function SettingsPanel() {
                   }}
                   className={inputClass + " w-20"}
                 />
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   type="button"
                   onClick={() => {
                     const newGradient = { ...settings.gradient };
                     delete newGradient[parseFloat(key)];
                     debouncedUpdate({ gradient: newGradient });
                   }}
-                  className="px-2 py-1 border border-gray-200 rounded-sm hover:bg-gray-100 text-sm text-gray-400 hover:text-red-500"
                   title="Remove color stop"
+                  className="text-gray-400 hover:text-red-500"
                 >
                   ✕
-                </button>
+                </Button>
               </div>
             );
           })}
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             type="button"
             onClick={() => {
               const newGradient = {
@@ -327,10 +333,10 @@ function SettingsPanel() {
               };
               debouncedUpdate({ gradient: newGradient });
             }}
-            className="mt-3 px-3 py-1.5 border border-gray-200 rounded-sm text-sm hover:bg-gray-50"
+            className="mt-3"
           >
             + Add Color Stop
-          </button>
+          </Button>
         </div>
       </section>
 
@@ -366,6 +372,27 @@ function SettingsPanel() {
             onSave={(apMapping) => updateSettings({ apMapping })}
           />
         </div>
+      </section>
+
+      {/* ── Reset to Defaults ── */}
+      <section className="pt-4 border-t border-gray-200">
+        <Button variant="destructive" size="sm" onClick={() => {
+          const defaults = getDefaults(settings.floorplanImageName);
+          updateSettings({
+            maxOpacity: defaults.maxOpacity,
+            minOpacity: defaults.minOpacity,
+            blur: defaults.blur,
+            gradient: defaults.gradient,
+            iperfCommands: defaults.iperfCommands,
+            iperfServerAdrs: defaults.iperfServerAdrs,
+            testDuration: defaults.testDuration,
+            wifiInterface: defaults.wifiInterface,
+            snapRadius: defaults.snapRadius,
+            sudoerPassword: "",
+          });
+        }}>
+          Reset Settings to Defaults
+        </Button>
       </section>
     </div>
   );

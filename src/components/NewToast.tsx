@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import * as Toast from "@radix-ui/react-toast";
+import { Button } from "@/components/ui/button";
 
 interface NewToastProps {
   onClose: () => void;
@@ -91,12 +92,13 @@ export default function NewToast({ onClose, toastIsReady }: NewToastProps) {
           </Toast.Description>
         </div>
         {taskRunning && (
-          <button
+          <Button
+            variant="destructive"
+            size="sm"
             onClick={handleCancel}
-            className="bg-red-500 text-white px-2 py-1 rounded text-sm"
           >
             Cancel
-          </button>
+          </Button>
         )}
       </Toast.Root>
 

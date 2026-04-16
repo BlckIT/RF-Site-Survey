@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import { useSettings } from "./GlobalSettings";
 import { Wall, WallMaterial, MATERIAL_PRESETS } from "@/lib/types";
+import { Button } from "@/components/ui/button";
 
 const WALL_HIT_RADIUS = 10; // px radius for detecting wall clicks (for splitting)
 const SHARED_ENDPOINT_EPSILON = 0.5; // px epsilon for detecting shared endpoints
@@ -744,23 +745,37 @@ export default function WallEditor(): ReactNode {
               </div>
             )}
 
-            <button
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => splitWall(selectedWallId!)}
-              className="px-3 py-1.5 border border-gray-200 rounded-sm text-sm hover:bg-gray-50"
             >
               Split Wall
-            </button>
+            </Button>
           </div>
         </div>
       )}
 
+      {isDrawing && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="mb-2 mr-2"
+          onClick={commitChain}
+        >
+          Finish chain
+        </Button>
+      )}
+
       {settings.walls.length > 0 && (
-        <button
-          className="mb-2 px-3 py-1.5 border border-red-300 rounded-sm text-sm text-red-600 hover:bg-red-50"
+        <Button
+          variant="destructive"
+          size="sm"
+          className="mb-2"
           onClick={clearAllWalls}
         >
           Remove all walls
-        </button>
+        </Button>
       )}
 
       <div className="relative" ref={containerRef} tabIndex={0}>

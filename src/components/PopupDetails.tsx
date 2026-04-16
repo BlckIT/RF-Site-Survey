@@ -123,9 +123,9 @@ const PopupDetails: React.FC<PopupDetailsProps> = ({
     <div className="bg-white border border-gray-200 rounded-md shadow-lg text-xs overflow-hidden">
       <div className="flex justify-between items-center bg-gray-100 px-2 py-1">
         <h3 className="font-semibold text-sm">Measurement Details</h3>
-        <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+        <Button variant="ghost" size="sm" onClick={onClose} className="text-gray-500 hover:text-gray-700 h-6 w-6 p-0">
           <X size={16} />
-        </button>
+        </Button>
       </div>
       <Table>
         <TableBody>

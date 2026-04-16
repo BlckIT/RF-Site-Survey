@@ -3,6 +3,7 @@ import { Label } from "@/components/ui/label";
 import { PopoverHelper } from "@/components/PopoverHelpText";
 import { useState, useEffect, useCallback } from "react";
 import { WifiResults } from "@/lib/types";
+import { Button } from "@/components/ui/button";
 
 /**
  * SurveySettingsBar — compact horizontal settings bar for the Survey tab.
@@ -55,15 +56,16 @@ export default function SurveySettingsBar() {
               </option>
             ))}
           </select>
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             type="button"
-            className="px-2 py-1 border border-gray-200 rounded-sm hover:bg-gray-100 focus:outline-none focus:ring focus:ring-blue-300 disabled:opacity-50 text-sm"
             onClick={fetchSSIDs}
             disabled={ssidLoading}
             title="Refresh SSID list"
           >
             {ssidLoading ? "..." : "↻"}
-          </button>
+          </Button>
         </div>
       </div>
 
