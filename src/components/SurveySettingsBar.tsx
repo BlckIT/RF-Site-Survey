@@ -1,5 +1,4 @@
 import { useSettings } from "@/components/GlobalSettings";
-import { PasswordInput } from "./PasswordInput";
 import { Label } from "@/components/ui/label";
 import { PopoverHelper } from "@/components/PopoverHelpText";
 import { useState, useEffect, useCallback } from "react";
@@ -7,20 +6,13 @@ import { WifiResults } from "@/lib/types";
 
 /**
  * SurveySettingsBar — compact horizontal settings bar for the Survey tab.
- * Contains: WiFi Interface, Target SSID, iperf server, test duration, sudo password.
+ * Contains only per-measurement settings: Target SSID and Test Duration.
+ * Set-and-forget settings (WiFi Interface, iperf server, sudo password) live in the Settings tab.
  */
 export default function SurveySettingsBar() {
   const { settings, updateSettings } = useSettings();
-  const [wifiInterfaces, setWifiInterfaces] = useState<string[]>([]);
   const [scannedSSIDs, setScannedSSIDs] = useState<WifiResults[]>([]);
   const [ssidLoading, setSsidLoading] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/wifi-interfaces")
-      .then((res) => res.json())
-      .then((data) => setWifiInterfaces(data.interfaces || []))
-      .catch(() => setWifiInterfaces([]));
-  }, []);
 
   const fetchSSIDs = useCallback(() => {
     setSsidLoading(true);
@@ -42,27 +34,7 @@ export default function SurveySettingsBar() {
     "w-full border border-gray-200 rounded-sm p-1.5 text-sm focus:outline-none focus:ring focus:ring-blue-300 focus:border-blue-400";
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 p-3 bg-gray-50 border border-gray-200 rounded-md mb-2">
-      {/* WiFi Interface */}
-      <div className="flex flex-col gap-1">
-        <Label className="text-xs font-semibold">
-          WiFi Interface&nbsp;
-          <PopoverHelper text="Select which WiFi interface to use for scanning. 'Auto' picks the first available." />
-        </Label>
-        <select
-          className={inputClass}
-          value={settings.wifiInterface || ""}
-          onChange={(e) => updateSettings({ wifiInterface: e.target.value })}
-        >
-          <option value="">Auto</option>
-          {wifiInterfaces.map((iface) => (
-            <option key={iface} value={iface}>
-              {iface}
-            </option>
-          ))}
-        </select>
-      </div>
-
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-gray-50 border border-gray-200 rounded-md mb-2">
       {/* Target SSID */}
       <div className="flex flex-col gap-1">
         <Label className="text-xs font-semibold">
@@ -95,23 +67,6 @@ export default function SurveySettingsBar() {
         </div>
       </div>
 
-      {/* iperf Server */}
-      <div className="flex flex-col gap-1">
-        <Label className="text-xs font-semibold">
-          iperf Server&nbsp;
-          <PopoverHelper text="Address of an iperf3 server (e.g., 192.168.1.10 or 192.168.1.10:5201). Port 5201 is used by default. Set to 'localhost' to skip iperf tests." />
-        </Label>
-        <input
-          type="text"
-          placeholder="192.168.1.10"
-          className={inputClass}
-          value={settings.iperfServerAdrs}
-          onChange={(e) =>
-            updateSettings({ iperfServerAdrs: e.target.value.trim() })
-          }
-        />
-      </div>
-
       {/* Test Duration */}
       <div className="flex flex-col gap-1">
         <Label className="text-xs font-semibold">
@@ -125,18 +80,6 @@ export default function SurveySettingsBar() {
           onChange={(e) =>
             updateSettings({ testDuration: Number(e.target.value.trim()) })
           }
-        />
-      </div>
-
-      {/* sudo password */}
-      <div className="flex flex-col gap-1">
-        <Label className="text-xs font-semibold">
-          sudo password&nbsp;
-          <PopoverHelper text="Enter the sudo password: required on macOS or Linux." />
-        </Label>
-        <PasswordInput
-          value={settings.sudoerPassword}
-          onChange={(e) => updateSettings({ sudoerPassword: e })}
         />
       </div>
     </div>
