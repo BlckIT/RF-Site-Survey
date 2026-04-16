@@ -121,7 +121,7 @@ const generateHeatmapFragmentShader = (
     }
 
     float signal = weightedSum / weightTotal;
-    float normalized = clamp(signal / u_maxSignal, 0.0, 1.0);
+    float normalized = clamp(signal / 100.0, 0.0, 1.0);
     vec3 color = texture2D(u_lut, vec2(normalized, 0.5)).rgb;
 
     // Confidence: pixels near measurement points get full opacity, far pixels fade out
