@@ -36,6 +36,7 @@ const mainRenderer = (
     minOpacity?: number;
     maxOpacity?: number;
     influenceRadius?: number;
+    pixelsPerMeter?: number;
   }) => {
     const {
       width,
@@ -43,6 +44,7 @@ const mainRenderer = (
       minOpacity = 0.2,
       maxOpacity = 0.7,
       influenceRadius = 100,
+      pixelsPerMeter = 10,
       backgroundImageSrc,
     } = props;
 
@@ -61,6 +63,7 @@ const mainRenderer = (
       influenceRadius,
       minOpacity,
       maxOpacity,
+      pixelsPerMeter,
     });
   };
 

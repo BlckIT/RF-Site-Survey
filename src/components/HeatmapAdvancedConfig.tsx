@@ -89,6 +89,30 @@ export function HeatmapAdvancedConfig() {
               </tr>
               <tr>
                 <td>
+                  <Label htmlFor="pixelsPerMeter">
+                    Pixels per Meter&nbsp;
+                    <PopoverHelper text="Scale factor for distance-based signal decay. Higher values mean the floorplan has more pixels per real-world meter. Affects how quickly signal drops with distance." />
+                  </Label>
+                </td>
+                <td>
+                  <Input
+                    id="pixelsPerMeter"
+                    type="number"
+                    min="1"
+                    max="200"
+                    step="1"
+                    value={settings.pixelsPerMeter ?? 10}
+                    onChange={(e) =>
+                      debouncedUpdateSettings({
+                        pixelsPerMeter: parseFloat(e.target.value) || 10,
+                      })
+                    }
+                    className="h-9"
+                  />
+                </td>
+              </tr>
+              <tr>
+                <td>
                   <Label htmlFor="blur">
                     Blur&nbsp;
                     <PopoverHelper text="The amount of blur applied to the heatmap. Values range from 0 to 1." />

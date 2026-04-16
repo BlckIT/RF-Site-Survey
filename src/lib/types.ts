@@ -100,6 +100,7 @@ export interface HeatmapSettings {
   gradient: Gradient;
   iperfCommands: IperfCommands;
   walls: Wall[];
+  pixelsPerMeter: number; // scale factor for distance-based signal decay
   wifiInterface: string; // "" = auto-detect first available
   targetSSID: string; // "" = use connected SSID
   // these two props were used for the "scan-wifi" branch

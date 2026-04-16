@@ -28,6 +28,7 @@ const generateHeatmapFragmentShader = (
   uniform float u_opacity;
   uniform float u_minOpacity;
   uniform float u_maxOpacity;
+  uniform float u_pixelsPerMeter;
   uniform vec2 u_resolution;
   uniform int u_pointCount;
   uniform vec3 u_points[${clampedPointCount}];
@@ -104,12 +105,21 @@ const generateHeatmapFragmentShader = (
 
       float weight = 1.0 / pow(distSq, u_pathLossExponent * 0.5);
 
-      // Apply physics-based dB attenuation to the signal value (not the weight)
+      // Distance-based path loss in dB
+      float dist = sqrt(distSq);
+      float distMeters = dist / u_pixelsPerMeter;
+      float d0 = 1.0; // 1 meter reference distance
+      float pathLossDb = 0.0;
+      if (distMeters > d0) {
+        pathLossDb = 10.0 * u_pathLossExponent * log(distMeters / d0) / log(10.0);
+      }
+
+      // Wall attenuation in dB
       float wallDb = calcWallAttenuationDb(pixel, point);
-      // Convert percentage (0-100) to dBm: 0% = -100 dBm, 100% = -40 dBm
+
+      // Convert percentage (0-100) to dBm, subtract BOTH path loss and wall attenuation, convert back
       float signal_dBm = -100.0 + (value / 100.0) * 60.0;
-      float attenuated_dBm = signal_dBm - wallDb;
-      // Convert back to percentage and clamp
+      float attenuated_dBm = signal_dBm - pathLossDb - wallDb;
       float attenuated_value = clamp((attenuated_dBm + 100.0) / 60.0 * 100.0, 0.0, 100.0);
 
       weightedSum += weight * attenuated_value;
@@ -123,7 +133,12 @@ const generateHeatmapFragmentShader = (
     float signal = weightedSum / weightTotal;
     float normalized = clamp(signal / u_maxSignal, 0.0, 1.0);
     vec3 color = texture2D(u_lut, vec2(normalized, 0.5)).rgb;
-    float alpha = mix(u_minOpacity, u_maxOpacity, normalized);
+
+    // Confidence: pixels near measurement points get full opacity, far pixels fade out
+    // Scale factor tuned so that a pixel within one influence radius of a point ≈ full confidence
+    float confidenceScale = u_radius * u_radius;
+    float confidence = clamp(weightTotal * confidenceScale, 0.0, 1.0);
+    float alpha = mix(u_minOpacity, u_maxOpacity, normalized) * confidence;
     gl_FragColor = vec4(color, alpha);
   }
 `;
