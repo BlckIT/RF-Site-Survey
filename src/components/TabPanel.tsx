@@ -184,8 +184,8 @@ function SettingsPanel() {
             const alpha = parseFloat(value.split(",")[3]) || 1;
 
             return (
-              <div key={key} className="flex items-center space-x-2 mt-2">
-                <Input
+              <div key={key} className="flex items-center gap-2 mt-2">
+                <input
                   type="text"
                   value={key}
                   onChange={(e) => {
@@ -194,9 +194,9 @@ function SettingsPanel() {
                     newGradient[parseInt(e.target.value)] = value;
                     debouncedUpdate({ gradient: newGradient });
                   }}
-                  className="w-20 h-9"
+                  className={inputClass + " w-20"}
                 />
-                <Input
+                <input
                   type="color"
                   value={hexColor}
                   onChange={(e) => {
@@ -207,9 +207,9 @@ function SettingsPanel() {
                     };
                     debouncedUpdate({ gradient: newGradient });
                   }}
-                  className="w-20 h-9"
+                  className="w-10 h-8 border border-gray-200 rounded-sm cursor-pointer"
                 />
-                <Input
+                <input
                   type="number"
                   min="0"
                   max="1"
@@ -224,22 +224,35 @@ function SettingsPanel() {
                     };
                     debouncedUpdate({ gradient: newGradient });
                   }}
-                  className="w-20 h-9"
+                  className={inputClass + " w-20"}
                 />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newGradient = { ...settings.gradient };
+                    delete newGradient[parseFloat(key)];
+                    debouncedUpdate({ gradient: newGradient });
+                  }}
+                  className="px-2 py-1 text-gray-400 hover:text-red-500 text-sm"
+                  title="Remove color stop"
+                >
+                  ✕
+                </button>
               </div>
             );
           })}
           <button
+            type="button"
             onClick={() => {
               const newGradient = {
                 ...settings.gradient,
-                [""]: "rgba(0, 0, 0, 1)",
+                [0.5]: "rgba(0, 0, 0, 1)",
               };
               debouncedUpdate({ gradient: newGradient });
             }}
-            className="mt-2 px-2 py-1 bg-blue-500 text-white rounded text-sm"
+            className="mt-2 px-3 py-1.5 border border-gray-200 rounded-sm text-sm hover:bg-gray-50"
           >
-            Add Color Stop
+            + Add Color Stop
           </button>
         </div>
       </section>
