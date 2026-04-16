@@ -9,6 +9,7 @@ import {
   testProperties,
   MeasurementTestType,
   testTypes,
+  MATERIAL_PRESETS,
 } from "@/lib/types";
 import { getColorAt, objectToRGBAString } from "@/lib/utils-gradient";
 
@@ -206,6 +207,50 @@ export function Heatmaps() {
   );
 
   /**
+   * drawMaterialLegend - Rita en liten förklaring av materialfärgerna
+   */
+  function drawMaterialLegend(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+  ) {
+    const materials = Object.entries(MATERIAL_PRESETS);
+    const itemHeight = 18;
+    const boxSize = 12;
+    const spacing = 4;
+
+    ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+    ctx.fillRect(x - 5, y - 5, 180, materials.length * itemHeight + 10);
+
+    ctx.strokeStyle = "#ccc";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x - 5, y - 5, 180, materials.length * itemHeight + 10);
+
+    ctx.font = "11px Arial";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+
+    materials.forEach(([_key, preset], idx) => {
+      const itemY = y + idx * itemHeight;
+
+      // Color box
+      ctx.fillStyle = preset.color;
+      ctx.fillRect(x, itemY, boxSize, boxSize);
+      ctx.strokeStyle = "#333";
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(x, itemY, boxSize, boxSize);
+
+      // Label
+      ctx.fillStyle = "#333";
+      ctx.fillText(
+        `${preset.label} (${(preset.dampening * 100).toFixed(0)}%)`,
+        x + boxSize + spacing,
+        itemY + boxSize / 2,
+      );
+    });
+  }
+
+  /**
    * drawColorBar - take the parameters and create the color gradient
    */
   function drawColorBar(
@@ -360,14 +405,15 @@ export function Heatmaps() {
 
         ctx.drawImage(glCanvas, 0, 20);
 
-        // Rita väggar ovanpå heatmappen
+        // Rita väggar ovanpå heatmappen med materialfärger och tjocklek
         if (settings.walls && settings.walls.length > 0) {
           ctx.save();
-          ctx.translate(0, 20); // Matcha heatmap-offset
-          ctx.strokeStyle = "#1a1a1a";
-          ctx.lineWidth = 3;
-          ctx.lineCap = "round";
+          ctx.translate(0, 20);
           for (const wall of settings.walls) {
+            const preset = MATERIAL_PRESETS[wall.material || "drywall"];
+            ctx.strokeStyle = preset.color;
+            ctx.lineWidth = preset.thickness;
+            ctx.lineCap = "round";
             ctx.beginPath();
             ctx.moveTo(wall.x1, wall.y1);
             ctx.lineTo(wall.x2, wall.y2);
@@ -428,6 +474,13 @@ export function Heatmaps() {
           max,
           metric,
           testType,
+        );
+
+        // Rita materiallegend
+        drawMaterialLegend(
+          ctx,
+          settings.dimensions.width + 40,
+          20 + settings.dimensions.height + 40,
         );
 
         return outputCanvas.toDataURL();

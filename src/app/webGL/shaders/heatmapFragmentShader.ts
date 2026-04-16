@@ -36,8 +36,8 @@ const generateHeatmapFragmentShader = (
   uniform int u_wallCount;
   ${clampedWallCount > 0 ? `uniform vec4 u_walls[${clampedWallCount}];` : ""}
 
-  // Dämpningsfaktor per korsad vägg (0.3 = 70% signalförlust per vägg)
-  const float WALL_ATTENUATION = 0.3;
+  // Dämpningsfaktor per vägg (individuell per material)
+  ${clampedWallCount > 0 ? `uniform float u_wallDampening[${clampedWallCount}];` : ""}
 
   /**
    * Kontrollera om två linjesegment korsar varandra.
@@ -56,22 +56,26 @@ const generateHeatmapFragmentShader = (
   }
 
   /**
-   * Räkna antal väggar som korsar linjen mellan två punkter.
+   * Beräkna total dämpning genom alla korsade väggar.
+   * Returnerar multiplikativ faktor (1.0 = ingen dämpning).
    */
-  float countWallCrossings(vec2 from, vec2 to) {
-    float count = 0.0;
+  float calcWallAttenuation(vec2 from, vec2 to) {
+    float attenuation = 1.0;
     ${
       clampedWallCount > 0
         ? `
     for (int i = 0; i < ${clampedWallCount}; ++i) {
       if (i >= u_wallCount) break;
       vec4 w = u_walls[i];
-      count += segmentsIntersect(from, to, w.xy, w.zw);
+      float hit = segmentsIntersect(from, to, w.xy, w.zw);
+      if (hit > 0.5) {
+        attenuation *= u_wallDampening[i];
+      }
     }
     `
         : ""
     }
-    return count;
+    return attenuation;
   }
 
   void main() {
@@ -99,9 +103,8 @@ const generateHeatmapFragmentShader = (
 
       float weight = 1.0 / pow(distSq, u_power * 0.5);
 
-      // Dämpa vikten baserat på antal korsade väggar
-      float walls = countWallCrossings(pixel, point);
-      float attenuation = pow(WALL_ATTENUATION, walls);
+      // Dämpa vikten baserat på korsade väggar (per-vägg dämpning)
+      float attenuation = calcWallAttenuation(pixel, point);
       weight *= attenuation;
 
       weightedSum += weight * value;

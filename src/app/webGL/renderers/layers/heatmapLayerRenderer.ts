@@ -1,4 +1,4 @@
-import { Gradient, Wall } from "@/lib/types";
+import { Gradient, Wall, getWallDampening } from "@/lib/types";
 import { HeatmapPoint } from "../mainRenderer";
 import generateFragmentShader, {
   MAX_WALLS,
@@ -33,6 +33,10 @@ export const createHeatmapLayerRenderer = (
   const u_wallCount = gl.getUniformLocation(program, "u_wallCount");
   const u_walls =
     clampedWalls.length > 0 ? gl.getUniformLocation(program, "u_walls") : null;
+  const u_wallDampening =
+    clampedWalls.length > 0
+      ? gl.getUniformLocation(program, "u_wallDampening")
+      : null;
 
   const colorLUT = createGradientLUTTexture(gl, gradient);
   const maxSignal = _.maxBy(points, "value")?.value ?? 0;
@@ -44,6 +48,12 @@ export const createHeatmapLayerRenderer = (
   const wallData =
     clampedWalls.length > 0
       ? Float32Array.from(clampedWalls.flatMap((w) => [w.x1, w.y1, w.x2, w.y2]))
+      : null;
+
+  // Dämpningsfaktor per vägg
+  const wallDampeningData =
+    clampedWalls.length > 0
+      ? Float32Array.from(clampedWalls.map((w) => getWallDampening(w)))
       : null;
 
   const draw = (options: {
@@ -75,6 +85,9 @@ export const createHeatmapLayerRenderer = (
     gl.uniform1i(u_wallCount, clampedWalls.length);
     if (u_walls && wallData) {
       gl.uniform4fv(u_walls, wallData);
+    }
+    if (u_wallDampening && wallDampeningData) {
+      gl.uniform1fv(u_wallDampening, wallDampeningData);
     }
 
     gl.activeTexture(gl.TEXTURE0);

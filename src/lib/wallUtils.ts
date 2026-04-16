@@ -5,7 +5,7 @@
  * and to attenuate signal strength based on the number of crossed walls.
  */
 
-import { Wall } from "./types";
+import { Wall, getWallDampening } from "./types";
 
 /**
  * Check if two line segments intersect.
@@ -57,12 +57,21 @@ export function countWallCrossings(
 }
 
 /**
- * Attenuation factor based on the number of crossed walls.
- * Each wall multiplies the signal by WALL_ATTENUATION_FACTOR.
+ * Attenuation factor based on crossed walls.
+ * Uses per-wall dampening from material presets.
  */
-const WALL_ATTENUATION_FACTOR = 0.3;
-
-export function wallAttenuation(wallCount: number): number {
-  if (wallCount <= 0) return 1.0;
-  return Math.pow(WALL_ATTENUATION_FACTOR, wallCount);
+export function wallAttenuation(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  walls: Wall[],
+): number {
+  let attenuation = 1.0;
+  for (const wall of walls) {
+    if (segmentsIntersect(x1, y1, x2, y2, wall.x1, wall.y1, wall.x2, wall.y2)) {
+      attenuation *= getWallDampening(wall);
+    }
+  }
+  return attenuation;
 }
