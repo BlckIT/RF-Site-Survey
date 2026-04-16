@@ -27,7 +27,7 @@ export default function MediaDropdown({
       if (!res.ok) throw new Error("Failed to fetch files");
       const data = await res.json();
       const imageFiles = data.files.filter((name: string) =>
-        /\.(jpe?g|png)$/i.test(name),
+        /\.(jpe?g|png|pdf)$/i.test(name),
       );
       setFiles(imageFiles);
       if (defaultValue && imageFiles.includes(defaultValue)) {
@@ -48,7 +48,39 @@ export default function MediaDropdown({
     }
   }, [defaultValue]);
 
-  const handleSelect = (value: string) => {
+  const handleSelect = async (value: string) => {
+    // If selecting a PDF from the list, convert it to PNG first
+    if (value.toLowerCase().endsWith(".pdf")) {
+      setUploading(true);
+      setError(null);
+      try {
+        const res = await fetch(`/media/${value}`);
+        const blob = await res.blob();
+        const file = new File([blob], value, { type: "application/pdf" });
+        const { blob: pngBlob, filename } = await pdfToImage(file);
+
+        // Upload the converted PNG
+        const formData = new FormData();
+        formData.append("file", new File([pngBlob], filename, { type: "image/png" }));
+        const uploadRes = await fetch("/api/media", { method: "POST", body: formData });
+        const data = await uploadRes.json();
+
+        if (uploadRes.ok && data.name) {
+          await fetchFiles();
+          setSelected(data.name);
+          onChange?.(data.name);
+        } else {
+          setError(data.error || "PDF conversion failed");
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Unknown error";
+        setError(`PDF conversion failed: ${msg}`);
+      } finally {
+        setUploading(false);
+      }
+      return;
+    }
+
     requestAnimationFrame(() => {
       setSelected(value);
       onChange?.(value);
