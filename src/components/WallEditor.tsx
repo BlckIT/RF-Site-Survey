@@ -8,8 +8,9 @@ import React, {
 import { useSettings } from "./GlobalSettings";
 import { Wall, WallMaterial, MATERIAL_PRESETS } from "@/lib/types";
 
-const POINT_HIT_RADIUS = 8; // px radius for detecting endpoint clicks
+const DEFAULT_SNAP_RADIUS = 8; // px default snap radius
 const WALL_HIT_RADIUS = 10; // px radius for detecting wall clicks (for splitting)
+const SHARED_ENDPOINT_EPSILON = 0.5; // px epsilon for detecting shared endpoints
 
 export default function WallEditor(): ReactNode {
   const { settings, updateSettings } = useSettings();
@@ -39,6 +40,13 @@ export default function WallEditor(): ReactNode {
   const [activeMaterial, setActiveMaterial] = useState<WallMaterial>("drywall");
   const [selectedWallId, setSelectedWallId] = useState<string | null>(null);
 
+  // Snap radius (configurable)
+  const [snapRadius, setSnapRadius] = useState(DEFAULT_SNAP_RADIUS);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Snap target for visual feedback
+  const [snapTarget, setSnapTarget] = useState<{ x: number; y: number; type: 'close' | 'endpoint' } | null>(null);
+
   const isDrawing = chainPoints.length > 0;
 
   // Load floor plan image
@@ -60,6 +68,7 @@ export default function WallEditor(): ReactNode {
       if (e.key === "Escape") {
         setChainPoints([]);
         setMousePos(null);
+        setSnapTarget(null);
       }
     };
     const onKeyUp = (e: KeyboardEvent) => {
@@ -99,15 +108,61 @@ export default function WallEditor(): ReactNode {
     [shiftHeld],
   );
 
-  // Get the effective mouse position (with snap applied if in chain-drawing)
+  // Collect all existing wall endpoints
+  const getAllEndpoints = useCallback((): { x: number; y: number }[] => {
+    const points: { x: number; y: number }[] = [];
+    for (const wall of settings.walls) {
+      points.push({ x: wall.x1, y: wall.y1 });
+      points.push({ x: wall.x2, y: wall.y2 });
+    }
+    return points;
+  }, [settings.walls]);
+
+  // Find nearest snap target (existing endpoint or chain-close point)
+  const findSnapTarget = useCallback(
+    (pos: { x: number; y: number }): { x: number; y: number; type: 'close' | 'endpoint' } | null => {
+      const threshold = snapRadius / scale;
+      let bestDist = threshold;
+      let bestTarget: { x: number; y: number; type: 'close' | 'endpoint' } | null = null;
+
+      // Check chain-close (first point of current chain) — priority
+      if (chainPoints.length >= 2) {
+        const first = chainPoints[0];
+        const dist = Math.hypot(pos.x - first.x, pos.y - first.y);
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestTarget = { x: first.x, y: first.y, type: 'close' };
+        }
+      }
+
+      // Check all existing wall endpoints
+      const endpoints = getAllEndpoints();
+      for (const ep of endpoints) {
+        const dist = Math.hypot(pos.x - ep.x, pos.y - ep.y);
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestTarget = { x: ep.x, y: ep.y, type: 'endpoint' };
+        }
+      }
+
+      return bestTarget;
+    },
+    [snapRadius, scale, chainPoints, getAllEndpoints],
+  );
+
+  // Get the effective mouse position (with endpoint snap > shift-snap)
   const getEffectiveMousePos = useCallback(() => {
     if (!mousePos) return null;
     if (chainPoints.length > 0) {
+      // First check endpoint/close snap
+      const snap = findSnapTarget(mousePos);
+      if (snap) return { x: snap.x, y: snap.y };
+      // Fall back to shift-snap
       const lastPoint = chainPoints[chainPoints.length - 1];
       return applySnap(mousePos, lastPoint);
     }
     return mousePos;
-  }, [mousePos, chainPoints, applySnap]);
+  }, [mousePos, chainPoints, applySnap, findSnapTarget]);
 
   // Draw canvas
   const drawCanvas = useCallback(() => {
@@ -146,6 +201,19 @@ export default function WallEditor(): ReactNode {
         ctx.lineWidth = 1.5;
         ctx.stroke();
       }
+    }
+
+    // Draw snap target highlight
+    if (snapTarget && isDrawing) {
+      ctx.beginPath();
+      ctx.arc(snapTarget.x, snapTarget.y, 10, 0, Math.PI * 2);
+      ctx.fillStyle = snapTarget.type === 'close'
+        ? 'rgba(34, 197, 94, 0.35)'
+        : 'rgba(59, 130, 246, 0.35)';
+      ctx.fill();
+      ctx.strokeStyle = snapTarget.type === 'close' ? '#22c55e' : '#3b82f6';
+      ctx.lineWidth = 2;
+      ctx.stroke();
     }
 
     // Draw split indicators (hover over wall to show + marker)
@@ -195,7 +263,7 @@ export default function WallEditor(): ReactNode {
         );
       }
 
-      // Draw preview line from last point to mouse
+      // Draw preview line from last point to snapped/effective mouse position
       const effectivePos = getEffectiveMousePos();
       if (effectivePos) {
         const lastPoint = chainPoints[chainPoints.length - 1];
@@ -205,7 +273,7 @@ export default function WallEditor(): ReactNode {
           lastPoint.y,
           effectivePos.x,
           effectivePos.y,
-          "#f97316",
+          snapTarget ? (snapTarget.type === 'close' ? '#22c55e' : '#3b82f6') : '#f97316',
           2,
         );
       }
@@ -248,6 +316,8 @@ export default function WallEditor(): ReactNode {
     activeMaterial,
     selectedWallId,
     isDrawing,
+    snapTarget,
+    scale,
   ]);
 
   // Redraw on any state change
@@ -271,7 +341,7 @@ export default function WallEditor(): ReactNode {
     x: number,
     y: number,
   ): { wallId: string; endpoint: "start" | "end" } | null => {
-    const threshold = POINT_HIT_RADIUS / scale;
+    const threshold = snapRadius / scale;
     for (const wall of settings.walls) {
       if (Math.hypot(x - wall.x1, y - wall.y1) < threshold) {
         return { wallId: wall.id, endpoint: "start" };
@@ -300,6 +370,9 @@ export default function WallEditor(): ReactNode {
     return closestDist < threshold ? closestWallId : null;
   };
 
+  // Store the original position of the dragged endpoint for shared-endpoint detection
+  const dragOriginRef = useRef<{ x: number; y: number } | null>(null);
+
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (e.button !== 0) return;
     const { x, y } = getCanvasCoords(e);
@@ -307,6 +380,13 @@ export default function WallEditor(): ReactNode {
     if (!isDrawing) {
       const hit = findNearEndpoint(x, y);
       if (hit) {
+        // Store the original endpoint position for shared-endpoint matching
+        const wall = settings.walls.find((w) => w.id === hit.wallId);
+        if (wall) {
+          dragOriginRef.current = hit.endpoint === 'start'
+            ? { x: wall.x1, y: wall.y1 }
+            : { x: wall.x2, y: wall.y2 };
+        }
         setDragging(hit);
         setMousePos({ x, y });
         return;
@@ -331,7 +411,27 @@ export default function WallEditor(): ReactNode {
       return;
     }
 
-    // Apply snap if we have a previous chain point
+    // Check for endpoint/close snap first
+    const snap = findSnapTarget(raw);
+    if (snap) {
+      if (snap.type === 'close' && chainPoints.length >= 2) {
+        // Snap-to-close: add the closing point and auto-commit
+        setChainPoints((prev) => {
+          const updated = [...prev, { x: snap.x, y: snap.y }];
+          // We need to commit after state update, so use a timeout
+          return updated;
+        });
+        // Commit the chain with the closing point included
+        const closedChain = [...chainPoints, { x: snap.x, y: snap.y }];
+        commitChainWith(closedChain);
+        return;
+      }
+      // Snap to existing endpoint
+      setChainPoints((prev) => [...prev, { x: snap.x, y: snap.y }]);
+      return;
+    }
+
+    // Apply shift-snap if we have a previous chain point
     const pos =
       chainPoints.length > 0
         ? applySnap(raw, chainPoints[chainPoints.length - 1])
@@ -345,21 +445,22 @@ export default function WallEditor(): ReactNode {
     commitChain();
   };
 
-  const commitChain = useCallback(() => {
-    if (chainPoints.length < 2) {
+  const commitChainWith = useCallback((points: { x: number; y: number }[]) => {
+    if (points.length < 2) {
       setChainPoints([]);
       setMousePos(null);
+      setSnapTarget(null);
       return;
     }
 
     const newWalls: Wall[] = [];
-    for (let i = 0; i < chainPoints.length - 1; i++) {
+    for (let i = 0; i < points.length - 1; i++) {
       newWalls.push({
         id: `wall_${Date.now()}_${i}`,
-        x1: chainPoints[i].x,
-        y1: chainPoints[i].y,
-        x2: chainPoints[i + 1].x,
-        y2: chainPoints[i + 1].y,
+        x1: points[i].x,
+        y1: points[i].y,
+        x2: points[i + 1].x,
+        y2: points[i + 1].y,
         material: activeMaterial,
       });
     }
@@ -367,28 +468,49 @@ export default function WallEditor(): ReactNode {
     updateSettings({ walls: [...settings.walls, ...newWalls] });
     setChainPoints([]);
     setMousePos(null);
-  }, [chainPoints, activeMaterial, settings.walls, updateSettings]);
+    setSnapTarget(null);
+  }, [activeMaterial, settings.walls, updateSettings]);
+
+  const commitChain = useCallback(() => {
+    commitChainWith(chainPoints);
+  }, [chainPoints, commitChainWith]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const pos = getCanvasCoords(e);
     setMousePos(pos);
 
-    if (dragging) {
+    // Update snap target for visual feedback
+    if (isDrawing) {
+      setSnapTarget(findSnapTarget(pos));
+    } else {
+      setSnapTarget(null);
+    }
+
+    if (dragging && dragOriginRef.current) {
+      const origPt = dragOriginRef.current;
+
       const updatedWalls = settings.walls.map((wall) => {
-        if (wall.id !== dragging.wallId) return wall;
-        if (dragging.endpoint === "start") {
-          return { ...wall, x1: pos.x, y1: pos.y };
-        } else {
-          return { ...wall, x2: pos.x, y2: pos.y };
+        const updated = { ...wall };
+        if (Math.hypot(wall.x1 - origPt.x, wall.y1 - origPt.y) < SHARED_ENDPOINT_EPSILON) {
+          updated.x1 = pos.x;
+          updated.y1 = pos.y;
         }
+        if (Math.hypot(wall.x2 - origPt.x, wall.y2 - origPt.y) < SHARED_ENDPOINT_EPSILON) {
+          updated.x2 = pos.x;
+          updated.y2 = pos.y;
+        }
+        return updated;
       });
       updateSettings({ walls: updatedWalls });
+      // Update origin to track the new position for continuous dragging
+      dragOriginRef.current = { x: pos.x, y: pos.y };
     }
   };
 
   const handleMouseUp = (_e: React.MouseEvent<HTMLCanvasElement>) => {
     if (dragging) {
       setDragging(null);
+      dragOriginRef.current = null;
     }
   };
 
@@ -472,6 +594,7 @@ export default function WallEditor(): ReactNode {
     setChainPoints([]);
     setMousePos(null);
     setSelectedWallId(null);
+    setSnapTarget(null);
   };
 
   const updateSelectedWallMaterial = (material: WallMaterial) => {
@@ -499,15 +622,20 @@ export default function WallEditor(): ReactNode {
       <h2 className="text-2xl font-semibold text-gray-800 mb-2">Walls</h2>
       <div className="p-2 rounded-md text-sm mb-4">
         <p>
-          Click to place points. Each segment becomes a wall. Double-click or
-          press Escape to finish.
+          Click to place wall points. Double-click or right-click to finish a
+          chain.
         </p>
         <p>
-          Hold Shift to snap to horizontal or vertical. Right-click a wall to
-          delete it.
+          Points snap to nearby endpoints and to the first point to close a
+          room.
         </p>
-        <p>Drag an existing endpoint to adjust its position.</p>
-        <p>Hover over a wall and click the + marker to split it.</p>
+        <p>
+          Hold Shift for horizontal/vertical snap. Drag endpoints to adjust.
+        </p>
+        <p>
+          Right-click a wall to delete it. Click a wall to select and edit
+          material.
+        </p>
         <p className="mt-1 text-gray-500">
           Wall count: {settings.walls.length}
           {isDrawing &&
@@ -537,6 +665,32 @@ export default function WallEditor(): ReactNode {
             ))}
           </select>
         </div>
+      </div>
+
+      {/* Advanced settings (snap radius) */}
+      <div className="mb-4">
+        <button
+          onClick={() => setShowAdvanced((v) => !v)}
+          className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
+        >
+          <span>{showAdvanced ? '▼' : '▶'}</span>
+          <span>Advanced</span>
+        </button>
+        {showAdvanced && (
+          <div className="mt-2 p-3 bg-gray-50 rounded-md border border-gray-200">
+            <label className="text-xs font-medium text-gray-600 flex items-center gap-2">
+              Snap radius (px):
+              <input
+                type="number"
+                min={2}
+                max={30}
+                value={snapRadius}
+                onChange={(e) => setSnapRadius(Math.max(2, Math.min(30, parseInt(e.target.value) || DEFAULT_SNAP_RADIUS)))}
+                className="w-16 px-1 py-0.5 border border-gray-300 rounded text-sm"
+              />
+            </label>
+          </div>
+        )}
       </div>
 
       {/* Material legend */}
