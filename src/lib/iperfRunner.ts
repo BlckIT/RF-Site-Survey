@@ -139,12 +139,27 @@ export async function runSurveyTests(
     // This is too hard on macOS (too many credential prompts)
     // to be practical.
 
-    // Scan the wifi neighborhood, retrieve the ssidName from the current
-    const ssids = await wifiActions.scanWifi(settings);
-    logger.debug(`scanWifi returned: ${JSON.stringify(ssids)}`);
-
-    const thisSSID = ssids.SSIDs.filter((item) => item.currentSSID);
-    const ssidName = thisSSID[0].ssid;
+    // Determine SSID name: prefer explicit targetSSID, then connected, then first scanned
+    let ssidName = "Unknown";
+    if (settings.targetSSID) {
+      ssidName = settings.targetSSID;
+      logger.debug(`Using target SSID from settings: ${ssidName}`);
+    } else {
+      const ssids = await wifiActions.scanWifi(settings);
+      logger.debug(`scanWifi returned: ${JSON.stringify(ssids)}`);
+      const thisSSID = ssids.SSIDs.filter((item) => item.currentSSID);
+      if (thisSSID.length > 0) {
+        ssidName = thisSSID[0].ssid;
+      } else if (ssids.SSIDs.length > 0) {
+        ssidName = ssids.SSIDs[0].ssid;
+      } else {
+        return {
+          iperfData: null,
+          wifiData: null,
+          status: "No WiFi data available. Make sure you're connected to a network or select a Target SSID.",
+        };
+      }
+    }
 
     while (attempts < maxRetries) {
       attempts++;
@@ -164,6 +179,13 @@ export async function runSurveyTests(
         console.log(
           `Elapsed time for scan and switch: ${Date.now() - startTime}`,
         );
+        if (!wifiDataBefore.SSIDs || wifiDataBefore.SSIDs.length === 0) {
+          return {
+            iperfData: null,
+            wifiData: null,
+            status: "No WiFi data available. Make sure you're connected to a network or select a Target SSID.",
+          };
+        }
         wifiStrengths.push(wifiDataBefore.SSIDs[0].signalStrength);
         displayStates.strength = arrayAverage(wifiStrengths).toString();
         checkForCancel();
@@ -195,8 +217,10 @@ export async function runSurveyTests(
         sendSSEMessage(getUpdatedMessage());
 
         const wifiDataMiddle = await wifiActions.getWifi(settings);
-        wifiStrengths.push(wifiDataMiddle.SSIDs[0].signalStrength);
-        displayStates.strength = arrayAverage(wifiStrengths).toString();
+        if (wifiDataMiddle.SSIDs && wifiDataMiddle.SSIDs.length > 0) {
+          wifiStrengths.push(wifiDataMiddle.SSIDs[0].signalStrength);
+          displayStates.strength = arrayAverage(wifiStrengths).toString();
+        }
         checkForCancel();
         sendSSEMessage(getUpdatedMessage());
 
@@ -225,8 +249,10 @@ export async function runSurveyTests(
         sendSSEMessage(getUpdatedMessage());
 
         const wifiDataAfter = await wifiActions.getWifi(settings);
-        wifiStrengths.push(wifiDataAfter.SSIDs[0].signalStrength);
-        displayStates.strength = arrayAverage(wifiStrengths).toString();
+        if (wifiDataAfter.SSIDs && wifiDataAfter.SSIDs.length > 0) {
+          wifiStrengths.push(wifiDataAfter.SSIDs[0].signalStrength);
+          displayStates.strength = arrayAverage(wifiStrengths).toString();
+        }
         checkForCancel();
 
         // Send the final update - type is "done"
@@ -235,6 +261,8 @@ export async function runSurveyTests(
         sendSSEMessage(getUpdatedMessage());
 
         if (
+          wifiDataBefore.SSIDs[0] &&
+          wifiDataAfter.SSIDs?.[0] &&
           !validateWifiDataConsistency(
             wifiDataBefore.SSIDs[0],
             wifiDataAfter.SSIDs[0],
