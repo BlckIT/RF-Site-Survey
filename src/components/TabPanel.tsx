@@ -1,7 +1,7 @@
 import * as Tabs from "@radix-ui/react-tabs";
 import { useState, useEffect, useCallback } from "react";
 import { useSettings } from "./GlobalSettings";
-import { debounce } from "lodash";
+import debounce from "lodash/debounce";
 
 import FloorPlanSelector from "@/components/FloorPlanSelector";
 import SurveySettingsBar from "@/components/SurveySettingsBar";

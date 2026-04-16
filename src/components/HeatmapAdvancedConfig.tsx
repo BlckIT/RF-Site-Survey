@@ -12,7 +12,7 @@ import { PopoverHelper } from "@/components/PopoverHelpText";
 // import { HeatmapConfig } from "@/lib/types";
 import { useSettings } from "@/components/GlobalSettings";
 import { HeatmapSettings } from "@/lib/types";
-import { debounce } from "lodash";
+import debounce from "lodash/debounce";
 import { rgbaToHex, hexToRgba } from "@/lib/utils-gradient";
 export function HeatmapAdvancedConfig() {
   const { settings, updateSettings } = useSettings();
