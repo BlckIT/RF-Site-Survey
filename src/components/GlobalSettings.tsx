@@ -306,9 +306,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         updatedSite = { ...updatedSite, floors: updatedFloors };
       }
 
+      // Only override globals that were explicitly passed in
+      const prevGlobals = extractGlobals(prev);
+      const overrides = Object.fromEntries(
+        Object.entries(globalUpdates).filter(([, v]) => v !== undefined)
+      );
       const updatedSettings = buildSettings(updatedSite, {
-        ...extractGlobals(prev),
-        ...extractGlobals(globalUpdates as HeatmapSettings),
+        ...prevGlobals,
+        ...overrides,
       });
 
       writeSettingsToFile(updatedSettings);
