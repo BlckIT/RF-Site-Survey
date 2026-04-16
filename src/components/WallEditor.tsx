@@ -408,6 +408,13 @@ export default function WallEditor(): ReactNode {
         return;
       }
       setSelectedWallId(null);
+      // Start a new chain — check for endpoint snap first
+      const snap = findSnapTarget(raw);
+      if (snap) {
+        setChainPoints([{ x: snap.x, y: snap.y }]);
+      } else {
+        setChainPoints([raw]);
+      }
       return;
     }
 
@@ -644,7 +651,7 @@ export default function WallEditor(): ReactNode {
       </div>
 
       {/* Active material indicator */}
-      <div className="mb-4 p-3 bg-gray-100 rounded-md">
+      <div className="mb-4">
         <label className="text-sm font-medium text-gray-700">
           Active Material
         </label>
@@ -656,7 +663,7 @@ export default function WallEditor(): ReactNode {
           <select
             value={activeMaterial}
             onChange={(e) => setActiveMaterial(e.target.value as WallMaterial)}
-            className="px-2 py-1 border border-gray-300 rounded text-sm"
+            className="px-2 py-1 border border-gray-200 rounded-sm text-sm focus:outline-none focus:ring focus:ring-blue-300 focus:border-blue-400"
           >
             {(Object.keys(MATERIAL_PRESETS) as WallMaterial[]).map((mat) => (
               <option key={mat} value={mat}>
@@ -677,7 +684,7 @@ export default function WallEditor(): ReactNode {
           <span>Advanced</span>
         </button>
         {showAdvanced && (
-          <div className="mt-2 p-3 bg-gray-50 rounded-md border border-gray-200">
+          <div className="mt-2">
             <label className="text-xs font-medium text-gray-600 flex items-center gap-2">
               Snap radius (px):
               <input
@@ -686,7 +693,7 @@ export default function WallEditor(): ReactNode {
                 max={30}
                 value={snapRadius}
                 onChange={(e) => setSnapRadius(Math.max(2, Math.min(30, parseInt(e.target.value) || DEFAULT_SNAP_RADIUS)))}
-                className="w-16 px-1 py-0.5 border border-gray-300 rounded text-sm"
+                className="w-16 px-1 py-0.5 border border-gray-200 rounded-sm text-sm focus:outline-none focus:ring focus:ring-blue-300 focus:border-blue-400"
               />
             </label>
           </div>
@@ -694,7 +701,7 @@ export default function WallEditor(): ReactNode {
       </div>
 
       {/* Material legend */}
-      <div className="mb-4 p-3 bg-gray-50 rounded-md">
+      <div className="mb-4">
         <h3 className="text-sm font-medium text-gray-700 mb-2">
           Material Legend
         </h3>
@@ -718,7 +725,7 @@ export default function WallEditor(): ReactNode {
 
       {/* Selected wall panel */}
       {selectedWall && (
-        <div className="mb-4 p-3 bg-blue-50 rounded-md border border-blue-200">
+        <div className="mb-4 p-3 border border-gray-200 rounded-sm">
           <h3 className="text-sm font-medium text-gray-700 mb-2">
             Selected Wall
           </h3>
@@ -732,7 +739,7 @@ export default function WallEditor(): ReactNode {
                 onChange={(e) =>
                   updateSelectedWallMaterial(e.target.value as WallMaterial)
                 }
-                className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                className="w-full px-2 py-1 border border-gray-200 rounded-sm text-sm focus:outline-none focus:ring focus:ring-blue-300 focus:border-blue-400"
               >
                 {(Object.keys(MATERIAL_PRESETS) as WallMaterial[]).map(
                   (mat) => (
@@ -768,7 +775,7 @@ export default function WallEditor(): ReactNode {
 
             <button
               onClick={() => splitWall(selectedWallId!)}
-              className="w-full px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
+              className="w-full px-3 py-2 border border-gray-200 rounded-sm text-sm hover:bg-gray-100 focus:outline-none focus:ring focus:ring-blue-300"
             >
               Split Wall
             </button>
@@ -778,7 +785,7 @@ export default function WallEditor(): ReactNode {
 
       {settings.walls.length > 0 && (
         <button
-          className="mb-2 px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
+          className="mb-2 px-3 py-2 border border-gray-200 rounded-sm text-sm hover:bg-gray-100 focus:outline-none focus:ring focus:ring-blue-300"
           onClick={clearAllWalls}
         >
           Remove all walls
@@ -796,7 +803,7 @@ export default function WallEditor(): ReactNode {
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onContextMenu={handleContextMenu}
-          className="border border-gray-300 rounded-lg cursor-crosshair"
+          className="border border-gray-200 rounded-sm cursor-crosshair"
         />
       </div>
     </div>
