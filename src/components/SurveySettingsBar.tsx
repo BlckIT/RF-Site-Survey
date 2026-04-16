@@ -34,7 +34,7 @@ export default function SurveySettingsBar() {
     "w-full border border-gray-200 rounded-sm p-1.5 text-sm focus:outline-none focus:ring focus:ring-blue-300 focus:border-blue-400";
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-gray-50 border border-gray-200 rounded-md mb-2">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-gray-50 border border-gray-200 rounded-md mb-4">
       {/* Target SSID */}
       <div className="flex flex-col gap-1">
         <Label className="text-xs font-semibold">

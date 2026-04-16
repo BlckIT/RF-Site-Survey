@@ -625,8 +625,7 @@ export default function WallEditor(): ReactNode {
   const selectedWall = settings.walls.find((w) => w.id === selectedWallId);
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-2xl font-semibold text-gray-800 mb-2">Walls</h2>
+    <div>
       <div className="p-2 rounded-md text-sm mb-4">
         <p>
           Click to place wall points. Double-click or right-click to finish a
