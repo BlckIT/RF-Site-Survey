@@ -3,6 +3,7 @@
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { pdfToImage } from "@/lib/pdfToImage";
 
 type MediaDropdownProps = {
   defaultValue?: string;
@@ -62,8 +63,16 @@ export default function MediaDropdown({
     setError(null);
 
     try {
+      let uploadFile: File = file;
+
+      // Convert PDF to PNG client-side
+      if (file.name.toLowerCase().endsWith(".pdf") || file.type === "application/pdf") {
+        const { blob, filename } = await pdfToImage(file);
+        uploadFile = new File([blob], filename, { type: "image/png" });
+      }
+
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", uploadFile);
 
       const res = await fetch("/api/media", {
         method: "POST",
@@ -78,8 +87,9 @@ export default function MediaDropdown({
       } else {
         setError(data.error || "Upload failed");
       }
-    } catch {
-      setError("Upload failed — network error");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      setError(`Upload failed: ${msg}`);
     } finally {
       setUploading(false);
       e.target.value = "";
