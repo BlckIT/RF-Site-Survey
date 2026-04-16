@@ -101,7 +101,7 @@ export class LinuxWifiActions implements WifiActions {
       // execAsync() throws if there is an error
       else {
         try {
-          await execAsync(`echo ${settings.sudoerPassword} | sudo -S ls`);
+          await execAsync(`echo '${settings.sudoerPassword.replace(/'/g, "'\\\\''")}'  | sudo -S ls`);
         } catch {
           reason = "Please enter a valid sudo password.";
         }
@@ -276,7 +276,7 @@ async function iwDevLink(interfaceId: string, pw: string): Promise<string> {
 
   let command = `iw dev ${interfaceId} link`;
   if (!isDocker()) {
-    command = `echo "${pw}" | sudo -S ` + command;
+    command = `echo '${pw.replace(/'/g, "'\\\\''")}'  | sudo -S ` + command;
   }
 
   const { stdout } = await execAsync(command);
