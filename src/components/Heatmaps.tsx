@@ -402,6 +402,7 @@ export function Heatmaps() {
           backgroundImageSrc: settings.floorplanImagePath,
           width: settings.dimensions.width,
           height: settings.dimensions.height,
+          blur: settings.blur ?? 0,
         });
 
         ctx.drawImage(glCanvas, 0, 20);
