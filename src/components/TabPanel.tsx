@@ -3,7 +3,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useSettings } from "./GlobalSettings";
 import debounce from "lodash/debounce";
 
-import FloorPlanSelector from "@/components/FloorPlanSelector";
+import SiteManager from "@/components/SiteManager";
+import FloorSelector from "@/components/FloorSelector";
 import SurveySettingsBar from "@/components/SurveySettingsBar";
 import ClickableFloorplan from "@/components/Floorplan";
 import { Heatmaps } from "@/components/Heatmaps";
@@ -460,16 +461,17 @@ export default function TabPanel() {
           <SettingsPanel />
         </Tabs.Content>
 
-        {/* Tab 1: Site Setup — floor plan selector + wall editor */}
+        {/* Tab 1: Site Setup — site manager + wall editor */}
         <Tabs.Content value="site-setup" className="p-4">
           <div className="mb-4">
-            <FloorPlanSelector />
+            <SiteManager />
           </div>
           <WallEditor />
         </Tabs.Content>
 
-        {/* Tab 2: Survey — compact settings bar, floor plan + sidebar */}
+        {/* Tab 2: Survey — floor selector, compact settings bar, floor plan + sidebar */}
         <Tabs.Content value="survey" className="p-4">
+          <FloorSelector />
           <SurveySettingsBar />
           <div className="flex gap-4">
             <div className="flex-1 min-w-0">
@@ -485,8 +487,9 @@ export default function TabPanel() {
           </div>
         </Tabs.Content>
 
-        {/* Tab 3: Report — heatmaps */}
+        {/* Tab 3: Report — floor selector + heatmaps */}
         <Tabs.Content value="report" className="p-4">
+          <FloorSelector />
           <Heatmaps />
         </Tabs.Content>
       </Tabs.Root>

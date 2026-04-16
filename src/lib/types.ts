@@ -80,34 +80,65 @@ export interface IperfCommands {
 }
 
 /**
- * The full set of data for a particular background image
- * This is "global" to the entire GUI, and passed down as needed
+ * A single floor within a site
  */
-export interface HeatmapSettings {
+export interface Floor {
+  name: string;                    // e.g. "Floor 1", "Ground Floor"
+  floorplanImageName: string;      // filename in /media/
+  floorplanImagePath: string;      // /media/filename
+  dimensions: { width: number; height: number };
+  walls: Wall[];
   surveyPoints: SurveyPoint[];
-  floorplanImageName: string; // name of the floorplan-filename
-  floorplanImagePath: string; // path to the /media/floorplan-filename
+  pixelsPerMeter: number;
+  nextPointNum: number;
+}
+
+/**
+ * A site/project containing multiple floors
+ */
+export interface Site {
+  name: string;                    // project name
+  floors: Floor[];
+  activeFloorIndex: number;        // which floor is currently selected
+}
+
+/**
+ * Global settings (NOT per-site/floor)
+ */
+export interface GlobalAppSettings {
   iperfServerAdrs: string;
   testDuration: number;
-  sudoerPassword: string; // kept in settings, removed before writing to file
+  sudoerPassword: string;
   apMapping: ApMapping[];
-  nextPointNum: number;
-  dimensions: { width: number; height: number };
-  radiusDivider: number | null; // null - use calculated value
+  radiusDivider: number | null;
   maxOpacity: number;
   minOpacity: number;
   blur: number;
   gradient: Gradient;
   iperfCommands: IperfCommands;
+  wifiInterface: string;
+  targetSSID: string;
+  snapRadius: number;
+}
+
+/**
+ * The full set of data for a particular background image
+ * This is "global" to the entire GUI, and passed down as needed
+ *
+ * Now composes Site + GlobalAppSettings.
+ * Floor-specific fields (surveyPoints, walls, dimensions, etc.) are
+ * computed from the active floor for backward compatibility.
+ */
+export interface HeatmapSettings extends GlobalAppSettings {
+  site: Site;
+  // Backward-compat computed fields from active floor
+  surveyPoints: SurveyPoint[];
+  floorplanImageName: string;
+  floorplanImagePath: string;
+  nextPointNum: number;
+  dimensions: { width: number; height: number };
   walls: Wall[];
-  pixelsPerMeter: number; // scale factor for distance-based signal decay
-  wifiInterface: string; // "" = auto-detect first available
-  targetSSID: string; // "" = use connected SSID
-  snapRadius: number; // wall editor snap radius in pixels
-  // these two props were used for the "scan-wifi" branch
-  // that has been (temporarily?) abandoned
-  // sameSSID: string; // "same", "best"
-  // ignoredSSIDs: string[];
+  pixelsPerMeter: number;
 }
 
 // part of "scan wifi" effort

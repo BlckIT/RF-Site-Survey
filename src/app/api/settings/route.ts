@@ -1,11 +1,12 @@
 /**
  * /api/settings API
- * GET /api/settings?name=<floorplan-name> - reads settings for a floorplan
- * POST /api/settings - writes settings to a file
+ * GET /api/settings?name=<floorplan-name> - reads settings for a floorplan/site
  * GET /api/settings?list=true - lists all available survey files
+ * POST /api/settings - writes settings to a file
+ * DELETE /api/settings?name=<name>&action=delete - deletes a survey file
  */
 import { NextRequest, NextResponse } from "next/server";
-import { readFile, writeFile, mkdir, readdir } from "fs/promises";
+import { readFile, writeFile, mkdir, readdir, unlink } from "fs/promises";
 import path from "path";
 import { sanitizeFilename } from "@/lib/utils";
 
@@ -68,9 +69,13 @@ export async function POST(request: NextRequest) {
   try {
     const settings = await request.json();
 
-    if (!settings.floorplanImageName) {
+    // Determine filename: use site name if available, fall back to floorplanImageName
+    const siteName = settings.site?.name;
+    const fileName = siteName || settings.floorplanImageName;
+
+    if (!fileName) {
       return NextResponse.json(
-        { error: "Missing floorplanImageName in settings" },
+        { error: "Missing site name or floorplanImageName in settings" },
         { status: 400 },
       );
     }
@@ -81,13 +86,39 @@ export async function POST(request: NextRequest) {
     // Remove sensitive data before saving
     const { sudoerPassword: _, ...safeSettings } = settings;
 
-    const filePath = getSurveyPath(settings.floorplanImageName);
+    const filePath = getSurveyPath(fileName);
     await writeFile(filePath, JSON.stringify(safeSettings, null, 2));
 
     return NextResponse.json({ status: "success", path: filePath });
   } catch (err) {
     return NextResponse.json(
       { error: `Unable to save survey: ${err}` },
+      { status: 500 },
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams;
+  const name = searchParams.get("name");
+
+  if (!name) {
+    return NextResponse.json(
+      { error: "Missing 'name' query parameter" },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const filePath = getSurveyPath(name);
+    await unlink(filePath);
+    return NextResponse.json({ status: "success" });
+  } catch (err: unknown) {
+    if (err instanceof Error && "code" in err && err.code === "ENOENT") {
+      return NextResponse.json({ error: "Survey not found" }, { status: 404 });
+    }
+    return NextResponse.json(
+      { error: `Unable to delete survey: ${err}` },
       { status: 500 },
     );
   }

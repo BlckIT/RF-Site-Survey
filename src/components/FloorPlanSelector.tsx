@@ -2,17 +2,17 @@ import { useSettings } from "@/components/GlobalSettings";
 import { Label } from "@/components/ui/label";
 import { PopoverHelper } from "@/components/PopoverHelpText";
 import MediaDropdown from "./MediaDropdown";
-import { sanitizeFilename } from "@/lib/utils";
 
 /**
- * FloorPlanSelector — floor plan file picker.
- * Renders the floor plan file picker and data-path hint.
+ * FloorPlanSelector — legacy floor plan file picker.
+ * Now delegates to the SiteManager's floor image update.
+ * Kept for backward compatibility but SiteManager is the primary UI.
  */
 export default function FloorPlanSelector() {
-  const { settings, readNewSettingsFromFile } = useSettings();
+  const { settings, updateFloorImage } = useSettings();
 
   function handleNewImageFile(theFile: string): void {
-    readNewSettingsFromFile(theFile);
+    updateFloorImage(settings.site.activeFloorIndex, theFile);
   }
 
   return (
@@ -26,12 +26,6 @@ export default function FloorPlanSelector() {
           defaultValue={settings.floorplanImageName}
           onChange={(val) => handleNewImageFile(val)}
         />
-        {settings.floorplanImageName && (
-          <p className="text-xs text-gray-500 mt-1">
-            Data: data/surveys/
-            {sanitizeFilename(settings.floorplanImageName)}.json
-          </p>
-        )}
       </div>
     </div>
   );

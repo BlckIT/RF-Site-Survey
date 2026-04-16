@@ -2,13 +2,13 @@
  * wifi-heatmapper file storage
  *
  * Survey data is stored as JSON files in data/surveys/
- * Each floorplan has its own file: data/surveys/<floorplanImageName>.json
+ * Each site has its own file: data/surveys/<siteName>.json
  *
- * - readSettingsFromFile(fileName) reads the settings for a floorplan
+ * - readSettingsFromFile(fileName) reads the settings for a site/floorplan
  *   - Returns null if the file doesn't exist (caller should provide defaults)
  *
  * - writeSettingsToFile(settings) saves settings to a file
- *   - The filename is derived from settings.floorplanImageName
+ *   - The filename is derived from settings.site.name or settings.floorplanImageName
  *   - Sensitive data (sudoerPassword) is stripped before saving
  */
 
@@ -16,7 +16,7 @@ import { HeatmapSettings } from "./types";
 
 export async function readSettingsFromFile(
   fileName: string,
-): Promise<HeatmapSettings | null> {
+): Promise<any | null> {
   try {
     if (!fileName) {
       return null;
@@ -38,11 +38,23 @@ export async function readSettingsFromFile(
     const parsedData = await response.json();
 
     // Migration: Earlier versions used iperfResults instead of iperfData
-    // Copy iperfResults to iperfData if present
-    if (parsedData.surveyPoints?.[0]?.iperfResults !== undefined) {
-      for (const point of parsedData.surveyPoints) {
-        point.iperfData = point.iperfResults;
-        delete point.iperfResults;
+    // Check both top-level surveyPoints and per-floor surveyPoints
+    const migrateIperfResults = (points: any[]) => {
+      if (points?.[0]?.iperfResults !== undefined) {
+        for (const point of points) {
+          point.iperfData = point.iperfResults;
+          delete point.iperfResults;
+        }
+      }
+    };
+
+    // Migrate top-level surveyPoints (old format)
+    migrateIperfResults(parsedData.surveyPoints);
+
+    // Migrate per-floor surveyPoints (new format)
+    if (parsedData.site?.floors) {
+      for (const floor of parsedData.site.floors) {
+        migrateIperfResults(floor.surveyPoints);
       }
     }
 
@@ -65,18 +77,35 @@ export async function writeSettingsToFile(
       body: JSON.stringify(settings),
     });
 
+    const fileName = settings.site?.name || settings.floorplanImageName;
+
     if (!response.ok) {
       console.error(
-        `[wifi-heatmapper] Failed to save settings for "${settings.floorplanImageName}":`,
+        `[wifi-heatmapper] Failed to save settings for "${fileName}":`,
         response.status,
         response.statusText,
         await response.text(),
       );
     }
   } catch (error) {
+    const fileName = settings.site?.name || settings.floorplanImageName;
     console.error(
-      `[wifi-heatmapper] Failed to save settings for "${settings.floorplanImageName}":`,
+      `[wifi-heatmapper] Failed to save settings for "${fileName}":`,
       error,
     );
+  }
+}
+
+/**
+ * List all available survey/site files
+ */
+export async function listSurveys(): Promise<string[]> {
+  try {
+    const response = await fetch("/api/settings?list=true");
+    if (!response.ok) return [];
+    const data = await response.json();
+    return data.surveys || [];
+  } catch {
+    return [];
   }
 }
