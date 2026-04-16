@@ -27,7 +27,7 @@ export const getDefaults = (floorPlan: string): HeatmapSettings => {
   return {
     surveyPoints: [],
     floorplanImageName: floorPlan,
-    floorplanImagePath: join("/media", floorPlan),
+    floorplanImagePath: floorPlan ? join("/media", floorPlan) : "",
     iperfServerAdrs: "localhost",
     apMapping: [],
     testDuration: 1,
