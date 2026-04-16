@@ -28,7 +28,6 @@ const generateHeatmapFragmentShader = (
   uniform float u_opacity;
   uniform float u_minOpacity;
   uniform float u_maxOpacity;
-  uniform float u_pixelsPerMeter;
   uniform vec2 u_resolution;
   uniform int u_pointCount;
   uniform vec3 u_points[${clampedPointCount}];
@@ -105,21 +104,12 @@ const generateHeatmapFragmentShader = (
 
       float weight = 1.0 / pow(distSq, u_pathLossExponent * 0.5);
 
-      // Distance-based path loss in dB
-      float dist = sqrt(distSq);
-      float distMeters = dist / u_pixelsPerMeter;
-      float d0 = 1.0; // 1 meter reference distance
-      float pathLossDb = 0.0;
-      if (distMeters > d0) {
-        pathLossDb = 10.0 * u_pathLossExponent * log(distMeters / d0) / log(10.0);
-      }
-
       // Wall attenuation in dB
       float wallDb = calcWallAttenuationDb(pixel, point);
 
-      // Convert percentage (0-100) to dBm, subtract BOTH path loss and wall attenuation, convert back
+      // Convert percentage (0-100) to dBm, subtract wall attenuation, convert back
       float signal_dBm = -100.0 + (value / 100.0) * 60.0;
-      float attenuated_dBm = signal_dBm - pathLossDb - wallDb;
+      float attenuated_dBm = signal_dBm - wallDb;
       float attenuated_value = clamp((attenuated_dBm + 100.0) / 60.0 * 100.0, 0.0, 100.0);
 
       weightedSum += weight * attenuated_value;

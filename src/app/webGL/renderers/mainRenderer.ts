@@ -82,7 +82,6 @@ const mainRenderer = (
     minOpacity?: number;
     maxOpacity?: number;
     influenceRadius?: number;
-    pixelsPerMeter?: number;
     blur?: number;
   }) => {
     const {
@@ -91,7 +90,6 @@ const mainRenderer = (
       minOpacity = 0.2,
       maxOpacity = 0.7,
       influenceRadius = 100,
-      pixelsPerMeter = 10,
       backgroundImageSrc,
       blur = 0,
     } = props;
@@ -120,7 +118,6 @@ const mainRenderer = (
       influenceRadius,
       minOpacity,
       maxOpacity,
-      pixelsPerMeter,
     });
 
     // 3. Blur pass: read from offscreen texture, composite to screen

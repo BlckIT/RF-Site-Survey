@@ -398,7 +398,6 @@ export function Heatmaps() {
           influenceRadius: settings.radiusDivider || displayedRadius,
           maxOpacity: settings.maxOpacity,
           minOpacity: settings.minOpacity,
-          pixelsPerMeter: settings.pixelsPerMeter ?? 10,
           backgroundImageSrc: settings.floorplanImagePath,
           width: settings.dimensions.width,
           height: settings.dimensions.height,
