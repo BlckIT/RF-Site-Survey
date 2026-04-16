@@ -5,13 +5,6 @@
  *
  * Future: accept pageNumber param for multi-page/multi-floor support.
  */
-import * as pdfjsLib from "pdfjs-dist";
-
-// Use the bundled worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.mjs",
-  import.meta.url,
-).toString();
 
 /**
  * Convert a PDF File to a PNG Blob (first page only).
@@ -23,6 +16,13 @@ export async function pdfToImage(
   pdfFile: File,
   scale: number = 2.0,
 ): Promise<{ blob: Blob; filename: string }> {
+  // Dynamic import to avoid SSR issues (DOMMatrix not available in Node.js)
+  const pdfjsLib = await import("pdfjs-dist");
+  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+    "pdfjs-dist/build/pdf.worker.mjs",
+    import.meta.url,
+  ).toString();
+
   const arrayBuffer = await pdfFile.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) })
     .promise;
