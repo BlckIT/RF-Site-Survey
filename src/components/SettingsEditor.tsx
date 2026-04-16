@@ -5,11 +5,14 @@ import { PopoverHelper } from "@/components/PopoverHelpText";
 import HeatmapAdvancedConfig from "./HeatmapAdvancedConfig";
 import MediaDropdown from "./MediaDropdown";
 import { sanitizeFilename } from "@/lib/utils";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { WifiResults } from "@/lib/types";
 
 export default function SettingsEditor() {
   const { settings, updateSettings, readNewSettingsFromFile } = useSettings();
   const [wifiInterfaces, setWifiInterfaces] = useState<string[]>([]);
+  const [scannedSSIDs, setScannedSSIDs] = useState<WifiResults[]>([]);
+  const [ssidLoading, setSsidLoading] = useState(false);
 
   useEffect(() => {
     fetch("/api/wifi-interfaces")
@@ -17,6 +20,20 @@ export default function SettingsEditor() {
       .then((data) => setWifiInterfaces(data.interfaces || []))
       .catch(() => setWifiInterfaces([]));
   }, []);
+
+  const fetchSSIDs = useCallback(() => {
+    setSsidLoading(true);
+    const params = settings.wifiInterface ? `?iface=${encodeURIComponent(settings.wifiInterface)}` : "";
+    fetch(`/api/wifi-scan${params}`)
+      .then((res) => res.json())
+      .then((data) => setScannedSSIDs(data.ssids || []))
+      .catch(() => setScannedSSIDs([]))
+      .finally(() => setSsidLoading(false));
+  }, [settings.wifiInterface]);
+
+  useEffect(() => {
+    fetchSSIDs();
+  }, [fetchSSIDs]);
 
   /**
    * handleNewImageFile - given the name of a new image file,
@@ -123,15 +140,29 @@ export default function SettingsEditor() {
             </Label>
           </td>
           <td>
-            <input
-              type="text"
-              placeholder="Leave empty to use connected network"
-              className="w-full border border-gray-200 rounded-sm p-2 focus:outline-none focus:ring focus:ring-blue-300 focus:border-blue-400"
-              value={settings.targetSSID || ""}
-              onChange={(e) =>
-                updateSettings({ targetSSID: e.target.value })
-              }
-            />
+            <div className="flex gap-2">
+              <select
+                className="w-full border border-gray-200 rounded-sm p-2 focus:outline-none focus:ring focus:ring-blue-300 focus:border-blue-400"
+                value={settings.targetSSID || ""}
+                onChange={(e) => updateSettings({ targetSSID: e.target.value })}
+              >
+                <option value="">Connected network (auto)</option>
+                {scannedSSIDs.map((s) => (
+                  <option key={`${s.ssid}-${s.bssid}`} value={s.ssid}>
+                    {s.ssid} ({s.rssi} dBm, {s.band === 5 ? "5 GHz" : s.band === 6 ? "6 GHz" : "2.4 GHz"})
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="px-3 py-2 border border-gray-200 rounded-sm hover:bg-gray-100 focus:outline-none focus:ring focus:ring-blue-300 disabled:opacity-50"
+                onClick={fetchSSIDs}
+                disabled={ssidLoading}
+                title="Refresh SSID list"
+              >
+                {ssidLoading ? "..." : "↻"}
+              </button>
+            </div>
           </td>
         </tr>
 
