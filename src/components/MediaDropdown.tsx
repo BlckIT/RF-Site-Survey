@@ -17,6 +17,7 @@ export default function MediaDropdown({
   const [selected, setSelected] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const fetchFiles = async () => {
@@ -57,21 +58,32 @@ export default function MediaDropdown({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const formData = new FormData();
-    formData.append("file", file);
+    setUploading(true);
+    setError(null);
 
-    const res = await fetch("/api/media", {
-      method: "POST",
-      body: formData,
-    });
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
 
-    if (res.ok) {
-      await fetchFiles();
-      handleSelect(file.name);
-    } else {
-      alert("Upload failed");
+      const res = await fetch("/api/media", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.name) {
+        await fetchFiles();
+        handleSelect(data.name);
+      } else {
+        setError(data.error || "Upload failed");
+      }
+    } catch {
+      setError("Upload failed — network error");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
     }
-    e.target.value = "";
   };
 
   const filteredFiles = files.filter((f) =>
@@ -125,7 +137,9 @@ export default function MediaDropdown({
             className="flex items-center px-3 py-1.5 text-sm cursor-pointer hover:bg-gray-100 outline-none"
           >
             <span className="w-4" />
-            <span className="italic">Upload an image...</span>
+            <span className="italic">
+              {uploading ? "Converting…" : "Upload an image or PDF…"}
+            </span>
           </DropdownMenu.Item>
         </DropdownMenu.Content>
       </DropdownMenu.Root>
@@ -133,6 +147,7 @@ export default function MediaDropdown({
       <input
         type="file"
         ref={fileInputRef}
+        accept=".png,.jpg,.jpeg,.pdf"
         onChange={handleFileUpload}
         className="hidden"
       />
