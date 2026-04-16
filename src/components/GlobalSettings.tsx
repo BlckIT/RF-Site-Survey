@@ -57,6 +57,7 @@ export const getDefaults = (floorPlan: string): HeatmapSettings => {
     pixelsPerMeter: 10,
     wifiInterface: "",
     targetSSID: "",
+    snapRadius: 8,
     // these two props were used for the "scan wifi" effort
     // that has been (temporarily?) abandoned
     // sameSSID: "same",

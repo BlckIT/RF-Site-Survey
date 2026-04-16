@@ -106,6 +106,29 @@ function SettingsPanel() {
         </div>
       </section>
 
+      {/* ── Wall Editor ── */}
+      <section>
+        <h3 className={sectionHeaderClass}>Wall Editor</h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="flex flex-col gap-1">
+            <Label className="text-xs font-semibold">
+              Snap Radius (px)&nbsp;
+              <PopoverHelper text="How close (in pixels) the cursor needs to be to snap to an existing wall endpoint or to close a room." />
+            </Label>
+            <input
+              type="number"
+              min={2}
+              max={30}
+              value={settings.snapRadius}
+              onChange={(e) =>
+                updateSettings({ snapRadius: Math.max(2, Math.min(30, parseInt(e.target.value) || 8)) })
+              }
+              className={inputClass}
+            />
+          </div>
+        </div>
+      </section>
+
       {/* ── Heatmap ── */}
       <section>
         <h3 className={sectionHeaderClass}>Heatmap</h3>

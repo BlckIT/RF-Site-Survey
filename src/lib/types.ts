@@ -103,6 +103,7 @@ export interface HeatmapSettings {
   pixelsPerMeter: number; // scale factor for distance-based signal decay
   wifiInterface: string; // "" = auto-detect first available
   targetSSID: string; // "" = use connected SSID
+  snapRadius: number; // wall editor snap radius in pixels
   // these two props were used for the "scan-wifi" branch
   // that has been (temporarily?) abandoned
   // sameSSID: string; // "same", "best"

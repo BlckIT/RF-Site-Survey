@@ -1,9 +1,6 @@
 import React, { ReactNode, useRef, useState } from "react";
 import { useEffect } from "react";
 import {
-  getDefaultWifiResults,
-  getDefaultIperfResults,
-  percentageToRssi,
   rssiToPercentage,
   delay,
 } from "../lib/utils";
@@ -32,27 +29,6 @@ export default function ClickableFloorplan(): ReactNode {
   const [surveyClick, setSurveyClick] = useState({ x: 0, y: 0 });
 
   /**
-   * Adding test points
-   * if idx is null, the following useEffect() is idle
-   * else, idx is the current value of the signalStrength to use
-   * Clicking the "Add test points" button calls startTestPoints()
-   * that sets idx to zero, and kicks off the process
-   */
-  const [idx, setIdx] = useState<number | null>(null); // null = idle
-  const startTestPoints = () => setIdx(0);
-
-  useEffect(() => {
-    if (idx === null) return; // back to idle
-
-    (async () => {
-      addTestPoint(idx);
-      // let React commit + run effects before next iteration
-      await new Promise(requestAnimationFrame);
-      setIdx((i) => (i! < 100 ? i! + 5 : null));
-    })();
-  }, [idx]);
-
-  /**
    * Load the image (and the canvas) when the component is mounted
    */
   useEffect(() => {
@@ -71,34 +47,6 @@ export default function ClickableFloorplan(): ReactNode {
       };
     }
   }, []);
-
-  /**
-   * addTestPoint() - add a test point
-   * to the floor plan for signalStrength values 0 .. 100
-   * @param idx - the signal strength to use, also sets the X position and PointID
-   * @returns
-   */
-  function addTestPoint(idx: number): void {
-    const width = settings.dimensions.width;
-    const x = width / 10;
-    const y = 350;
-    const deltaX = (width * 0.8) / 100;
-    const wifiData = getDefaultWifiResults();
-    const iperfData = getDefaultIperfResults();
-    wifiData.signalStrength = idx;
-    wifiData.rssi = percentageToRssi(idx);
-    const newPoint = {
-      wifiData,
-      iperfData,
-      x: 0,
-      y,
-      timestamp: Date.now(),
-      id: "bad ID",
-      isEnabled: true,
-    };
-    logger.debug(`idx, x, y: ${idx} ${x + idx * deltaX} ${y}`);
-    addSurveyPoint(newPoint, x + idx * deltaX, y, settings);
-  }
 
   useEffect(() => {
     if (imageLoaded && canvasRef.current) {
@@ -477,20 +425,12 @@ export default function ClickableFloorplan(): ReactNode {
           />
         </div>
 
-        {isToastOpen && (
+                {isToastOpen && (
           <NewToast
             onClose={() => setIsToastOpen(false)}
             toastIsReady={handleToastIsReady}
           />
         )}
-        {/* COMMENT THIS BUTTON OUT FOR PRODUCTION */}
-        <button
-          className="mt-2 px-2 py-1 bg-blue-500 text-white rounded"
-          onClick={startTestPoints}
-          disabled={idx !== null}
-        >
-          Add test points...
-        </button>
       </div>
     </div>
   );

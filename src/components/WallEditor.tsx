@@ -8,7 +8,6 @@ import React, {
 import { useSettings } from "./GlobalSettings";
 import { Wall, WallMaterial, MATERIAL_PRESETS } from "@/lib/types";
 
-const DEFAULT_SNAP_RADIUS = 8; // px default snap radius
 const WALL_HIT_RADIUS = 10; // px radius for detecting wall clicks (for splitting)
 const SHARED_ENDPOINT_EPSILON = 0.5; // px epsilon for detecting shared endpoints
 
@@ -40,9 +39,8 @@ export default function WallEditor(): ReactNode {
   const [activeMaterial, setActiveMaterial] = useState<WallMaterial>("drywall");
   const [selectedWallId, setSelectedWallId] = useState<string | null>(null);
 
-  // Snap radius (configurable)
-  const [snapRadius, setSnapRadius] = useState(DEFAULT_SNAP_RADIUS);
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  // Snap radius from global settings
+  const snapRadius = settings.snapRadius ?? 8;
 
   // Snap target for visual feedback
   const [snapTarget, setSnapTarget] = useState<{ x: number; y: number; type: 'close' | 'endpoint' } | null>(null);
@@ -673,32 +671,6 @@ export default function WallEditor(): ReactNode {
         </div>
       </div>
 
-      {/* Advanced settings (snap radius) */}
-      <div className="mb-4">
-        <button
-          onClick={() => setShowAdvanced((v) => !v)}
-          className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
-        >
-          <span>{showAdvanced ? '▼' : '▶'}</span>
-          <span>Advanced</span>
-        </button>
-        {showAdvanced && (
-          <div className="mt-2">
-            <label className="text-xs font-medium text-gray-600 flex items-center gap-2">
-              Snap radius (px):
-              <input
-                type="number"
-                min={2}
-                max={30}
-                value={snapRadius}
-                onChange={(e) => setSnapRadius(Math.max(2, Math.min(30, parseInt(e.target.value) || DEFAULT_SNAP_RADIUS)))}
-                className="w-16 px-1 py-0.5 border border-gray-200 rounded-sm text-sm focus:outline-none focus:ring focus:ring-blue-300 focus:border-blue-400"
-              />
-            </label>
-          </div>
-        )}
-      </div>
-
       {/* Material legend */}
       <div className="mb-4">
         <h3 className="text-sm font-medium text-gray-700 mb-2">
@@ -784,7 +756,7 @@ export default function WallEditor(): ReactNode {
 
       {settings.walls.length > 0 && (
         <button
-          className="mb-2 px-3 py-2 border border-gray-200 rounded-sm text-sm hover:bg-gray-100 focus:outline-none focus:ring focus:ring-blue-300"
+          className="mb-2 px-3 py-2 border border-red-300 rounded-sm text-sm text-red-600 hover:bg-red-50 focus:outline-none focus:ring focus:ring-red-300"
           onClick={clearAllWalls}
         >
           Remove all walls
