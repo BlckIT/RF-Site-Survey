@@ -5,9 +5,18 @@ import { PopoverHelper } from "@/components/PopoverHelpText";
 import HeatmapAdvancedConfig from "./HeatmapAdvancedConfig";
 import MediaDropdown from "./MediaDropdown";
 import { sanitizeFilename } from "@/lib/utils";
+import { useState, useEffect } from "react";
 
 export default function SettingsEditor() {
   const { settings, updateSettings, readNewSettingsFromFile } = useSettings();
+  const [wifiInterfaces, setWifiInterfaces] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetch("/api/wifi-interfaces")
+      .then((res) => res.json())
+      .then((data) => setWifiInterfaces(data.interfaces || []))
+      .catch(() => setWifiInterfaces([]));
+  }, []);
 
   /**
    * handleNewImageFile - given the name of a new image file,
@@ -76,6 +85,51 @@ export default function SettingsEditor() {
               value={settings.testDuration}
               onChange={(e) =>
                 updateSettings({ testDuration: Number(e.target.value.trim()) })
+              }
+            />
+          </td>
+        </tr>
+
+        <tr>
+          <td className="text-right pr-4">
+            <Label htmlFor="wifiInterface" className="font-bold text-lg">
+              WiFi Interface&nbsp;
+              <PopoverHelper text="Select which WiFi interface to use for scanning. 'Auto' picks the first available." />
+            </Label>
+          </td>
+          <td>
+            <select
+              className="w-full border border-gray-200 rounded-sm p-2 focus:outline-none focus:ring focus:ring-blue-300 focus:border-blue-400"
+              value={settings.wifiInterface || ""}
+              onChange={(e) =>
+                updateSettings({ wifiInterface: e.target.value })
+              }
+            >
+              <option value="">Auto (first available)</option>
+              {wifiInterfaces.map((iface) => (
+                <option key={iface} value={iface}>
+                  {iface}
+                </option>
+              ))}
+            </select>
+          </td>
+        </tr>
+
+        <tr>
+          <td className="text-right pr-4">
+            <Label htmlFor="targetSSID" className="font-bold text-lg">
+              Target SSID&nbsp;
+              <PopoverHelper text="Measure a specific SSID without being connected to it (passive scanning). Leave empty to use the currently connected network." />
+            </Label>
+          </td>
+          <td>
+            <input
+              type="text"
+              placeholder="Leave empty to use connected network"
+              className="w-full border border-gray-200 rounded-sm p-2 focus:outline-none focus:ring focus:ring-blue-300 focus:border-blue-400"
+              value={settings.targetSSID || ""}
+              onChange={(e) =>
+                updateSettings({ targetSSID: e.target.value })
               }
             />
           </td>

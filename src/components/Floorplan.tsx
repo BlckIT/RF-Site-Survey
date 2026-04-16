@@ -138,6 +138,8 @@ export default function ClickableFloorplan(): ReactNode {
         iperfServerAdrs: settings.iperfServerAdrs,
         testDuration: settings.testDuration,
         sudoerPassword: settings.sudoerPassword,
+        wifiInterface: settings.wifiInterface || "",
+        targetSSID: settings.targetSSID || "",
         // ignoredSSIDs: settings.ignoredSSIDs,
         // sameSSID: settings.sameSSID,
       },

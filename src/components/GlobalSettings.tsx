@@ -54,6 +54,8 @@ export const getDefaults = (floorPlan: string): HeatmapSettings => {
       udpUpload: "iperf3 -c {server} {port} -t {duration} -u -b 100M -J",
     },
     walls: [],
+    wifiInterface: "",
+    targetSSID: "",
     // these two props were used for the "scan wifi" effort
     // that has been (temporarily?) abandoned
     // sameSSID: "same",

@@ -100,6 +100,8 @@ export interface HeatmapSettings {
   gradient: Gradient;
   iperfCommands: IperfCommands;
   walls: Wall[];
+  wifiInterface: string; // "" = auto-detect first available
+  targetSSID: string; // "" = use connected SSID
   // these two props were used for the "scan-wifi" branch
   // that has been (temporarily?) abandoned
   // sameSSID: string; // "same", "best"
@@ -118,6 +120,8 @@ export interface PartialHeatmapSettings {
   sudoerPassword: string;
   ignoredSSIDs: string[];
   iperfCommands: IperfCommands;
+  wifiInterface: string;
+  targetSSID: string;
   // sameSSID: SsidStrategy;
 }
 
@@ -160,6 +164,48 @@ export type ScannerSettings = {
 export type OS = "macos" | "windows" | "linux";
 
 /**
+ * Wall material types for WiFi signal dampening
+ */
+export type WallMaterial =
+  | "drywall"
+  | "wood"
+  | "glass"
+  | "brick"
+  | "concrete"
+  | "metal"
+  | "custom";
+
+export interface MaterialPreset {
+  label: string;
+  dampening: number; // 0.0 = total blockering, 1.0 = inget motstånd
+  color: string;
+  thickness: number; // px
+}
+
+export const MATERIAL_PRESETS: Record<WallMaterial, MaterialPreset> = {
+  drywall: { label: "Drywall", dampening: 0.7, color: "#888888", thickness: 2 },
+  wood: { label: "Wood", dampening: 0.6, color: "#8B4513", thickness: 3 },
+  glass: { label: "Glass", dampening: 0.8, color: "#87CEEB", thickness: 2 },
+  brick: { label: "Brick", dampening: 0.3, color: "#B22222", thickness: 4 },
+  concrete: {
+    label: "Concrete",
+    dampening: 0.1,
+    color: "#555555",
+    thickness: 5,
+  },
+  metal: { label: "Metal", dampening: 0.05, color: "#2F4F4F", thickness: 5 },
+  custom: { label: "Custom", dampening: 0.5, color: "#FF00FF", thickness: 3 },
+};
+
+/** Get the effective dampening for a wall */
+export function getWallDampening(wall: Wall): number {
+  if (wall.material === "custom" && wall.customDampening !== undefined) {
+    return wall.customDampening;
+  }
+  return MATERIAL_PRESETS[wall.material || "drywall"].dampening;
+}
+
+/**
  * Wall — a wall that blocks signal interpolation
  * Defined by two points (x1,y1) and (x2,y2) in pixel coordinates
  */
@@ -169,6 +215,8 @@ export interface Wall {
   y1: number;
   x2: number;
   y2: number;
+  material: WallMaterial;
+  customDampening?: number;
 }
 
 export interface SurveyPointActions {
