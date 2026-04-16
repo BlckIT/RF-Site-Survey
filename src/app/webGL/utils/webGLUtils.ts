@@ -22,7 +22,6 @@ export const getUniformLocations = (
   u_pathLossExponent: gl.getUniformLocation(program, "u_pathLossExponent"),
   u_minOpacity: gl.getUniformLocation(program, "u_minOpacity"),
   u_maxOpacity: gl.getUniformLocation(program, "u_maxOpacity"),
-  u_maxSignal: gl.getUniformLocation(program, "u_maxSignal"),
   u_resolution: gl.getUniformLocation(program, "u_resolution"),
   u_pointCount: gl.getUniformLocation(program, "u_pointCount"),
   u_points: gl.getUniformLocation(program, "u_points"),

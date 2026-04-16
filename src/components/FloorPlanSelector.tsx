@@ -5,7 +5,7 @@ import MediaDropdown from "./MediaDropdown";
 import { sanitizeFilename } from "@/lib/utils";
 
 /**
- * FloorPlanSelector — extracted from SettingsEditor.
+ * FloorPlanSelector — floor plan file picker.
  * Renders the floor plan file picker and data-path hint.
  */
 export default function FloorPlanSelector() {

@@ -24,7 +24,6 @@ const generateHeatmapFragmentShader = (
 
   uniform float u_radius;
   uniform float u_pathLossExponent;
-  uniform float u_maxSignal;
   uniform float u_opacity;
   uniform float u_minOpacity;
   uniform float u_maxOpacity;
