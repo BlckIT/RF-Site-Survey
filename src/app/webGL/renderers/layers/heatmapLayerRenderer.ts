@@ -1,4 +1,4 @@
-import { Gradient, Wall, getWallDampening } from "@/lib/types";
+import { Gradient, Wall, getWallAttenuationDb } from "@/lib/types";
 import { HeatmapPoint } from "../mainRenderer";
 import generateFragmentShader, {
   MAX_WALLS,
@@ -33,9 +33,9 @@ export const createHeatmapLayerRenderer = (
   const u_wallCount = gl.getUniformLocation(program, "u_wallCount");
   const u_walls =
     clampedWalls.length > 0 ? gl.getUniformLocation(program, "u_walls") : null;
-  const u_wallDampening =
+  const u_wallAttenuationDb =
     clampedWalls.length > 0
-      ? gl.getUniformLocation(program, "u_wallDampening")
+      ? gl.getUniformLocation(program, "u_wallAttenuationDb")
       : null;
 
   const colorLUT = createGradientLUTTexture(gl, gradient);
@@ -50,10 +50,10 @@ export const createHeatmapLayerRenderer = (
       ? Float32Array.from(clampedWalls.flatMap((w) => [w.x1, w.y1, w.x2, w.y2]))
       : null;
 
-  // Dämpningsfaktor per vägg
-  const wallDampeningData =
+  // Attenuation in dB per wall
+  const wallAttenuationDbData =
     clampedWalls.length > 0
-      ? Float32Array.from(clampedWalls.map((w) => getWallDampening(w)))
+      ? Float32Array.from(clampedWalls.map((w) => getWallAttenuationDb(w)))
       : null;
 
   const draw = (options: {
@@ -73,7 +73,7 @@ export const createHeatmapLayerRenderer = (
     gl.vertexAttribPointer(attribs.a_position, 2, gl.FLOAT, false, 0, 0);
 
     gl.uniform1f(uniforms.u_radius, influenceRadius);
-    gl.uniform1f(uniforms.u_power, 3);
+    gl.uniform1f(uniforms.u_pathLossExponent, 2.5);
     gl.uniform1f(uniforms.u_minOpacity, minOpacity);
     gl.uniform1f(uniforms.u_maxOpacity, maxOpacity);
     gl.uniform1f(uniforms.u_maxSignal, maxSignal);
@@ -86,8 +86,8 @@ export const createHeatmapLayerRenderer = (
     if (u_walls && wallData) {
       gl.uniform4fv(u_walls, wallData);
     }
-    if (u_wallDampening && wallDampeningData) {
-      gl.uniform1fv(u_wallDampening, wallDampeningData);
+    if (u_wallAttenuationDb && wallAttenuationDbData) {
+      gl.uniform1fv(u_wallAttenuationDb, wallAttenuationDbData);
     }
 
     gl.activeTexture(gl.TEXTURE0);

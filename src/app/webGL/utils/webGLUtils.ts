@@ -19,7 +19,7 @@ export const getUniformLocations = (
   program: WebGLProgram,
 ) => ({
   u_radius: gl.getUniformLocation(program, "u_radius"),
-  u_power: gl.getUniformLocation(program, "u_power"),
+  u_pathLossExponent: gl.getUniformLocation(program, "u_pathLossExponent"),
   u_minOpacity: gl.getUniformLocation(program, "u_minOpacity"),
   u_maxOpacity: gl.getUniformLocation(program, "u_maxOpacity"),
   u_maxSignal: gl.getUniformLocation(program, "u_maxSignal"),

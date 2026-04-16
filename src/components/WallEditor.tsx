@@ -578,7 +578,7 @@ export default function WallEditor(): ReactNode {
       x2: closest.x,
       y2: closest.y,
       material: wall.material,
-      customDampening: wall.customDampening,
+      customAttenuationDb: wall.customAttenuationDb,
     });
 
     newWalls.push({
@@ -588,7 +588,7 @@ export default function WallEditor(): ReactNode {
       x2: wall.x2,
       y2: wall.y2,
       material: wall.material,
-      customDampening: wall.customDampening,
+      customAttenuationDb: wall.customAttenuationDb,
     });
 
     // Remove original wall
@@ -613,11 +613,11 @@ export default function WallEditor(): ReactNode {
     updateSettings({ walls: updatedWalls });
   };
 
-  const updateSelectedWallCustomDampening = (dampening: number) => {
+  const updateSelectedWallCustomAttenuationDb = (attenuationDb: number) => {
     if (!selectedWallId) return;
     const updatedWalls = settings.walls.map((wall) => {
       if (wall.id !== selectedWallId) return wall;
-      return { ...wall, customDampening: dampening };
+      return { ...wall, customAttenuationDb: attenuationDb };
     });
     updateSettings({ walls: updatedWalls });
   };
@@ -715,7 +715,7 @@ export default function WallEditor(): ReactNode {
                   style={{ backgroundColor: preset.color }}
                 />
                 <span className="text-gray-700">
-                  {preset.label} ({(preset.dampening * 100).toFixed(0)}%)
+                  {preset.label} ({preset.attenuationDb} dB)
                 </span>
               </div>
             );
@@ -754,17 +754,17 @@ export default function WallEditor(): ReactNode {
             {selectedWall.material === "custom" && (
               <div>
                 <label className="text-xs font-medium text-gray-600">
-                  Custom Dampening:{" "}
-                  {(selectedWall.customDampening ?? 0.5).toFixed(2)}
+                  Custom Attenuation (dB):{" "}
+                  {(selectedWall.customAttenuationDb ?? 5).toFixed(0)}
                 </label>
                 <input
                   type="range"
                   min="0"
-                  max="1"
-                  step="0.05"
-                  value={selectedWall.customDampening ?? 0.5}
+                  max="30"
+                  step="1"
+                  value={selectedWall.customAttenuationDb ?? 5}
                   onChange={(e) =>
-                    updateSelectedWallCustomDampening(
+                    updateSelectedWallCustomAttenuationDb(
                       parseFloat(e.target.value),
                     )
                   }

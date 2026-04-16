@@ -164,7 +164,7 @@ export type ScannerSettings = {
 export type OS = "macos" | "windows" | "linux";
 
 /**
- * Wall material types for WiFi signal dampening
+ * Wall material types for WiFi signal attenuation (dB loss per wall)
  */
 export type WallMaterial =
   | "drywall"
@@ -177,32 +177,27 @@ export type WallMaterial =
 
 export interface MaterialPreset {
   label: string;
-  dampening: number; // 0.0 = total blockering, 1.0 = inget motstånd
+  attenuationDb: number; // dB loss per wall crossing (ITU-R P.1238, 5 GHz)
   color: string;
   thickness: number; // px
 }
 
 export const MATERIAL_PRESETS: Record<WallMaterial, MaterialPreset> = {
-  drywall: { label: "Drywall", dampening: 0.7, color: "#888888", thickness: 2 },
-  wood: { label: "Wood", dampening: 0.6, color: "#8B4513", thickness: 3 },
-  glass: { label: "Glass", dampening: 0.8, color: "#87CEEB", thickness: 2 },
-  brick: { label: "Brick", dampening: 0.3, color: "#B22222", thickness: 4 },
-  concrete: {
-    label: "Concrete",
-    dampening: 0.1,
-    color: "#555555",
-    thickness: 5,
-  },
-  metal: { label: "Metal", dampening: 0.05, color: "#2F4F4F", thickness: 5 },
-  custom: { label: "Custom", dampening: 0.5, color: "#FF00FF", thickness: 3 },
+  drywall: { label: "Drywall", attenuationDb: 4, color: "#888888", thickness: 2 },
+  wood: { label: "Wood", attenuationDb: 6, color: "#8B4513", thickness: 3 },
+  glass: { label: "Glass", attenuationDb: 3, color: "#87CEEB", thickness: 2 },
+  brick: { label: "Brick", attenuationDb: 10, color: "#B22222", thickness: 4 },
+  concrete: { label: "Concrete", attenuationDb: 15, color: "#555555", thickness: 5 },
+  metal: { label: "Metal", attenuationDb: 25, color: "#2F4F4F", thickness: 5 },
+  custom: { label: "Custom", attenuationDb: 5, color: "#FF00FF", thickness: 3 },
 };
 
-/** Get the effective dampening for a wall */
-export function getWallDampening(wall: Wall): number {
-  if (wall.material === "custom" && wall.customDampening !== undefined) {
-    return wall.customDampening;
+/** Get the effective attenuation in dB for a wall */
+export function getWallAttenuationDb(wall: Wall): number {
+  if (wall.material === "custom" && wall.customAttenuationDb !== undefined) {
+    return wall.customAttenuationDb;
   }
-  return MATERIAL_PRESETS[wall.material || "drywall"].dampening;
+  return MATERIAL_PRESETS[wall.material || "drywall"].attenuationDb;
 }
 
 /**
@@ -216,7 +211,7 @@ export interface Wall {
   x2: number;
   y2: number;
   material: WallMaterial;
-  customDampening?: number;
+  customAttenuationDb?: number;
 }
 
 export interface SurveyPointActions {

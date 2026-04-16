@@ -1,12 +1,13 @@
 /**
- * Genererar en shader för viktad signalkarta med väggdämpning.
+ * Generates a fragment shader for weighted signal heatmap with physics-based wall attenuation.
  *
- * Varje punkt bidrar med signal baserat på invers-distansviktning (IDW).
- * Väggar mellan pixel och mätpunkt dämpar signalen.
- * Resultatet normaliseras och mappas genom en färg-LUT.
+ * Each point contributes signal based on Inverse Distance Weighting (IDW).
+ * Walls between pixel and measurement point attenuate the signal value in dB
+ * following the ITU-R P.1238 Wall Attenuation Factor (WAF) model.
+ * The result is normalized and mapped through a color LUT.
  *
- * @param pointCount - Antal max punkt-uniforms
- * @param wallCount - Antal väggar (max 64)
+ * @param pointCount - Max point uniforms
+ * @param wallCount - Number of walls (max 64)
  */
 const MAX_WALLS = 64;
 
@@ -22,7 +23,7 @@ const generateHeatmapFragmentShader = (
   varying vec2 v_uv;
 
   uniform float u_radius;
-  uniform float u_power;
+  uniform float u_pathLossExponent;
   uniform float u_maxSignal;
   uniform float u_opacity;
   uniform float u_minOpacity;
@@ -36,8 +37,8 @@ const generateHeatmapFragmentShader = (
   uniform int u_wallCount;
   ${clampedWallCount > 0 ? `uniform vec4 u_walls[${clampedWallCount}];` : ""}
 
-  // Dämpningsfaktor per vägg (individuell per material)
-  ${clampedWallCount > 0 ? `uniform float u_wallDampening[${clampedWallCount}];` : ""}
+  // Attenuation in dB per wall (per material, ITU-R P.1238 WAF)
+  ${clampedWallCount > 0 ? `uniform float u_wallAttenuationDb[${clampedWallCount}];` : ""}
 
   /**
    * Kontrollera om två linjesegment korsar varandra.
@@ -56,11 +57,11 @@ const generateHeatmapFragmentShader = (
   }
 
   /**
-   * Beräkna total dämpning genom alla korsade väggar.
-   * Returnerar multiplikativ faktor (1.0 = ingen dämpning).
+   * Calculate total wall attenuation in dB between two points.
+   * Returns sum of dB values for all crossed walls (ITU-R P.1238 WAF model).
    */
-  float calcWallAttenuation(vec2 from, vec2 to) {
-    float attenuation = 1.0;
+  float calcWallAttenuationDb(vec2 from, vec2 to) {
+    float totalDb = 0.0;
     ${
       clampedWallCount > 0
         ? `
@@ -69,13 +70,13 @@ const generateHeatmapFragmentShader = (
       vec4 w = u_walls[i];
       float hit = segmentsIntersect(from, to, w.xy, w.zw);
       if (hit > 0.5) {
-        attenuation *= u_wallDampening[i];
+        totalDb += u_wallAttenuationDb[i];
       }
     }
     `
         : ""
     }
-    return attenuation;
+    return totalDb;
   }
 
   void main() {
@@ -101,13 +102,17 @@ const generateHeatmapFragmentShader = (
 
       if (distSq > u_radius * u_radius) continue;
 
-      float weight = 1.0 / pow(distSq, u_power * 0.5);
+      float weight = 1.0 / pow(distSq, u_pathLossExponent * 0.5);
 
-      // Dämpa vikten baserat på korsade väggar (per-vägg dämpning)
-      float attenuation = calcWallAttenuation(pixel, point);
-      weight *= attenuation;
+      // Apply physics-based dB attenuation to the signal value (not the weight)
+      float wallDb = calcWallAttenuationDb(pixel, point);
+      // Convert percentage (0-100) to dBm: 0% = -100 dBm, 100% = -40 dBm
+      float signal_dBm = -100.0 + (value / 100.0) * 60.0;
+      float attenuated_dBm = signal_dBm - wallDb;
+      // Convert back to percentage and clamp
+      float attenuated_value = clamp((attenuated_dBm + 100.0) / 60.0 * 100.0, 0.0, 100.0);
 
-      weightedSum += weight * value;
+      weightedSum += weight * attenuated_value;
       weightTotal += weight;
     }
 

@@ -243,7 +243,7 @@ export function Heatmaps() {
       // Label
       ctx.fillStyle = "#333";
       ctx.fillText(
-        `${preset.label} (${(preset.dampening * 100).toFixed(0)}%)`,
+        `${preset.label} (${preset.attenuationDb} dB)`,
         x + boxSize + spacing,
         itemY + boxSize / 2,
       );
