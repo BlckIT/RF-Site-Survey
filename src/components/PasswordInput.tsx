@@ -14,7 +14,7 @@ export function PasswordInput({ value, onChange }: PasswordInputProps) {
     <div className="relative w-full">
       <input
         type={visible ? "text" : "password"}
-        className="w-full p-2 pr-10 border rounded bg-white-800 text-black"
+        className="w-full border border-gray-200 rounded-sm p-1.5 pr-10 text-sm focus:outline-none focus:ring focus:ring-blue-300 focus:border-blue-400"
         placeholder="Enter password"
         value={value}
         onChange={(e) => onChange(e.target.value)}

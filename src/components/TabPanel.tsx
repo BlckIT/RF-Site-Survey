@@ -12,7 +12,6 @@ import WallEditor from "@/components/WallEditor";
 import EditableApMapping from "@/components/ApMapping";
 import { PasswordInput } from "@/components/PasswordInput";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { PopoverHelper } from "@/components/PopoverHelpText";
 import { HeatmapSettings, WifiResults } from "@/lib/types";
 import { rgbaToHex, hexToRgba } from "@/lib/utils-gradient";
@@ -54,10 +53,10 @@ function SettingsPanel() {
 
   return (
     <div className="max-w-3xl space-y-6">
-      {/* ── Network ── */}
-      <section>
+      {/* ── 1. Network ── */}
+      <section className="space-y-3">
         <h3 className={sectionHeaderClass}>Network</h3>
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="flex flex-col gap-1">
             <Label className="text-xs font-semibold">
               WiFi Interface&nbsp;
@@ -76,7 +75,26 @@ function SettingsPanel() {
               ))}
             </select>
           </div>
+          <div className="flex flex-col gap-1">
+            <Label className="text-xs font-semibold">
+              sudo Password&nbsp;
+              <PopoverHelper text="Enter the sudo password: required on macOS or Linux." />
+            </Label>
+            <PasswordInput
+              value={settings.sudoerPassword}
+              onChange={(e) => updateSettings({ sudoerPassword: e })}
+            />
+          </div>
+        </div>
+      </section>
 
+      {/* ── 2. iperf ── */}
+      <section className="space-y-3">
+        <h3 className={sectionHeaderClass}>
+          iperf&nbsp;
+          <PopoverHelper text="Customize the iperf3 commands. Placeholders: {server}, {port}, {duration}. See https://iperf.fr/iperf-doc.php for documentation." />
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="flex flex-col gap-1">
             <Label className="text-xs font-semibold">
               iperf Server&nbsp;
@@ -92,115 +110,151 @@ function SettingsPanel() {
               }
             />
           </div>
-
+        </div>
+        <div className="space-y-3">
           <div className="flex flex-col gap-1">
-            <Label className="text-xs font-semibold">
-              sudo Password&nbsp;
-              <PopoverHelper text="Enter the sudo password: required on macOS or Linux." />
-            </Label>
-            <PasswordInput
-              value={settings.sudoerPassword}
-              onChange={(e) => updateSettings({ sudoerPassword: e })}
+            <Label className="text-xs font-semibold">TCP Download</Label>
+            <input
+              type="text"
+              className={inputClass + " font-mono"}
+              value={settings.iperfCommands?.tcpDownload || ""}
+              onChange={(e) =>
+                debouncedUpdate({
+                  iperfCommands: {
+                    ...settings.iperfCommands,
+                    tcpDownload: e.target.value,
+                  },
+                })
+              }
             />
           </div>
-        </div>
-      </section>
-
-      {/* ── Wall Editor ── */}
-      <section>
-        <h3 className={sectionHeaderClass}>Wall Editor</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="flex flex-col gap-1">
+            <Label className="text-xs font-semibold">TCP Upload</Label>
+            <input
+              type="text"
+              className={inputClass + " font-mono"}
+              value={settings.iperfCommands?.tcpUpload || ""}
+              onChange={(e) =>
+                debouncedUpdate({
+                  iperfCommands: {
+                    ...settings.iperfCommands,
+                    tcpUpload: e.target.value,
+                  },
+                })
+              }
+            />
+          </div>
           <div className="flex flex-col gap-1">
             <Label className="text-xs font-semibold">
-              Snap Radius (px)&nbsp;
-              <PopoverHelper text="How close (in pixels) the cursor needs to be to snap to an existing wall endpoint or to close a room." />
+              UDP Download&nbsp;
+              <PopoverHelper text="The -b 100M bitrate is a safe default that works on most networks. If you consistently hit 100 Mbps on UDP tests, try increasing to -b 300M or higher for faster home networks." />
             </Label>
             <input
-              type="number"
-              min={2}
-              max={30}
-              value={settings.snapRadius}
+              type="text"
+              className={inputClass + " font-mono"}
+              value={settings.iperfCommands?.udpDownload || ""}
               onChange={(e) =>
-                updateSettings({ snapRadius: Math.max(2, Math.min(30, parseInt(e.target.value) || 8)) })
+                debouncedUpdate({
+                  iperfCommands: {
+                    ...settings.iperfCommands,
+                    udpDownload: e.target.value,
+                  },
+                })
               }
-              className={inputClass}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label className="text-xs font-semibold">
+              UDP Upload&nbsp;
+              <PopoverHelper text="The -b 100M bitrate is a safe default that works on most networks. If you consistently hit 100 Mbps on UDP tests, try increasing to -b 300M or higher for faster home networks." />
+            </Label>
+            <input
+              type="text"
+              className={inputClass + " font-mono"}
+              value={settings.iperfCommands?.udpUpload || ""}
+              onChange={(e) =>
+                debouncedUpdate({
+                  iperfCommands: {
+                    ...settings.iperfCommands,
+                    udpUpload: e.target.value,
+                  },
+                })
+              }
             />
           </div>
         </div>
       </section>
 
-      {/* ── Heatmap ── */}
-      <section>
+      {/* ── 3. Heatmap ── */}
+      <section className="space-y-3">
         <h3 className={sectionHeaderClass}>Heatmap</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="flex flex-col gap-1">
-            <Label htmlFor="maxOpacity" className="text-xs font-semibold">
-              Max Opacity&nbsp;
-              <PopoverHelper text="The maximum opacity of the heatmap points. Values range from 0 to 1." />
-            </Label>
-            <Input
-              id="maxOpacity"
-              type="number"
-              min="0"
-              max="1"
-              step="0.1"
-              value={settings.maxOpacity}
-              onChange={(e) =>
-                debouncedUpdate({ maxOpacity: parseFloat(e.target.value) })
-              }
-              className="h-9"
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="minOpacity" className="text-xs font-semibold">
+            <Label className="text-xs font-semibold">
               Min Opacity&nbsp;
               <PopoverHelper text="The minimum opacity of the heatmap points. Values range from 0 to 1." />
             </Label>
-            <Input
-              id="minOpacity"
+            <input
               type="number"
               min="0"
               max="1"
               step="0.1"
+              className={inputClass}
               value={settings.minOpacity}
               onChange={(e) =>
                 debouncedUpdate({ minOpacity: parseFloat(e.target.value) })
               }
-              className="h-9"
             />
           </div>
           <div className="flex flex-col gap-1">
-            <Label htmlFor="blur" className="text-xs font-semibold">
+            <Label className="text-xs font-semibold">
+              Max Opacity&nbsp;
+              <PopoverHelper text="The maximum opacity of the heatmap points. Values range from 0 to 1." />
+            </Label>
+            <input
+              type="number"
+              min="0"
+              max="1"
+              step="0.1"
+              className={inputClass}
+              value={settings.maxOpacity}
+              onChange={(e) =>
+                debouncedUpdate({ maxOpacity: parseFloat(e.target.value) })
+              }
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label className="text-xs font-semibold">
               Blur&nbsp;
               <PopoverHelper text="The amount of blur applied to the heatmap. Values range from 0 to 1." />
             </Label>
-            <Input
-              id="blur"
+            <input
               type="number"
               min="0"
               max="1"
               step="0.01"
+              className={inputClass}
               value={settings.blur}
               onChange={(e) =>
                 debouncedUpdate({ blur: parseFloat(e.target.value) })
               }
-              className="h-9"
             />
           </div>
         </div>
       </section>
 
-      {/* ── Gradient ── */}
-      <section>
+      {/* ── 4. Gradient ── */}
+      <section className="space-y-3">
         <h3 className={sectionHeaderClass}>
           Gradient&nbsp;
           <PopoverHelper text="Define the color gradient for the heatmap. Each key represents a point in the gradient (0 to 1), and the value is the color." />
         </h3>
         <div>
-          <div className="flex items-center space-x-2 mb-1 text-xs font-semibold text-gray-500">
+          <div className="flex items-center gap-2 mb-1 text-xs font-semibold text-gray-500">
             <span className="w-20 text-center">Position</span>
-            <span className="w-20 text-center">Color</span>
+            <span className="w-10 text-center">Color</span>
             <span className="w-20 text-center">Opacity</span>
+            <span className="w-8" />
           </div>
           {sortedGradientEntries().map(([key, value]) => {
             const hexColor = rgbaToHex(value);
@@ -256,7 +310,7 @@ function SettingsPanel() {
                     delete newGradient[parseFloat(key)];
                     debouncedUpdate({ gradient: newGradient });
                   }}
-                  className="px-2 py-1 text-gray-400 hover:text-red-500 text-sm"
+                  className="px-2 py-1 border border-gray-200 rounded-sm hover:bg-gray-100 text-sm text-gray-400 hover:text-red-500"
                   title="Remove color stop"
                 >
                   ✕
@@ -273,101 +327,40 @@ function SettingsPanel() {
               };
               debouncedUpdate({ gradient: newGradient });
             }}
-            className="mt-2 px-3 py-1.5 border border-gray-200 rounded-sm text-sm hover:bg-gray-50"
+            className="mt-3 px-3 py-1.5 border border-gray-200 rounded-sm text-sm hover:bg-gray-50"
           >
             + Add Color Stop
           </button>
         </div>
       </section>
 
-      {/* ── iperf Commands ── */}
-      <section>
-        <h3 className={sectionHeaderClass}>
-          iperf Commands&nbsp;
-          <PopoverHelper text="Customize the iperf3 commands. Placeholders: {server}, {port}, {duration}. See https://iperf.fr/iperf-doc.php for documentation." />
-        </h3>
-        <div className="space-y-2">
+      {/* ── 5. Wall Editor ── */}
+      <section className="space-y-3">
+        <h3 className={sectionHeaderClass}>Wall Editor</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="flex flex-col gap-1">
-            <Label htmlFor="tcpDownload" className="text-xs">TCP Download</Label>
-            <Input
-              id="tcpDownload"
-              type="text"
-              value={settings.iperfCommands?.tcpDownload || ""}
-              onChange={(e) =>
-                debouncedUpdate({
-                  iperfCommands: {
-                    ...settings.iperfCommands,
-                    tcpDownload: e.target.value,
-                  },
-                })
-              }
-              className="h-9 font-mono text-sm"
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="tcpUpload" className="text-xs">TCP Upload</Label>
-            <Input
-              id="tcpUpload"
-              type="text"
-              value={settings.iperfCommands?.tcpUpload || ""}
-              onChange={(e) =>
-                debouncedUpdate({
-                  iperfCommands: {
-                    ...settings.iperfCommands,
-                    tcpUpload: e.target.value,
-                  },
-                })
-              }
-              className="h-9 font-mono text-sm"
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="udpDownload" className="text-xs">
-              UDP Download&nbsp;
-              <PopoverHelper text="The -b 100M bitrate is a safe default that works on most networks. If you consistently hit 100 Mbps on UDP tests, try increasing to -b 300M or higher for faster home networks." />
+            <Label className="text-xs font-semibold">
+              Snap Radius (px)&nbsp;
+              <PopoverHelper text="How close (in pixels) the cursor needs to be to snap to an existing wall endpoint or to close a room." />
             </Label>
-            <Input
-              id="udpDownload"
-              type="text"
-              value={settings.iperfCommands?.udpDownload || ""}
+            <input
+              type="number"
+              min={2}
+              max={30}
+              value={settings.snapRadius}
               onChange={(e) =>
-                debouncedUpdate({
-                  iperfCommands: {
-                    ...settings.iperfCommands,
-                    udpDownload: e.target.value,
-                  },
-                })
+                updateSettings({ snapRadius: Math.max(2, Math.min(30, parseInt(e.target.value) || 8)) })
               }
-              className="h-9 font-mono text-sm"
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="udpUpload" className="text-xs">
-              UDP Upload&nbsp;
-              <PopoverHelper text="The -b 100M bitrate is a safe default that works on most networks. If you consistently hit 100 Mbps on UDP tests, try increasing to -b 300M or higher for faster home networks." />
-            </Label>
-            <Input
-              id="udpUpload"
-              type="text"
-              value={settings.iperfCommands?.udpUpload || ""}
-              onChange={(e) =>
-                debouncedUpdate({
-                  iperfCommands: {
-                    ...settings.iperfCommands,
-                    udpUpload: e.target.value,
-                  },
-                })
-              }
-              className="h-9 font-mono text-sm"
+              className={inputClass}
             />
           </div>
         </div>
       </section>
 
-      {/* ── AP Mapping ── */}
-      <section>
+      {/* ── 6. AP Mapping ── */}
+      <section className="space-y-3">
         <h3 className={sectionHeaderClass}>AP Mapping</h3>
-        <div className="border border-gray-200 rounded-md p-4">
+        <div className="border border-gray-200 rounded-sm p-4">
           <EditableApMapping
             apMapping={settings.apMapping}
             onSave={(apMapping) => updateSettings({ apMapping })}

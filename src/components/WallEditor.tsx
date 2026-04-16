@@ -649,10 +649,10 @@ export default function WallEditor(): ReactNode {
 
       {/* Active material indicator */}
       <div className="mb-4">
-        <label className="text-sm font-medium text-gray-700">
+        <label className="text-xs font-semibold text-gray-700">
           Active Material
         </label>
-        <div className="flex items-center gap-2 mt-2">
+        <div className="flex items-center gap-2 mt-1">
           <div
             className="w-6 h-6 rounded border border-gray-300"
             style={{ backgroundColor: MATERIAL_PRESETS[activeMaterial].color }}
@@ -660,7 +660,7 @@ export default function WallEditor(): ReactNode {
           <select
             value={activeMaterial}
             onChange={(e) => setActiveMaterial(e.target.value as WallMaterial)}
-            className="px-2 py-1 border border-gray-200 rounded-sm text-sm focus:outline-none focus:ring focus:ring-blue-300 focus:border-blue-400"
+            className="w-full border border-gray-200 rounded-sm p-1.5 text-sm focus:outline-none focus:ring focus:ring-blue-300 focus:border-blue-400"
           >
             {(Object.keys(MATERIAL_PRESETS) as WallMaterial[]).map((mat) => (
               <option key={mat} value={mat}>
@@ -673,7 +673,7 @@ export default function WallEditor(): ReactNode {
 
       {/* Material legend */}
       <div className="mb-4">
-        <h3 className="text-sm font-medium text-gray-700 mb-2">
+        <h3 className="text-xs font-semibold text-gray-700 mb-2">
           Material Legend
         </h3>
         <div className="grid grid-cols-2 gap-2 text-xs">
@@ -697,12 +697,12 @@ export default function WallEditor(): ReactNode {
       {/* Selected wall panel */}
       {selectedWall && (
         <div className="mb-4 p-3 border border-gray-200 rounded-sm">
-          <h3 className="text-sm font-medium text-gray-700 mb-2">
+          <h3 className="text-xs font-semibold text-gray-700 mb-2">
             Selected Wall
           </h3>
-          <div className="space-y-2">
-            <div>
-              <label className="text-xs font-medium text-gray-600">
+          <div className="space-y-3">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-gray-700">
                 Material
               </label>
               <select
@@ -710,7 +710,7 @@ export default function WallEditor(): ReactNode {
                 onChange={(e) =>
                   updateSelectedWallMaterial(e.target.value as WallMaterial)
                 }
-                className="w-full px-2 py-1 border border-gray-200 rounded-sm text-sm focus:outline-none focus:ring focus:ring-blue-300 focus:border-blue-400"
+                className="w-full border border-gray-200 rounded-sm p-1.5 text-sm focus:outline-none focus:ring focus:ring-blue-300 focus:border-blue-400"
               >
                 {(Object.keys(MATERIAL_PRESETS) as WallMaterial[]).map(
                   (mat) => (
@@ -723,8 +723,8 @@ export default function WallEditor(): ReactNode {
             </div>
 
             {selectedWall.material === "custom" && (
-              <div>
-                <label className="text-xs font-medium text-gray-600">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-gray-700">
                   Custom Attenuation (dB):{" "}
                   {(selectedWall.customAttenuationDb ?? 5).toFixed(0)}
                 </label>
@@ -746,7 +746,7 @@ export default function WallEditor(): ReactNode {
 
             <button
               onClick={() => splitWall(selectedWallId!)}
-              className="w-full px-3 py-2 border border-gray-200 rounded-sm text-sm hover:bg-gray-100 focus:outline-none focus:ring focus:ring-blue-300"
+              className="px-3 py-1.5 border border-gray-200 rounded-sm text-sm hover:bg-gray-50"
             >
               Split Wall
             </button>
@@ -756,7 +756,7 @@ export default function WallEditor(): ReactNode {
 
       {settings.walls.length > 0 && (
         <button
-          className="mb-2 px-3 py-2 border border-red-300 rounded-sm text-sm text-red-600 hover:bg-red-50 focus:outline-none focus:ring focus:ring-red-300"
+          className="mb-2 px-3 py-1.5 border border-red-300 rounded-sm text-sm text-red-600 hover:bg-red-50"
           onClick={clearAllWalls}
         >
           Remove all walls

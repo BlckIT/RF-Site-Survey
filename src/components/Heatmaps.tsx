@@ -574,7 +574,7 @@ export function Heatmaps() {
   return (
     <div>
       <div className="mb-4">
-        <h3 className="text-lg font-medium mb-2 text-gray-700">
+        <h3 className="text-sm font-semibold text-gray-700 mb-2">
           Select Metrics
         </h3>
         <div className="flex flex-wrap gap-4">
@@ -597,7 +597,7 @@ export function Heatmaps() {
       </div>
 
       <div className="mb-6">
-        <h3 className="text-lg font-medium mb-2 text-gray-700">
+        <h3 className="text-sm font-semibold text-gray-700 mb-2">
           Select Properties
         </h3>
         <div className="flex flex-wrap gap-4">
@@ -626,7 +626,7 @@ export function Heatmaps() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {selectedMetrics.map((metric) => (
           <div key={metric} className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="text-lg font-medium mb-3 text-gray-700">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">
               {metricTitles[metric]}
             </h3>
             {metric === "signalStrength" ? (
