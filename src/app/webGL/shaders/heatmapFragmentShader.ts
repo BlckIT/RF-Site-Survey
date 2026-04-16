@@ -1,82 +1,137 @@
 /**
- * Generates a shader for rendering a weighted signal map.
+ * Generates a fragment shader for weighted signal heatmap with physics-based wall attenuation.
  *
- * Each point contributes signal based on inverse-distance weighting (IDW).
+ * Each point contributes signal based on Inverse Distance Weighting (IDW).
+ * Walls between pixel and measurement point attenuate the signal value in dB
+ * following the ITU-R P.1238 Wall Attenuation Factor (WAF) model.
  * The result is normalized and mapped through a color LUT.
  *
- * @param pointCount - Number of max point uniforms; sets array + loop bounds
+ * @param pointCount - Max point uniforms
+ * @param wallCount - Number of walls (max 64)
  */
-const generateHeatmapFragmentShader = (pointCount: number): string => {
+const MAX_WALLS = 64;
+
+const generateHeatmapFragmentShader = (
+  pointCount: number,
+  wallCount: number = 0,
+): string => {
   const clampedPointCount = Math.max(1, pointCount);
+  const clampedWallCount = Math.min(Math.max(0, wallCount), MAX_WALLS);
   return `
   precision mediump float;
 
-  varying vec2 v_uv; // Normalized coordinates from vertex shader, in [0, 1]
+  varying vec2 v_uv;
 
-  uniform float u_radius;       // Radius of influence for each point
-  uniform float u_power;        // Weight falloff exponent (higher = faster decay)
-  uniform float u_maxSignal;    // Maximum expected signal value (used for normalization)
-  uniform float u_opacity;      // Final fragment opacity
-  uniform float u_minOpacity;   // opacity when signal = 0
-  uniform float u_maxOpacity;   // opacity when signal = max
-  uniform vec2 u_resolution;    // Pixel dimensions of output framebuffer
-  uniform int u_pointCount;     // Actual number of active points (may be < ${clampedPointCount})
-  uniform vec3 u_points[${clampedPointCount}]; // Each point = (x, y, value) in pixel-space
-  uniform sampler2D u_lut;      // 1D LUT texture mapping signal to RGB color
+  uniform float u_radius;
+  uniform float u_pathLossExponent;
+  uniform float u_opacity;
+  uniform float u_minOpacity;
+  uniform float u_maxOpacity;
+  uniform vec2 u_resolution;
+  uniform int u_pointCount;
+  uniform vec3 u_points[${clampedPointCount}];
+  uniform sampler2D u_lut;
+
+  // Väggdata: varje vägg är en vec4(x1, y1, x2, y2)
+  uniform int u_wallCount;
+  ${clampedWallCount > 0 ? `uniform vec4 u_walls[${clampedWallCount}];` : ""}
+
+  // Attenuation in dB per wall (per material, ITU-R P.1238 WAF)
+  ${clampedWallCount > 0 ? `uniform float u_wallAttenuationDb[${clampedWallCount}];` : ""}
+
+  /**
+   * Kontrollera om två linjesegment korsar varandra.
+   * Returnerar 1.0 om de korsar, annars 0.0.
+   */
+  float segmentsIntersect(vec2 a1, vec2 a2, vec2 b1, vec2 b2) {
+    vec2 d1 = a2 - a1;
+    vec2 d2 = b2 - b1;
+    float denom = d1.x * d2.y - d1.y * d2.x;
+    if (abs(denom) < 0.0001) return 0.0;
+    vec2 d3 = b1 - a1;
+    float t = (d3.x * d2.y - d3.y * d2.x) / denom;
+    float u = (d3.x * d1.y - d3.y * d1.x) / denom;
+    if (t > 0.001 && t < 0.999 && u > 0.001 && u < 0.999) return 1.0;
+    return 0.0;
+  }
+
+  /**
+   * Calculate total wall attenuation in dB between two points.
+   * Returns sum of dB values for all crossed walls (ITU-R P.1238 WAF model).
+   */
+  float calcWallAttenuationDb(vec2 from, vec2 to) {
+    float totalDb = 0.0;
+    ${
+      clampedWallCount > 0
+        ? `
+    for (int i = 0; i < ${clampedWallCount}; ++i) {
+      if (i >= u_wallCount) break;
+      vec4 w = u_walls[i];
+      float hit = segmentsIntersect(from, to, w.xy, w.zw);
+      if (hit > 0.5) {
+        totalDb += u_wallAttenuationDb[i];
+      }
+    }
+    `
+        : ""
+    }
+    return totalDb;
+  }
 
   void main() {
-    // Example: if v_uv = (0.5, 0.5) and resolution = (800, 600), then pixel = (400, 300)
     vec2 pixel = v_uv * u_resolution;
 
-    float weightedSum = 0.0; // Sum of (weight * value)
-    float weightTotal = 0.0; // Sum of weights
+    float weightedSum = 0.0;
+    float weightTotal = 0.0;
 
-    // Iterate over all provided points (vec3: x, y, value)
     for (int i = 0; i < ${clampedPointCount}; ++i) {
-      if (i >= u_pointCount) break; // Prevent reading undefined data
+      if (i >= u_pointCount) break;
 
-      vec2 point = u_points[i].xy;  // Point position in pixels
-      float value = u_points[i].z;  // Scalar signal at that point
+      vec2 point = u_points[i].xy;
+      float value = u_points[i].z;
 
       vec2 diff = pixel - point;
-      float distSq = dot(diff, diff); // Squared Euclidean distance (cheaper than sqrt)
+      float distSq = dot(diff, diff);
 
-      // Example: if pixel == point, distSq == 0 → use this point's value directly
       if (distSq < 1e-6) {
         weightedSum = value;
         weightTotal = 1.0;
         break;
       }
 
-      // Skip points outside of influence radius
-      // Example: if u_radius = 100, skip if dist > 100 → distSq > 100^2 = 10000
       if (distSq > u_radius * u_radius) continue;
 
-      // Inverse-distance weighting with power falloff
-      // Example: distSq = 25, u_power = 2 → weight = 1 / 25 = 0.04
-      float weight = 1.0 / pow(distSq, u_power * 0.5);
+      float weight = 1.0 / pow(distSq, u_pathLossExponent * 0.5);
 
-      weightedSum += weight * value;
+      // Wall attenuation in dB
+      float wallDb = calcWallAttenuationDb(pixel, point);
+
+      // Convert percentage (0-100) to dBm, subtract wall attenuation, convert back
+      float signal_dBm = -100.0 + (value / 100.0) * 60.0;
+      float attenuated_dBm = signal_dBm - wallDb;
+      float attenuated_value = clamp((attenuated_dBm + 100.0) / 60.0 * 100.0, 0.0, 100.0);
+
+      weightedSum += weight * attenuated_value;
       weightTotal += weight;
     }
 
     if (weightTotal == 0.0) {
       discard;
     }
-    // Normalize signal to [0, 1] range
-    // Example: if weightedSum = 3, weightTotal = 5 → signal = 0.6
-    float signal = weightedSum / weightTotal;
-    float normalized = clamp(signal / u_maxSignal, 0.0, 1.0);
 
-    // Lookup color from LUT texture using normalized signal
-    // Example: normalized = 0.75 → texture2D(u_lut, vec2(0.75, 0.5))
+    float signal = weightedSum / weightTotal;
+    float normalized = clamp(signal / 100.0, 0.0, 1.0);
     vec3 color = texture2D(u_lut, vec2(normalized, 0.5)).rgb;
 
-    // Output the final fragment color with given opacity
-    float alpha = mix(u_minOpacity, u_maxOpacity, normalized);
+    // Confidence: pixels near measurement points get full opacity, far pixels fade out
+    // Scale factor tuned so that a pixel within one influence radius of a point ≈ full confidence
+    float confidenceScale = u_radius * u_radius;
+    float confidence = clamp(weightTotal * confidenceScale, 0.0, 1.0);
+    float alpha = mix(u_minOpacity, u_maxOpacity, normalized) * confidence;
     gl_FragColor = vec4(color, alpha);
   }
 `;
 };
 
 export default generateHeatmapFragmentShader;
+export { MAX_WALLS };

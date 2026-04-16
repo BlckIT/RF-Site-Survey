@@ -101,7 +101,7 @@ export class LinuxWifiActions implements WifiActions {
       // execAsync() throws if there is an error
       else {
         try {
-          await execAsync(`echo ${settings.sudoerPassword} | sudo -S ls`);
+          await execAsync(`echo '${settings.sudoerPassword.replace(/'/g, "'\\\\''")}'  | sudo -S ls`);
         } catch {
           reason = "Please enter a valid sudo password.";
         }
@@ -140,9 +140,15 @@ export class LinuxWifiActions implements WifiActions {
   /**
    * findWifiInterface() - find the name of the wifi interface
    * save in a class variable
-   * @returns name of (the first) wifi interface (string)
+   * @param preferredInterface - if set, use this interface instead of auto-detecting
+   * @returns name of the wifi interface (string)
    */
-  async findWifiInterface(): Promise<string> {
+  async findWifiInterface(preferredInterface?: string): Promise<string> {
+    if (preferredInterface) {
+      logger.debug(`Using preferred WLAN interface: ${preferredInterface}`);
+      this.nameOfWifi = preferredInterface;
+      return this.nameOfWifi;
+    }
     logger.debug("Inferring WLAN interface ID on Linux");
 
     const { stdout } = await execAsync(
@@ -200,6 +206,7 @@ export class LinuxWifiActions implements WifiActions {
 
   /**
    * getWifi - return the WifiResults for the currently-associated SSID
+   *   or for a specific target SSID (passive scanning)
    * @param settings
    * @returns
    */
@@ -209,19 +216,37 @@ export class LinuxWifiActions implements WifiActions {
       reason: "",
     };
     try {
-      let wlanInterface: string = "";
-      wlanInterface = await inferWifiDeviceIdOnLinux();
+      const wlanInterface = await inferWifiDeviceIdOnLinux(
+        settings.wifiInterface,
+      );
 
-      const [linkOutput, infoOutput] = await Promise.all([
-        iwDevLink(wlanInterface, settings.sudoerPassword),
-        iwDevInfo(wlanInterface),
-      ]);
+      // If targetSSID is set, use passive scanning via nmcli
+      if (settings.targetSSID) {
+        logger.debug(
+          `Target SSID set: "${settings.targetSSID}", using scan results`,
+        );
+        const parsed = await getWifiFromScan(
+          settings.targetSSID,
+          wlanInterface,
+        );
+        if (parsed) {
+          response.SSIDs.push(parsed);
+        } else {
+          response.reason = `Target SSID "${settings.targetSSID}" not found in scan results`;
+        }
+      } else {
+        // Default: read connected network info
+        const [linkOutput, infoOutput] = await Promise.all([
+          iwDevLink(wlanInterface, settings.sudoerPassword),
+          iwDevInfo(wlanInterface),
+        ]);
 
-      logger.trace("IW output:", linkOutput);
-      logger.trace("IW info:", infoOutput);
-      const parsed = parseIwOutput(linkOutput, infoOutput);
-      logger.trace("Final WiFi data:", parsed);
-      response.SSIDs.push(parsed);
+        logger.trace("IW output:", linkOutput);
+        logger.trace("IW info:", infoOutput);
+        const parsed = parseIwOutput(linkOutput, infoOutput);
+        logger.trace("Final WiFi data:", parsed);
+        response.SSIDs.push(parsed);
+      }
     } catch (err) {
       response.reason = String(err);
     }
@@ -232,7 +257,13 @@ export class LinuxWifiActions implements WifiActions {
  * END OF LinuxOSWifiActions - the remainder is a set of helper functions
  */
 
-async function inferWifiDeviceIdOnLinux(): Promise<string> {
+async function inferWifiDeviceIdOnLinux(
+  preferredInterface?: string,
+): Promise<string> {
+  if (preferredInterface) {
+    logger.debug(`Using preferred WLAN interface: ${preferredInterface}`);
+    return preferredInterface;
+  }
   logger.debug("Inferring WLAN interface ID on Linux");
   const { stdout } = await execAsync(
     "iw dev | awk '$1==\"Interface\"{print $2}' | head -n1",
@@ -245,7 +276,7 @@ async function iwDevLink(interfaceId: string, pw: string): Promise<string> {
 
   let command = `iw dev ${interfaceId} link`;
   if (!isDocker()) {
-    command = `echo "${pw}" | sudo -S ` + command;
+    command = `echo '${pw.replace(/'/g, "'\\\\''")}'  | sudo -S ` + command;
   }
 
   const { stdout } = await execAsync(command);
@@ -256,6 +287,30 @@ async function iwDevInfo(interfaceId: string): Promise<string> {
   const command = `iw dev ${interfaceId} info`;
   const { stdout } = await execAsync(command);
   return stdout;
+}
+
+/**
+ * getWifiFromScan() - get WiFi data for a specific SSID from nmcli scan results
+ * Used for passive scanning when targetSSID is set
+ */
+async function getWifiFromScan(
+  targetSSID: string,
+  wlanInterface: string,
+): Promise<WifiResults | null> {
+  const { stdout } = await execAsync(
+    `nmcli -t -f IN-USE,BSSID,SSID,MODE,CHAN,RATE,SIGNAL,BARS,SECURITY dev wifi list ifname ${wlanInterface}`,
+  );
+  const candidates = getCandidateSSIDs(stdout);
+  // Find the strongest match for the target SSID
+  const match = candidates.find(
+    (c) => c.ssid.toLowerCase() === targetSSID.toLowerCase(),
+  );
+  if (match) {
+    logger.debug(
+      `Found target SSID "${targetSSID}": RSSI=${match.rssi}, ch=${match.channel}`,
+    );
+  }
+  return match || null;
 }
 
 /**

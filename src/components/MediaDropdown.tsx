@@ -2,6 +2,7 @@
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 
 type MediaDropdownProps = {
   defaultValue?: string;
@@ -81,10 +82,10 @@ export default function MediaDropdown({
     <div className="w-full">
       <DropdownMenu.Root onOpenChange={() => setSearch("")}>
         <DropdownMenu.Trigger asChild>
-          <button className="w-full p-2 inline-flex items-center text-base bg-white text-black border rounded shadow-sm">
+          <Button variant="outline" className="w-full justify-between text-base">
             <span className="truncate">{selected || "Select a file..."}</span>
             <span className="ml-auto">▾</span>
-          </button>
+          </Button>
         </DropdownMenu.Trigger>
 
         <DropdownMenu.Content

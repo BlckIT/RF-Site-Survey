@@ -294,95 +294,99 @@ const SurveyPointsTable: React.FC<SurveyPointsTableProps> = ({
   }, [rowSelection, flattenedData, myUpdate]);
 
   return (
-    <div className="space-y-4">
-      <div className="text-2xl font-bold mt-4">Survey Points</div>
-      <div className="flex justify-between items-center">
-        <div className="flex items-center space-x-2">
-          <Input
-            placeholder="Search all columns..."
-            value={globalFilter ?? ""}
-            onChange={(event) => setGlobalFilter(event.target.value)}
-            className="max-w-sm"
-          />
-          <span className="text-md text-gray-700 min-w-fit">
-            {Object.keys(rowSelection).length} of {flattenedData.length} row(s)
-            selected
-          </span>
-        </div>
-        <div className="space-x-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="ml-auto">
-                Show Columns <ChevronDown className="ml-2 h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {table
-                .getAllColumns()
-                .filter((column) => column.getCanHide())
-                .map((column) => {
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={column.id}
-                      className="capitalize"
-                      checked={column.getIsVisible()}
-                      onCheckedChange={(value) =>
-                        column.toggleVisibility(!!value)
-                      }
-                    >
-                      {column.columnDef.header?.toString() ?? column.id}
-                    </DropdownMenuCheckboxItem>
-                  );
-                })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.toggleAllRowsSelected(false)}
-            disabled={Object.keys(rowSelection).length === 0}
-          >
-            Deselect All
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.toggleAllRowsSelected(true)}
-          >
-            Select All
-          </Button>
-          <AlertDialogModal
-            title="Delete Selected"
-            description="Are you sure you want to delete the selected rows?"
-            onConfirm={handleDelete}
-            onCancel={() => {}}
-            disabled={Object.keys(rowSelection).length === 0}
-          >
-            <Button
-              variant="destructive"
-              size="sm"
-              className={`${Object.keys(rowSelection).length === 0 ? "opacity-50 cursor-not-allowed" : ""}`}
-            >
-              Delete Selected
-            </Button>
-          </AlertDialogModal>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={toggleDisableSelected}
-            disabled={Object.keys(rowSelection).length === 0}
-          >
-            Toggle Disable Selected
-          </Button>
+    <div className="space-y-2">
+      {/* Search — full width */}
+      <div>
+        <Input
+          placeholder="Search..."
+          value={globalFilter ?? ""}
+          onChange={(event) => setGlobalFilter(event.target.value)}
+          className="w-full text-xs h-8"
+        />
+        <div className="text-xs text-gray-500 mt-1">
+          {Object.keys(rowSelection).length} of {flattenedData.length} selected
         </div>
       </div>
-      <div className="rounded-md border">
+
+      {/* Action buttons — compact wrapped grid */}
+      <div className="flex flex-wrap gap-1">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="text-xs h-7 px-2">
+              Columns <ChevronDown className="ml-1 h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {table
+              .getAllColumns()
+              .filter((column) => column.getCanHide())
+              .map((column) => {
+                return (
+                  <DropdownMenuCheckboxItem
+                    key={column.id}
+                    className="capitalize"
+                    checked={column.getIsVisible()}
+                    onCheckedChange={(value) =>
+                      column.toggleVisibility(!!value)
+                    }
+                  >
+                    {column.columnDef.header?.toString() ?? column.id}
+                  </DropdownMenuCheckboxItem>
+                );
+              })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-xs h-7 px-2"
+          onClick={() => table.toggleAllRowsSelected(true)}
+        >
+          All
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-xs h-7 px-2"
+          onClick={() => table.toggleAllRowsSelected(false)}
+          disabled={Object.keys(rowSelection).length === 0}
+        >
+          None
+        </Button>
+        <AlertDialogModal
+          title="Delete Selected"
+          description="Are you sure you want to delete the selected rows?"
+          onConfirm={handleDelete}
+          onCancel={() => {}}
+          disabled={Object.keys(rowSelection).length === 0}
+        >
+          <Button
+            variant="destructive"
+            size="sm"
+            className={`text-xs h-7 px-2 ${Object.keys(rowSelection).length === 0 ? "opacity-50 cursor-not-allowed" : ""}`}
+          >
+            Delete
+          </Button>
+        </AlertDialogModal>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="text-xs h-7 px-2"
+          onClick={toggleDisableSelected}
+          disabled={Object.keys(rowSelection).length === 0}
+        >
+          Toggle
+        </Button>
+      </div>
+
+      {/* Compact table */}
+      <div className="rounded-md border text-xs">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
+                  <TableHead key={header.id} className="px-1 py-1 text-xs">
                     {header.isPlaceholder ? null : (
                       <div
                         {...{
@@ -427,7 +431,7 @@ const SurveyPointsTable: React.FC<SurveyPointsTableProps> = ({
                   }`}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="text-center">
+                    <TableCell key={cell.id} className="text-center px-1 py-1 text-xs">
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext(),
@@ -449,18 +453,23 @@ const SurveyPointsTable: React.FC<SurveyPointsTableProps> = ({
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-end space-x-2 py-4">
+      <div className="flex items-center justify-between py-2">
         <Button
           variant="outline"
           size="sm"
+          className="text-xs h-7 px-2"
           onClick={() => table.previousPage()}
           disabled={!table.getCanPreviousPage()}
         >
-          Previous
+          Prev
         </Button>
+        <span className="text-xs text-gray-500">
+          {table.getState().pagination.pageIndex + 1}/{table.getPageCount()}
+        </span>
         <Button
           variant="outline"
           size="sm"
+          className="text-xs h-7 px-2"
           onClick={() => table.nextPage()}
           disabled={!table.getCanNextPage()}
         >

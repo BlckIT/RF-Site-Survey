@@ -99,6 +99,11 @@ export interface HeatmapSettings {
   blur: number;
   gradient: Gradient;
   iperfCommands: IperfCommands;
+  walls: Wall[];
+  pixelsPerMeter: number; // scale factor for distance-based signal decay
+  wifiInterface: string; // "" = auto-detect first available
+  targetSSID: string; // "" = use connected SSID
+  snapRadius: number; // wall editor snap radius in pixels
   // these two props were used for the "scan-wifi" branch
   // that has been (temporarily?) abandoned
   // sameSSID: string; // "same", "best"
@@ -117,6 +122,8 @@ export interface PartialHeatmapSettings {
   sudoerPassword: string;
   ignoredSSIDs: string[];
   iperfCommands: IperfCommands;
+  wifiInterface: string;
+  targetSSID: string;
   // sameSSID: SsidStrategy;
 }
 
@@ -157,6 +164,57 @@ export type ScannerSettings = {
 };
 
 export type OS = "macos" | "windows" | "linux";
+
+/**
+ * Wall material types for WiFi signal attenuation (dB loss per wall)
+ */
+export type WallMaterial =
+  | "drywall"
+  | "wood"
+  | "glass"
+  | "brick"
+  | "concrete"
+  | "metal"
+  | "custom";
+
+export interface MaterialPreset {
+  label: string;
+  attenuationDb: number; // dB loss per wall crossing (ITU-R P.1238, 5 GHz)
+  color: string;
+  thickness: number; // px
+}
+
+export const MATERIAL_PRESETS: Record<WallMaterial, MaterialPreset> = {
+  drywall: { label: "Drywall", attenuationDb: 4, color: "#888888", thickness: 2 },
+  wood: { label: "Wood", attenuationDb: 6, color: "#8B4513", thickness: 3 },
+  glass: { label: "Glass", attenuationDb: 3, color: "#87CEEB", thickness: 2 },
+  brick: { label: "Brick", attenuationDb: 10, color: "#B22222", thickness: 4 },
+  concrete: { label: "Concrete", attenuationDb: 15, color: "#555555", thickness: 5 },
+  metal: { label: "Metal", attenuationDb: 25, color: "#2F4F4F", thickness: 5 },
+  custom: { label: "Custom", attenuationDb: 5, color: "#FF00FF", thickness: 3 },
+};
+
+/** Get the effective attenuation in dB for a wall */
+export function getWallAttenuationDb(wall: Wall): number {
+  if (wall.material === "custom" && wall.customAttenuationDb !== undefined) {
+    return wall.customAttenuationDb;
+  }
+  return MATERIAL_PRESETS[wall.material || "drywall"].attenuationDb;
+}
+
+/**
+ * Wall — a wall that blocks signal interpolation
+ * Defined by two points (x1,y1) and (x2,y2) in pixel coordinates
+ */
+export interface Wall {
+  id: string;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  material: WallMaterial;
+  customAttenuationDb?: number;
+}
 
 export interface SurveyPointActions {
   add: (newPoint: SurveyPoint) => void;

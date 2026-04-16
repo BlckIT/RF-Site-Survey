@@ -10,7 +10,7 @@ interface HeatmapSliderProps {
 export function HeatmapSlider({ value, onChange }: HeatmapSliderProps) {
   return (
     <div className="w-64">
-      <label className="block mb-2 text-base font-medium text-gray-700">
+      <label className="block mb-2 text-xs font-semibold text-gray-700">
         Radius: {[value]} &nbsp;
         <PopoverHelper text="Control how much each measured point blurs into the others. Drag to zero to reset to the automatically-calculated value. Ranges from 0 to 500." />
       </label>

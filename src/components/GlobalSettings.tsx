@@ -27,7 +27,7 @@ export const getDefaults = (floorPlan: string): HeatmapSettings => {
   return {
     surveyPoints: [],
     floorplanImageName: floorPlan,
-    floorplanImagePath: join("/media", floorPlan),
+    floorplanImagePath: floorPlan ? join("/media", floorPlan) : "",
     iperfServerAdrs: "localhost",
     apMapping: [],
     testDuration: 1,
@@ -53,6 +53,11 @@ export const getDefaults = (floorPlan: string): HeatmapSettings => {
       udpDownload: "iperf3 -c {server} {port} -t {duration} -R -u -b 100M -J",
       udpUpload: "iperf3 -c {server} {port} -t {duration} -u -b 100M -J",
     },
+    walls: [],
+    pixelsPerMeter: 10,
+    wifiInterface: "",
+    targetSSID: "",
+    snapRadius: 8,
     // these two props were used for the "scan wifi" effort
     // that has been (temporarily?) abandoned
     // sameSSID: "same",
