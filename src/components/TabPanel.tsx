@@ -257,6 +257,14 @@ function SettingsPanel() {
     });
   };
 
+  // Hjälpfunktion: kolla om ett interface redan används av en annan funktion
+  const ifaceUsedBy = (iface: string, exclude: "scan" | "hotspot" | "connect"): string | null => {
+    if (exclude !== "scan" && settings.wifiInterface === iface) return "Scan";
+    if (exclude !== "hotspot" && hotspotIface === iface && hotspotActive) return "Hotspot";
+    if (exclude !== "connect" && connectIface === iface) return "WiFi Connect";
+    return null;
+  };
+
 
   return (
     <div className="max-w-3xl">
@@ -333,9 +341,14 @@ function SettingsPanel() {
                       onChange={(e) => setHotspotIface(e.target.value)}
                       disabled={hotspotActive}
                     >
-                      {wifiInterfaces.map((iface) => (
-                        <option key={iface} value={iface}>{iface}</option>
-                      ))}
+                      {wifiInterfaces.map((iface) => {
+                        const usedBy = ifaceUsedBy(iface, "hotspot");
+                        return (
+                          <option key={iface} value={iface}>
+                            {iface}{usedBy ? ` (used by ${usedBy})` : ""}
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
                   <div className="flex flex-col gap-1">
@@ -396,9 +409,14 @@ function SettingsPanel() {
                         value={connectIface}
                         onChange={(e) => setConnectIface(e.target.value)}
                       >
-                        {wifiInterfaces.map((iface) => (
-                          <option key={iface} value={iface}>{iface}</option>
-                        ))}
+                        {wifiInterfaces.map((iface) => {
+                          const usedBy = ifaceUsedBy(iface, "connect");
+                          return (
+                            <option key={iface} value={iface}>
+                              {iface}{usedBy ? ` (used by ${usedBy})` : ""}
+                            </option>
+                          );
+                        })}
                       </select>
                     </div>
                   </div>
@@ -553,9 +571,14 @@ function SettingsPanel() {
                 onChange={(e) => updateSettings({ wifiInterface: e.target.value })}
               >
                 <option value="">Auto</option>
-                {wifiInterfaces.map((iface) => (
-                  <option key={iface} value={iface}>{iface}</option>
-                ))}
+                {wifiInterfaces.map((iface) => {
+                  const usedBy = ifaceUsedBy(iface, "scan");
+                  return (
+                    <option key={iface} value={iface}>
+                      {iface}{usedBy ? ` (used by ${usedBy})` : ""}
+                    </option>
+                  );
+                })}
               </select>
             </div>
             <div className="flex flex-col gap-1">
