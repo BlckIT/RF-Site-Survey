@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
         // Ignore — profile may not exist yet
       }
 
-      // Create a persistent AP connection with power save disabled
+      // Create a persistent AP connection with power save disabled and stable WPA2
       await execAsync(
         `${sudo}nmcli connection add type wifi ifname ${safeIfname} con-name ${HOTSPOT_CON_NAME} ` +
         `ssid ${safeSsid} ` +
@@ -128,6 +128,9 @@ export async function POST(request: NextRequest) {
         `802-11-wireless.band bg ` +
         `802-11-wireless.powersave 2 ` +
         `wifi-sec.key-mgmt wpa-psk ` +
+        `wifi-sec.proto rsn ` +
+        `wifi-sec.pairwise ccmp ` +
+        `wifi-sec.group ccmp ` +
         `wifi-sec.psk '${safePassword}' ` +
         `ipv4.method shared ` +
         `ipv6.method disabled ` +
