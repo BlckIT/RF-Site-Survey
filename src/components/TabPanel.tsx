@@ -10,19 +10,15 @@ import ClickableFloorplan from "@/components/Floorplan";
 import { Heatmaps } from "@/components/Heatmaps";
 import PointsTable from "@/components/PointsTable";
 import WallEditor from "@/components/WallEditor";
+import ScaleCalibration from "@/components/ScaleCalibration";
 import EditableApMapping from "@/components/ApMapping";
 import { PasswordInput } from "@/components/PasswordInput";
 import { Label } from "@/components/ui/label";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { PopoverHelper } from "@/components/PopoverHelpText";
 import { HeatmapSettings, WifiResults } from "@/lib/types";
 import { rgbaToHex, hexToRgba } from "@/lib/utils-gradient";
 import { Switch } from "@/components/ui/switch";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import {
   Dialog,
   DialogContent,
@@ -33,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { Wifi, WifiOff, RefreshCw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { getDefaults } from "@/components/GlobalSettings";
 
 interface NetworkDevice {
@@ -360,7 +357,7 @@ function SettingsPanel() {
           </div>
           <div className="flex flex-col gap-1">
             <Label className="text-xs font-semibold">SSID</Label>
-            <input
+            <Input
               type="text"
               className={inputClass}
               value={hotspotSsid}
@@ -495,7 +492,7 @@ function SettingsPanel() {
             {isHidden && (
               <div className="flex flex-col gap-1">
                 <Label className="text-xs font-semibold">SSID</Label>
-                <input
+                <Input
                   type="text"
                   className={inputClass}
                   value={hiddenSsid}
@@ -546,7 +543,7 @@ function SettingsPanel() {
               iperf Server&nbsp;
               <PopoverHelper text="Address of an iperf3 server (e.g., 192.168.1.10 or 192.168.1.10:5201). Port 5201 is used by default. Set to 'localhost' to skip iperf tests." />
             </Label>
-            <input
+            <Input
               type="text"
               placeholder="192.168.1.10"
               className={inputClass}
@@ -573,7 +570,7 @@ function SettingsPanel() {
               Target SSID&nbsp;
               <PopoverHelper text="If set, measure signal strength for this SSID instead of the connected network. Useful for passive scanning of a specific network." />
             </Label>
-            <input
+            <Input
               type="text"
               placeholder="Leave empty to use connected network"
               className={inputClass}
@@ -593,7 +590,7 @@ function SettingsPanel() {
               <div className="space-y-3">
                 <div className="flex flex-col gap-1">
                   <Label className="text-xs font-semibold">TCP Download</Label>
-                  <input
+                  <Input
                     type="text"
                     className={inputClass + " font-mono"}
                     value={settings.iperfCommands?.tcpDownload || ""}
@@ -602,7 +599,7 @@ function SettingsPanel() {
                 </div>
                 <div className="flex flex-col gap-1">
                   <Label className="text-xs font-semibold">TCP Upload</Label>
-                  <input
+                  <Input
                     type="text"
                     className={inputClass + " font-mono"}
                     value={settings.iperfCommands?.tcpUpload || ""}
@@ -614,7 +611,7 @@ function SettingsPanel() {
                     UDP Download&nbsp;
                     <PopoverHelper text="The -b 100M bitrate is a safe default. Increase to -b 300M or higher for faster networks." />
                   </Label>
-                  <input
+                  <Input
                     type="text"
                     className={inputClass + " font-mono"}
                     value={settings.iperfCommands?.udpDownload || ""}
@@ -626,7 +623,7 @@ function SettingsPanel() {
                     UDP Upload&nbsp;
                     <PopoverHelper text="The -b 100M bitrate is a safe default. Increase to -b 300M or higher for faster networks." />
                   </Label>
-                  <input
+                  <Input
                     type="text"
                     className={inputClass + " font-mono"}
                     value={settings.iperfCommands?.udpUpload || ""}
@@ -719,7 +716,7 @@ function SettingsPanel() {
               const alpha = parseFloat(value.split(",")[3]) || 1;
               return (
                 <div key={key} className="flex items-center gap-2 mt-2">
-                  <input
+                  <Input
                     type="text"
                     value={key}
                     onChange={(e) => {
@@ -900,7 +897,10 @@ export default function TabPanel() {
           <div className="mb-4">
             <SiteManager />
           </div>
-          <WallEditor />
+          <ScaleCalibration />
+          <div className="mt-6">
+            <WallEditor />
+          </div>
         </Tabs.Content>
 
         {/* Tab 2: Survey — floor selector, compact settings bar, floor plan + sidebar */}
