@@ -11,6 +11,7 @@ import { Heatmaps } from "@/components/Heatmaps";
 import PointsTable from "@/components/PointsTable";
 import WallEditor from "@/components/WallEditor";
 import EditableApMapping from "@/components/ApMapping";
+import NetworkManager from "@/components/NetworkManager";
 import { PasswordInput } from "@/components/PasswordInput";
 import { Label } from "@/components/ui/label";
 import { PopoverHelper } from "@/components/PopoverHelpText";
@@ -364,7 +365,15 @@ function SettingsPanel() {
         </div>
       </section>
 
-      {/* ── 6. AP Mapping ── */}
+      {/* ── 6. Network Management ── */}
+      <section className="space-y-3">
+        <h3 className={sectionHeaderClass}>Network Management</h3>
+        <div className="border border-gray-200 rounded-sm p-4">
+          <NetworkManager />
+        </div>
+      </section>
+
+      {/* ── 7. AP Mapping ── */}
       <section className="space-y-3">
         <h3 className={sectionHeaderClass}>AP Mapping</h3>
         <div className="border border-gray-200 rounded-sm p-4">
