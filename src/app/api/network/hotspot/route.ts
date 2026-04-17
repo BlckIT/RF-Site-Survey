@@ -1,21 +1,38 @@
 import { NextResponse, NextRequest } from "next/server";
-import { execAsync } from "@/lib/server-utils";
 import os from "os";
+import { execFile } from "child_process";
 
-/** Sanitize a string for safe shell usage — allow only alphanumeric, dash, underscore, dot */
+/** Sanitize interface name */
 function sanitize(input: string): string {
   return input.replace(/[^a-zA-Z0-9_.\-]/g, "");
 }
 
-/** Sanitize passphrase — allow printable ASCII minus shell-dangerous chars */
-function sanitizePassphrase(input: string): string {
-  return input.replace(/[`$\\;"'!&|<>(){}]/g, "");
-}
-
-/** Build sudo prefix using piped password, matching existing app pattern */
-function sudoPrefix(sudoerPassword: string): string {
-  const escaped = sudoerPassword.replace(/'/g, "'\\''");
-  return `echo '${escaped}' | sudo -S `;
+/** Run nmcli with sudo — password piped to stdin, no shell */
+async function sudoNmcli(
+  sudoerPassword: string,
+  args: string[],
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const child = execFile(
+      "sudo",
+      ["-S", "nmcli", ...args],
+      { timeout: 30000 },
+      (error, stdout, stderr) => {
+        if (error) {
+          const msg = stderr
+            .split("\n")
+            .filter((l) => !l.includes("[sudo]") && l.trim())
+            .join(" ")
+            .trim();
+          reject(new Error(msg || error.message));
+        } else {
+          resolve(stdout.trimEnd());
+        }
+      },
+    );
+    child.stdin?.write(sudoerPassword + "\n");
+    child.stdin?.end();
+  });
 }
 
 /** Connection name used for the managed hotspot */
@@ -31,9 +48,17 @@ export async function GET(request: NextRequest) {
       request.nextUrl.searchParams.get("ifname") || "wlan0",
     );
 
-    // Check if our managed hotspot connection is active on this interface
-    const { stdout } = await execAsync(
-      `nmcli -t -f NAME,DEVICE,TYPE connection show --active`,
+    const { stdout } = await new Promise<{ stdout: string; stderr: string }>(
+      (resolve, reject) => {
+        execFile(
+          "nmcli",
+          ["-t", "-f", "NAME,DEVICE,TYPE", "connection", "show", "--active"],
+          (error, stdout, stderr) => {
+            if (error) reject(error);
+            else resolve({ stdout, stderr });
+          },
+        );
+      },
     );
 
     const lines = stdout.split("\n");
@@ -48,12 +73,21 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get SSID from the connection profile if it exists
     if (active) {
       try {
-        const { stdout: ssidOut } = await execAsync(
-          `nmcli -t -f 802-11-wireless.ssid connection show ${HOTSPOT_CON_NAME}`,
-        );
+        const { stdout: ssidOut } = await new Promise<{
+          stdout: string;
+          stderr: string;
+        }>((resolve, reject) => {
+          execFile(
+            "nmcli",
+            ["-t", "-f", "802-11-wireless.ssid", "connection", "show", HOTSPOT_CON_NAME],
+            (error, stdout, stderr) => {
+              if (error) reject(error);
+              else resolve({ stdout, stderr });
+            },
+          );
+        });
         ssid = ssidOut.split(":").slice(1).join(":").trim();
       } catch {
         ssid = HOTSPOT_CON_NAME;
@@ -85,8 +119,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const sudo = sudoPrefix(sudoerPassword);
-
     if (!action || !ifname) {
       return NextResponse.json(
         { success: false, message: "action and ifname are required." },
@@ -110,51 +142,50 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const safeSsid = sanitize(ssid);
-      const safePassword = sanitizePassphrase(password);
-
-      // Remove any existing hotspot connection profile to start clean
+      // Remove any existing hotspot connection profile
       try {
-        await execAsync(`${sudo}nmcli connection delete ${HOTSPOT_CON_NAME}`);
+        await sudoNmcli(sudoerPassword, ["connection", "delete", HOTSPOT_CON_NAME]);
       } catch {
-        // Ignore — profile may not exist yet
+        // Profile may not exist
       }
 
-      // Create a persistent AP connection with power save disabled and stable WPA2
-      await execAsync(
-        `${sudo}nmcli connection add type wifi ifname ${safeIfname} con-name ${HOTSPOT_CON_NAME} ` +
-        `ssid ${safeSsid} ` +
-        `802-11-wireless.mode ap ` +
-        `802-11-wireless.band bg ` +
-        `802-11-wireless.powersave 2 ` +
-        `wifi-sec.key-mgmt wpa-psk ` +
-        `wifi-sec.proto rsn ` +
-        `wifi-sec.pairwise ccmp ` +
-        `wifi-sec.group ccmp ` +
-        `wifi-sec.psk '${safePassword}' ` +
-        `ipv4.method shared ` +
-        `ipv6.method disabled ` +
-        `connection.autoconnect no`,
-      );
+      // Create persistent AP connection with stable WPA2
+      await sudoNmcli(sudoerPassword, [
+        "connection", "add",
+        "type", "wifi",
+        "ifname", safeIfname,
+        "con-name", HOTSPOT_CON_NAME,
+        "ssid", ssid,
+        "802-11-wireless.mode", "ap",
+        "802-11-wireless.band", "bg",
+        "802-11-wireless.powersave", "2",
+        "wifi-sec.key-mgmt", "wpa-psk",
+        "wifi-sec.proto", "rsn",
+        "wifi-sec.pairwise", "ccmp",
+        "wifi-sec.group", "ccmp",
+        "wifi-sec.psk", password,
+        "ipv4.method", "shared",
+        "ipv6.method", "disabled",
+        "connection.autoconnect", "no",
+      ]);
 
-      // Activate the connection
-      await execAsync(`${sudo}nmcli connection up ${HOTSPOT_CON_NAME}`);
+      // Activate
+      await sudoNmcli(sudoerPassword, ["connection", "up", HOTSPOT_CON_NAME]);
 
       return NextResponse.json({
         success: true,
-        message: `Hotspot "${safeSsid}" started on ${safeIfname}.`,
+        message: `Hotspot "${ssid}" started on ${safeIfname}.`,
       });
     }
 
     if (action === "stop") {
-      // Deactivate and remove the connection profile
       try {
-        await execAsync(`${sudo}nmcli connection down ${HOTSPOT_CON_NAME}`);
+        await sudoNmcli(sudoerPassword, ["connection", "down", HOTSPOT_CON_NAME]);
       } catch {
         // May already be down
       }
       try {
-        await execAsync(`${sudo}nmcli connection delete ${HOTSPOT_CON_NAME}`);
+        await sudoNmcli(sudoerPassword, ["connection", "delete", HOTSPOT_CON_NAME]);
       } catch {
         // May already be deleted
       }
@@ -172,7 +203,7 @@ export async function POST(request: NextRequest) {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json(
-      { success: false, message: `Hotspot error: ${message}` },
+      { success: false, message: message },
       { status: 500 },
     );
   }

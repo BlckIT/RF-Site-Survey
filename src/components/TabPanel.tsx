@@ -31,6 +31,7 @@ import { Wifi, WifiOff, RefreshCw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getDefaults } from "@/components/GlobalSettings";
+import { useToast } from "@/components/ui/use-toast";
 
 interface NetworkDevice {
   device: string;
@@ -54,6 +55,8 @@ const tabTriggerClass =
 const settingsTriggerClass =
   "flex items-center justify-center w-10 h-10 rounded-md border border-gray-400 bg-gray-200 text-gray-600 cursor-pointer transition-all duration-300 ease-in-out hover:bg-gray-100 hover:text-gray-800 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:border-gray-500";
 
+const subTabClass = "px-3 py-1.5 text-xs font-medium rounded-sm transition-colors data-[state=active]:bg-gray-900 data-[state=active]:text-white data-[state=inactive]:text-gray-500 data-[state=inactive]:hover:text-gray-700";
+
 const sectionHeaderClass = "text-sm font-semibold text-gray-700 mb-2 mt-0";
 
 const inputClass =
@@ -61,6 +64,7 @@ const inputClass =
 
 function SettingsPanel() {
   const { settings, updateSettings } = useSettings();
+  const { toast } = useToast();
   const [wifiInterfaces, setWifiInterfaces] = useState<string[]>([]);
 
   // Network management state
@@ -80,7 +84,7 @@ function SettingsPanel() {
   const [isHidden, setIsHidden] = useState(false);
   const [hiddenSsid, setHiddenSsid] = useState("");
   const [disconnecting, setDisconnecting] = useState(false);
-  const [netStatusMsg, setNetStatusMsg] = useState("");
+
 
   const sudoerPassword = settings.sudoerPassword || "";
 
@@ -141,7 +145,6 @@ function SettingsPanel() {
   // Toggle hotspot
   const toggleHotspot = async () => {
     setHotspotLoading(true);
-    setNetStatusMsg("");
     try {
       const action = hotspotActive ? "stop" : "start";
       const res = await fetch("/api/network/hotspot", {
@@ -150,11 +153,11 @@ function SettingsPanel() {
         body: JSON.stringify({ action, ifname: hotspotIface, ssid: hotspotSsid, password: hotspotPassword, sudoerPassword }),
       });
       const data = await res.json();
-      setNetStatusMsg(data.message);
+      toast({ description: data.message });
       await fetchHotspotStatus();
       await fetchDeviceStatus();
     } catch (err) {
-      setNetStatusMsg(`Error: ${err instanceof Error ? err.message : String(err)}`);
+      toast({ variant: "destructive", description: `Error: ${err instanceof Error ? err.message : String(err)}` });
     } finally {
       setHotspotLoading(false);
     }
@@ -165,7 +168,6 @@ function SettingsPanel() {
     const ssid = isHidden ? hiddenSsid : selectedNetwork?.ssid;
     if (!ssid || !connectIface) return;
     setConnecting(true);
-    setNetStatusMsg("");
     try {
       const res = await fetch("/api/network/connect", {
         method: "POST",
@@ -173,7 +175,7 @@ function SettingsPanel() {
         body: JSON.stringify({ ssid, password: connectPassword, ifname: connectIface, hidden: isHidden, sudoerPassword }),
       });
       const data = await res.json();
-      setNetStatusMsg(data.message);
+      toast({ description: data.message, variant: data.success ? "default" : "destructive" });
       if (data.success) {
         setConnectDialogOpen(false);
         setConnectPassword("");
@@ -184,7 +186,7 @@ function SettingsPanel() {
         await scanNetworks();
       }
     } catch (err) {
-      setNetStatusMsg(`Error: ${err instanceof Error ? err.message : String(err)}`);
+      toast({ variant: "destructive", description: `Error: ${err instanceof Error ? err.message : String(err)}` });
     } finally {
       setConnecting(false);
     }
@@ -193,7 +195,6 @@ function SettingsPanel() {
   // Disconnect interface
   const disconnectDevice = async (ifname: string) => {
     setDisconnecting(true);
-    setNetStatusMsg("");
     try {
       const res = await fetch("/api/network/disconnect", {
         method: "POST",
@@ -201,11 +202,11 @@ function SettingsPanel() {
         body: JSON.stringify({ ifname, sudoerPassword }),
       });
       const data = await res.json();
-      setNetStatusMsg(data.message);
+      toast({ description: data.message });
       await fetchDeviceStatus();
       await fetchHotspotStatus();
     } catch (err) {
-      setNetStatusMsg(`Error: ${err instanceof Error ? err.message : String(err)}`);
+      toast({ variant: "destructive", description: `Error: ${err instanceof Error ? err.message : String(err)}` });
     } finally {
       setDisconnecting(false);
     }
@@ -258,222 +259,229 @@ function SettingsPanel() {
 
 
   return (
-    <div className="max-w-3xl space-y-6">
-      {/* ══ 1. NETWORK — interface, credentials, device status ══ */}
-      <section className="space-y-3">
-        <h3 className={sectionHeaderClass}>Network</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div className="flex flex-col gap-1">
-            <Label className="text-xs font-semibold">
-              WiFi Interface&nbsp;
-              <PopoverHelper text="Select which WiFi interface to use for scanning. 'Auto' picks the first available." />
-            </Label>
-            <select
-              className={inputClass}
-              value={settings.wifiInterface || ""}
-              onChange={(e) => updateSettings({ wifiInterface: e.target.value })}
-            >
-              <option value="">Auto</option>
-              {wifiInterfaces.map((iface) => (
-                <option key={iface} value={iface}>{iface}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label className="text-xs font-semibold">
-              sudo Password&nbsp;
-              <PopoverHelper text="Enter the sudo password: required on macOS or Linux." />
-            </Label>
-            <PasswordInput
-              value={settings.sudoerPassword}
-              onChange={(e) => updateSettings({ sudoerPassword: e })}
-            />
-          </div>
-        </div>
-        {/* Device status */}
-        {netStatusMsg && (
-          <div className="text-sm px-3 py-2 rounded-sm bg-blue-50 border border-blue-200 text-blue-800">
-            {netStatusMsg}
-          </div>
-        )}
-        {wifiDevices.length > 0 && (
-          <div className="space-y-1">
-            {wifiDevices.map((d) => (
-              <div key={d.device} className="flex items-center justify-between text-sm border border-gray-200 rounded-sm px-3 py-2">
-                <div className="flex items-center gap-2">
-                  {d.state.includes("connected") ? (
-                    <Wifi className="w-3.5 h-3.5 text-green-600" />
-                  ) : (
-                    <WifiOff className="w-3.5 h-3.5 text-gray-400" />
+    <div className="max-w-3xl">
+      <Tabs.Root defaultValue="network">
+        <Tabs.List className="flex gap-1 mb-4">
+          <Tabs.Trigger value="network" className={subTabClass}>Network</Tabs.Trigger>
+          <Tabs.Trigger value="survey" className={subTabClass}>Survey</Tabs.Trigger>
+          <Tabs.Trigger value="display" className={subTabClass}>Display</Tabs.Trigger>
+        </Tabs.List>
+
+        {/* ═══ NETWORK TAB ═══ */}
+        <Tabs.Content value="network" className="space-y-4">
+          {/* Devices */}
+          <Accordion type="multiple" defaultValue={["devices"]} className="w-full">
+            <AccordionItem value="devices" className="border-gray-200">
+              <AccordionTrigger className="text-sm font-semibold text-gray-700 py-2 hover:no-underline">Devices</AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-3">
+                  {wifiDevices.length > 0 && (
+                    <div className="space-y-1">
+                      {wifiDevices.map((d) => (
+                        <div key={d.device} className="flex items-center justify-between text-sm border border-gray-200 rounded-sm px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            {d.state.includes("connected") ? (
+                              <Wifi className="w-3.5 h-3.5 text-green-600" />
+                            ) : (
+                              <WifiOff className="w-3.5 h-3.5 text-gray-400" />
+                            )}
+                            <span className="font-mono text-xs">{d.device}</span>
+                            <span className="text-gray-500">
+                              {d.connection ? `\u2014 ${d.connection}` : "\u2014 disconnected"}
+                            </span>
+                          </div>
+                          {d.state.includes("connected") && d.connection && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={disconnecting}
+                              onClick={() => disconnectDevice(d.device)}
+                              className="text-xs text-red-500 hover:text-red-700 h-7"
+                            >
+                              Disconnect
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   )}
-                  <span className="font-mono text-xs">{d.device}</span>
-                  <span className="text-gray-500">
-                    {d.connection ? `\u2014 ${d.connection}` : "\u2014 disconnected"}
-                  </span>
-                </div>
-                {d.state.includes("connected") && d.connection && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={disconnecting}
-                    onClick={() => disconnectDevice(d.device)}
-                    className="text-xs text-red-500 hover:text-red-700 h-7"
-                  >
-                    Disconnect
+                  {wifiDevices.length === 0 && (
+                    <p className="text-sm text-gray-500">No WiFi devices detected.</p>
+                  )}
+                  <Button variant="outline" size="sm" onClick={() => { fetchDeviceStatus(); fetchInterfaces(); }}>
+                    <RefreshCw className="w-3 h-3 mr-1" />
+                    Refresh
                   </Button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-        <Button variant="outline" size="sm" onClick={() => { fetchDeviceStatus(); fetchInterfaces(); }}>
-          <RefreshCw className="w-3 h-3 mr-1" />
-          Refresh
-        </Button>
-      </section>
-
-      {/* ══ 2. HOTSPOT ══ */}
-      <section className="space-y-3">
-        <h3 className={sectionHeaderClass}>
-          Hotspot&nbsp;
-          <PopoverHelper text="Create a WiFi hotspot so clients can connect directly to this device for surveying without an external network." />
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div className="flex flex-col gap-1">
-            <Label className="text-xs font-semibold">
-              Interface&nbsp;
-              <PopoverHelper text="Select which WiFi adapter to use for the hotspot." />
-            </Label>
-            <select
-              className={inputClass}
-              value={hotspotIface}
-              onChange={(e) => setHotspotIface(e.target.value)}
-              disabled={hotspotActive}
-            >
-              {wifiInterfaces.map((iface) => (
-                <option key={iface} value={iface}>{iface}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label className="text-xs font-semibold">SSID</Label>
-            <Input
-              type="text"
-              className={inputClass}
-              value={hotspotSsid}
-              onChange={(e) => setHotspotSsid(e.target.value)}
-              placeholder="BlckIT-Survey"
-              disabled={hotspotActive}
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label className="text-xs font-semibold">
-              Password (min 8 characters)&nbsp;
-              <PopoverHelper text="WPA2 password for the hotspot. Must be at least 8 characters." />
-            </Label>
-            <PasswordInput
-              value={hotspotPassword}
-              onChange={(val) => setHotspotPassword(val)}
-            />
-          </div>
-          <div className="flex items-end gap-3 pb-0.5">
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={hotspotActive}
-                onCheckedChange={toggleHotspot}
-                disabled={hotspotLoading || (!hotspotActive && (hotspotPassword.length < 8 || !hotspotSsid))}
-                aria-label="Toggle hotspot"
-              />
-              <span className="text-sm">
-                {hotspotLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin inline" />
-                ) : hotspotActive ? (
-                  <span className="text-green-600 font-medium">Active</span>
-                ) : (
-                  <span className="text-gray-500">Inactive</span>
-                )}
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ══ 3. WIFI CONNECT ══ */}
-      <section className="space-y-3">
-        <h3 className={sectionHeaderClass}>
-          WiFi Connect&nbsp;
-          <PopoverHelper text="Connect this device to an existing WiFi network. Useful for providing internet access or connecting to a specific survey network." />
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div className="flex flex-col gap-1">
-            <Label className="text-xs font-semibold">Interface</Label>
-            <select
-              className={inputClass}
-              value={connectIface}
-              onChange={(e) => setConnectIface(e.target.value)}
-            >
-              {wifiInterfaces.map((iface) => (
-                <option key={iface} value={iface}>{iface}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={scanNetworks} disabled={scanning || !connectIface}>
-            {scanning ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-1" />}
-            Scan
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setIsHidden(true);
-              setSelectedNetwork(null);
-              setConnectPassword("");
-              setHiddenSsid("");
-              setConnectDialogOpen(true);
-            }}
-          >
-            Hidden Network
-          </Button>
-        </div>
-        {scannedNetworks.length > 0 && (
-          <div className="space-y-1 max-h-64 overflow-y-auto">
-            {scannedNetworks.map((net) => (
-              <div
-                key={net.ssid}
-                className={`flex items-center justify-between text-sm border rounded-sm px-3 py-2 cursor-pointer hover:bg-gray-50 ${
-                  net.currentSSID ? "border-green-300 bg-green-50" : "border-gray-200"
-                }`}
-                onClick={() => {
-                  if (!net.currentSSID) {
-                    setSelectedNetwork(net);
-                    setIsHidden(false);
-                    setConnectPassword("");
-                    setConnectDialogOpen(true);
-                  }
-                }}
-              >
-                <div className="flex items-center gap-2">
-                  {net.currentSSID && <Wifi className="w-3 h-3 text-green-600" />}
-                  <span className={net.currentSSID ? "font-medium" : ""}>{net.ssid}</span>
-                  {signalBars(net.signalStrength)}
-                  <span className="text-xs text-gray-400">ch{net.channel}</span>
-                  <span className="text-xs text-gray-400">{net.security}</span>
                 </div>
-                {net.currentSSID ? (
-                  <span className="text-xs text-green-600 font-medium">Connected</span>
-                ) : (
-                  <span className="text-xs text-blue-500">Connect</span>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-        {scannedNetworks.length === 0 && !scanning && connectIface && (
-          <p className="text-sm text-gray-500">No networks found. Click Scan to search.</p>
-        )}
-      </section>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="hotspot" className="border-gray-200">
+              <AccordionTrigger className="text-sm font-semibold text-gray-700 py-2 hover:no-underline">
+                Hotspot
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-xs font-semibold">
+                      Interface&nbsp;
+                      <PopoverHelper text="Select which WiFi adapter to use for the hotspot." />
+                    </Label>
+                    <select
+                      className={inputClass}
+                      value={hotspotIface}
+                      onChange={(e) => setHotspotIface(e.target.value)}
+                      disabled={hotspotActive}
+                    >
+                      {wifiInterfaces.map((iface) => (
+                        <option key={iface} value={iface}>{iface}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-xs font-semibold">SSID</Label>
+                    <Input
+                      type="text"
+                      className={inputClass}
+                      value={hotspotSsid}
+                      onChange={(e) => setHotspotSsid(e.target.value)}
+                      placeholder="BlckIT-Survey"
+                      disabled={hotspotActive}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-xs font-semibold">
+                      Password (min 8 characters)&nbsp;
+                      <PopoverHelper text="WPA2 password for the hotspot. Must be at least 8 characters." />
+                    </Label>
+                    <PasswordInput
+                      value={hotspotPassword}
+                      onChange={(val) => setHotspotPassword(val)}
+                    />
+                  </div>
+                  <div className="flex items-end gap-3 pb-0.5">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={hotspotActive}
+                        onCheckedChange={toggleHotspot}
+                        disabled={hotspotLoading || (!hotspotActive && (hotspotPassword.length < 8 || !hotspotSsid))}
+                        aria-label="Toggle hotspot"
+                      />
+                      <span className="text-sm">
+                        {hotspotLoading ? (
+                          <Loader2 className="w-4 h-4 animate-spin inline" />
+                        ) : hotspotActive ? (
+                          <span className="text-green-600 font-medium">Active</span>
+                        ) : (
+                          <span className="text-gray-500">Inactive</span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="wifi-connect" className="border-gray-200">
+              <AccordionTrigger className="text-sm font-semibold text-gray-700 py-2 hover:no-underline">
+                WiFi Connect
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="flex flex-col gap-1">
+                      <Label className="text-xs font-semibold">Interface</Label>
+                      <select
+                        className={inputClass}
+                        value={connectIface}
+                        onChange={(e) => setConnectIface(e.target.value)}
+                      >
+                        {wifiInterfaces.map((iface) => (
+                          <option key={iface} value={iface}>{iface}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={scanNetworks} disabled={scanning || !connectIface}>
+                      {scanning ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-1" />}
+                      Scan
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setIsHidden(true);
+                        setSelectedNetwork(null);
+                        setConnectPassword("");
+                        setHiddenSsid("");
+                        setConnectDialogOpen(true);
+                      }}
+                    >
+                      Hidden Network
+                    </Button>
+                  </div>
+                  {scannedNetworks.length > 0 && (
+                    <div className="space-y-1 max-h-64 overflow-y-auto">
+                      {scannedNetworks.map((net) => (
+                        <div
+                          key={net.ssid}
+                          className={`flex items-center justify-between text-sm border rounded-sm px-3 py-2 cursor-pointer hover:bg-gray-50 ${
+                            net.currentSSID ? "border-green-300 bg-green-50" : "border-gray-200"
+                          }`}
+                          onClick={() => {
+                            if (!net.currentSSID) {
+                              setSelectedNetwork(net);
+                              setIsHidden(false);
+                              setConnectPassword("");
+                              setConnectDialogOpen(true);
+                            }
+                          }}
+                        >
+                          <div className="flex items-center gap-2">
+                            {net.currentSSID && <Wifi className="w-3 h-3 text-green-600" />}
+                            <span className={net.currentSSID ? "font-medium" : ""}>{net.ssid}</span>
+                            {signalBars(net.signalStrength)}
+                            <span className="text-xs text-gray-400">ch{net.channel}</span>
+                            <span className="text-xs text-gray-400">{net.security}</span>
+                          </div>
+                          {net.currentSSID ? (
+                            <span className="text-xs text-green-600 font-medium">Connected</span>
+                          ) : (
+                            <span className="text-xs text-blue-500">Connect</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {scannedNetworks.length === 0 && !scanning && connectIface && (
+                    <p className="text-sm text-gray-500">No networks found. Click Scan to search.</p>
+                  )}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="credentials" className="border-gray-200">
+              <AccordionTrigger className="text-sm font-semibold text-gray-700 py-2 hover:no-underline">
+                Credentials
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-xs font-semibold">
+                      sudo Password&nbsp;
+                      <PopoverHelper text="Enter the sudo password: required on macOS or Linux." />
+                    </Label>
+                    <PasswordInput
+                      value={settings.sudoerPassword}
+                      onChange={(e) => updateSettings({ sudoerPassword: e })}
+                    />
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </Tabs.Content>
 
       {/* WiFi Connect Dialog */}
       <Dialog open={connectDialogOpen} onOpenChange={setConnectDialogOpen}>
@@ -531,126 +539,138 @@ function SettingsPanel() {
         </DialogContent>
       </Dialog>
 
-      {/* ══ 4. SURVEY — iperf, target SSID, test duration, AP mapping ══ */}
-      <section className="space-y-3">
-        <h3 className={sectionHeaderClass}>
-          Survey&nbsp;
-          <PopoverHelper text="Configure how measurements are taken: iperf server, test duration, target network, and AP name mapping." />
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div className="flex flex-col gap-1">
-            <Label className="text-xs font-semibold">
-              iperf Server&nbsp;
-              <PopoverHelper text="Address of an iperf3 server (e.g., 192.168.1.10 or 192.168.1.10:5201). Port 5201 is used by default. Set to 'localhost' to skip iperf tests." />
-            </Label>
-            <Input
-              type="text"
-              placeholder="192.168.1.10"
-              className={inputClass}
-              value={settings.iperfServerAdrs}
-              onChange={(e) => updateSettings({ iperfServerAdrs: e.target.value.trim() })}
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label className="text-xs font-semibold">
-              Test Duration (seconds)&nbsp;
-              <PopoverHelper text="Duration of each iperf3 test in seconds." />
-            </Label>
-            <input
-              type="number"
-              min={1}
-              max={60}
-              className={inputClass}
-              value={settings.testDuration}
-              onChange={(e) => updateSettings({ testDuration: Math.max(1, Math.min(60, parseInt(e.target.value) || 1)) })}
-            />
-          </div>
-          <div className="flex flex-col gap-1 md:col-span-2">
-            <Label className="text-xs font-semibold">
-              Target SSID&nbsp;
-              <PopoverHelper text="If set, measure signal strength for this SSID instead of the connected network. Useful for passive scanning of a specific network." />
-            </Label>
-            <Input
-              type="text"
-              placeholder="Leave empty to use connected network"
-              className={inputClass}
-              value={settings.targetSSID || ""}
-              onChange={(e) => updateSettings({ targetSSID: e.target.value.trim() })}
-            />
-          </div>
-        </div>
-
-        {/* Advanced: iperf commands + AP mapping */}
-        <Accordion type="multiple" className="w-full">
-          <AccordionItem value="iperf-commands" className="border-gray-200">
-            <AccordionTrigger className="text-xs font-semibold text-gray-600 py-2 hover:no-underline">
-              Advanced iperf Commands
-            </AccordionTrigger>
-            <AccordionContent>
-              <div className="space-y-3">
-                <div className="flex flex-col gap-1">
-                  <Label className="text-xs font-semibold">TCP Download</Label>
-                  <Input
-                    type="text"
-                    className={inputClass + " font-mono"}
-                    value={settings.iperfCommands?.tcpDownload || ""}
-                    onChange={(e) => debouncedUpdate({ iperfCommands: { ...settings.iperfCommands, tcpDownload: e.target.value } })}
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <Label className="text-xs font-semibold">TCP Upload</Label>
-                  <Input
-                    type="text"
-                    className={inputClass + " font-mono"}
-                    value={settings.iperfCommands?.tcpUpload || ""}
-                    onChange={(e) => debouncedUpdate({ iperfCommands: { ...settings.iperfCommands, tcpUpload: e.target.value } })}
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <Label className="text-xs font-semibold">
-                    UDP Download&nbsp;
-                    <PopoverHelper text="The -b 100M bitrate is a safe default. Increase to -b 300M or higher for faster networks." />
-                  </Label>
-                  <Input
-                    type="text"
-                    className={inputClass + " font-mono"}
-                    value={settings.iperfCommands?.udpDownload || ""}
-                    onChange={(e) => debouncedUpdate({ iperfCommands: { ...settings.iperfCommands, udpDownload: e.target.value } })}
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <Label className="text-xs font-semibold">
-                    UDP Upload&nbsp;
-                    <PopoverHelper text="The -b 100M bitrate is a safe default. Increase to -b 300M or higher for faster networks." />
-                  </Label>
-                  <Input
-                    type="text"
-                    className={inputClass + " font-mono"}
-                    value={settings.iperfCommands?.udpUpload || ""}
-                    onChange={(e) => debouncedUpdate({ iperfCommands: { ...settings.iperfCommands, udpUpload: e.target.value } })}
-                  />
-                </div>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-          <AccordionItem value="ap-mapping" className="border-gray-200">
-            <AccordionTrigger className="text-xs font-semibold text-gray-600 py-2 hover:no-underline">
-              AP Mapping
-            </AccordionTrigger>
-            <AccordionContent>
-              <EditableApMapping
-                apMapping={settings.apMapping}
-                onSave={(apMapping) => updateSettings({ apMapping })}
+      {/* ═══ SURVEY TAB ═══ */}
+        <Tabs.Content value="survey" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs font-semibold">
+                Scan Interface&nbsp;
+                <PopoverHelper text="Select which WiFi interface to use for scanning. 'Auto' picks the first available." />
+              </Label>
+              <select
+                className={inputClass}
+                value={settings.wifiInterface || ""}
+                onChange={(e) => updateSettings({ wifiInterface: e.target.value })}
+              >
+                <option value="">Auto</option>
+                {wifiInterfaces.map((iface) => (
+                  <option key={iface} value={iface}>{iface}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs font-semibold">
+                Target SSID&nbsp;
+                <PopoverHelper text="If set, measure signal strength for this SSID instead of the connected network. Useful for passive scanning of a specific network." />
+              </Label>
+              <Input
+                type="text"
+                placeholder="Leave empty to use connected network"
+                className={inputClass}
+                value={settings.targetSSID || ""}
+                onChange={(e) => updateSettings({ targetSSID: e.target.value.trim() })}
               />
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      </section>
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs font-semibold">
+                iperf Server&nbsp;
+                <PopoverHelper text="Address of an iperf3 server (e.g., 192.168.1.10 or 192.168.1.10:5201). Port 5201 is used by default. Set to 'localhost' to skip iperf tests." />
+              </Label>
+              <Input
+                type="text"
+                placeholder="192.168.1.10"
+                className={inputClass}
+                value={settings.iperfServerAdrs}
+                onChange={(e) => updateSettings({ iperfServerAdrs: e.target.value.trim() })}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs font-semibold">
+                Test Duration (seconds)&nbsp;
+                <PopoverHelper text="Duration of each iperf3 test in seconds." />
+              </Label>
+              <input
+                type="number"
+                min={1}
+                max={60}
+                className={inputClass}
+                value={settings.testDuration}
+                onChange={(e) => updateSettings({ testDuration: Math.max(1, Math.min(60, parseInt(e.target.value) || 1)) })}
+              />
+            </div>
+          </div>
 
-      {/* ══ 5. VISUALIZATION — heatmap + gradient ══ */}
-      <section className="space-y-3">
-        <h3 className={sectionHeaderClass}>Visualization</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <Accordion type="multiple" className="w-full">
+            <AccordionItem value="iperf-commands" className="border-gray-200">
+              <AccordionTrigger className="text-xs font-semibold text-gray-600 py-2 hover:no-underline">
+                Advanced iperf Commands
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-3">
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-xs font-semibold">TCP Download</Label>
+                    <Input
+                      type="text"
+                      className={inputClass + " font-mono"}
+                      value={settings.iperfCommands?.tcpDownload || ""}
+                      onChange={(e) => debouncedUpdate({ iperfCommands: { ...settings.iperfCommands, tcpDownload: e.target.value } })}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-xs font-semibold">TCP Upload</Label>
+                    <Input
+                      type="text"
+                      className={inputClass + " font-mono"}
+                      value={settings.iperfCommands?.tcpUpload || ""}
+                      onChange={(e) => debouncedUpdate({ iperfCommands: { ...settings.iperfCommands, tcpUpload: e.target.value } })}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-xs font-semibold">
+                      UDP Download&nbsp;
+                      <PopoverHelper text="The -b 100M bitrate is a safe default. Increase to -b 300M or higher for faster networks." />
+                    </Label>
+                    <Input
+                      type="text"
+                      className={inputClass + " font-mono"}
+                      value={settings.iperfCommands?.udpDownload || ""}
+                      onChange={(e) => debouncedUpdate({ iperfCommands: { ...settings.iperfCommands, udpDownload: e.target.value } })}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-xs font-semibold">
+                      UDP Upload&nbsp;
+                      <PopoverHelper text="The -b 100M bitrate is a safe default. Increase to -b 300M or higher for faster networks." />
+                    </Label>
+                    <Input
+                      type="text"
+                      className={inputClass + " font-mono"}
+                      value={settings.iperfCommands?.udpUpload || ""}
+                      onChange={(e) => debouncedUpdate({ iperfCommands: { ...settings.iperfCommands, udpUpload: e.target.value } })}
+                    />
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="ap-mapping" className="border-gray-200">
+              <AccordionTrigger className="text-xs font-semibold text-gray-600 py-2 hover:no-underline">
+                AP Mapping
+              </AccordionTrigger>
+              <AccordionContent>
+                <EditableApMapping
+                  apMapping={settings.apMapping}
+                  onSave={(apMapping) => updateSettings({ apMapping })}
+                />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </Tabs.Content>
+
+        {/* ═══ DISPLAY TAB ═══ */}
+        <Tabs.Content value="display" className="space-y-4">
+          <section className="space-y-3">
+            <h3 className={sectionHeaderClass}>Heatmap</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div className="flex flex-col gap-1">
             <Label className="text-xs font-semibold">
               Min Opacity&nbsp;
@@ -784,9 +804,8 @@ function SettingsPanel() {
         </div>
       </section>
 
-      {/* ══ 6. WALL EDITOR ══ */}
-      <section className="space-y-3">
-        <h3 className={sectionHeaderClass}>Wall Editor</h3>
+          <section className="space-y-3">
+            <h3 className={sectionHeaderClass}>Wall Editor</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="flex flex-col gap-1">
             <Label className="text-xs font-semibold">
@@ -803,29 +822,30 @@ function SettingsPanel() {
             />
           </div>
         </div>
-      </section>
+          </section>
 
-      {/* ══ 7. RESET ══ */}
-      <section className="pt-4 border-t border-gray-200">
-        <Button variant="destructive" size="sm" onClick={() => {
-          const defaults = getDefaults(settings.floorplanImageName);
-          updateSettings({
-            maxOpacity: defaults.maxOpacity,
-            minOpacity: defaults.minOpacity,
-            blur: defaults.blur,
-            gradient: defaults.gradient,
-            iperfCommands: defaults.iperfCommands,
-            iperfServerAdrs: defaults.iperfServerAdrs,
-            testDuration: defaults.testDuration,
-            wifiInterface: defaults.wifiInterface,
-            targetSSID: "",
-            snapRadius: defaults.snapRadius,
-            sudoerPassword: "",
-          });
-        }}>
-          Reset Settings to Defaults
-        </Button>
-      </section>
+          <section className="pt-4 border-t border-gray-200">
+            <Button variant="destructive" size="sm" onClick={() => {
+              const defaults = getDefaults(settings.floorplanImageName);
+              updateSettings({
+                maxOpacity: defaults.maxOpacity,
+                minOpacity: defaults.minOpacity,
+                blur: defaults.blur,
+                gradient: defaults.gradient,
+                iperfCommands: defaults.iperfCommands,
+                iperfServerAdrs: defaults.iperfServerAdrs,
+                testDuration: defaults.testDuration,
+                wifiInterface: defaults.wifiInterface,
+                targetSSID: "",
+                snapRadius: defaults.snapRadius,
+                sudoerPassword: "",
+              });
+            }}>
+              Reset Settings to Defaults
+            </Button>
+          </section>
+        </Tabs.Content>
+      </Tabs.Root>
     </div>
   );
 }

@@ -1,21 +1,46 @@
 import { NextResponse, NextRequest } from "next/server";
-import { execAsync } from "@/lib/server-utils";
 import os from "os";
+import { execFile } from "child_process";
+import { promisify } from "util";
 
-/** Sanitize a string for safe shell usage — allow only alphanumeric, dash, underscore, dot */
+const execFileAsync = promisify(execFile);
+
+/** Sanitize interface name — allow only alphanumeric, dash, underscore, dot */
 function sanitize(input: string): string {
   return input.replace(/[^a-zA-Z0-9_.\-]/g, "");
 }
 
-/** Sanitize passphrase — allow printable ASCII minus shell-dangerous chars */
-function sanitizePassphrase(input: string): string {
-  return input.replace(/[`$\\;"'!&|<>(){}]/g, "");
-}
-
-/** Build sudo prefix using piped password, matching existing app pattern */
-function sudoPrefix(sudoerPassword: string): string {
-  const escaped = sudoerPassword.replace(/'/g, "'\\''");
-  return `echo '${escaped}' | sudo -S `;
+/**
+ * Run nmcli with sudo via execFile (no shell interpolation).
+ * Password is piped to sudo stdin safely.
+ */
+async function sudoNmcli(
+  sudoerPassword: string,
+  args: string[],
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const child = execFile(
+      "sudo",
+      ["-S", "nmcli", ...args],
+      { timeout: 30000 },
+      (error, stdout, stderr) => {
+        if (error) {
+          // Extract useful message from stderr (skip sudo password prompt)
+          const msg = stderr
+            .split("\n")
+            .filter((l) => !l.includes("[sudo]") && l.trim())
+            .join(" ")
+            .trim();
+          reject(new Error(msg || error.message));
+        } else {
+          resolve(stdout.trimEnd());
+        }
+      },
+    );
+    // Pipe sudo password to stdin
+    child.stdin?.write(sudoerPassword + "\n");
+    child.stdin?.end();
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -29,7 +54,6 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { ssid, password, ifname, hidden, sudoerPassword } = body;
-    const sudo = sudoPrefix(sudoerPassword || "");
 
     if (!sudoerPassword) {
       return NextResponse.json(
@@ -40,40 +64,48 @@ export async function POST(request: NextRequest) {
 
     if (!ssid || !ifname) {
       return NextResponse.json(
-        { success: false, message: "ssid and ifname are required." },
+        { success: false, message: "SSID and interface are required." },
         { status: 400 },
       );
     }
 
     const safeIfname = sanitize(ifname);
-    const safeSsid = sanitize(ssid);
-    const safePassword = password ? sanitizePassphrase(password) : "";
 
     if (hidden) {
       // For hidden networks: create connection profile then activate
-      const addCmd = safePassword
-        ? `${sudo}nmcli connection add type wifi ifname ${safeIfname} con-name '${safeSsid}' ssid '${safeSsid}' wifi.hidden yes wifi-sec.key-mgmt wpa-psk wifi-sec.psk '${safePassword}'`
-        : `${sudo}nmcli connection add type wifi ifname ${safeIfname} con-name '${safeSsid}' ssid '${safeSsid}' wifi.hidden yes`;
-
-      await execAsync(addCmd);
-      await execAsync(`${sudo}nmcli connection up '${safeSsid}'`);
+      const addArgs = [
+        "connection", "add",
+        "type", "wifi",
+        "ifname", safeIfname,
+        "con-name", ssid,
+        "ssid", ssid,
+        "wifi.hidden", "yes",
+      ];
+      if (password) {
+        addArgs.push("wifi-sec.key-mgmt", "wpa-psk", "wifi-sec.psk", password);
+      }
+      await sudoNmcli(sudoerPassword, addArgs);
+      await sudoNmcli(sudoerPassword, ["connection", "up", ssid]);
     } else {
       // For visible networks: direct connect
-      const cmd = safePassword
-        ? `${sudo}nmcli device wifi connect '${safeSsid}' password '${safePassword}' ifname ${safeIfname}`
-        : `${sudo}nmcli device wifi connect '${safeSsid}' ifname ${safeIfname}`;
-
-      await execAsync(cmd);
+      const connectArgs = [
+        "device", "wifi", "connect", ssid,
+        "ifname", safeIfname,
+      ];
+      if (password) {
+        connectArgs.push("password", password);
+      }
+      await sudoNmcli(sudoerPassword, connectArgs);
     }
 
     return NextResponse.json({
       success: true,
-      message: `Connected to "${safeSsid}" via ${safeIfname}.`,
+      message: `Connected to "${ssid}" via ${safeIfname}.`,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json(
-      { success: false, message: `Connection error: ${message}` },
+      { success: false, message: message },
       { status: 500 },
     );
   }

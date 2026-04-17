@@ -1,16 +1,38 @@
 import { NextResponse, NextRequest } from "next/server";
-import { execAsync } from "@/lib/server-utils";
 import os from "os";
+import { execFile } from "child_process";
 
-/** Sanitize a string for safe shell usage */
+/** Sanitize interface name */
 function sanitize(input: string): string {
   return input.replace(/[^a-zA-Z0-9_.\-]/g, "");
 }
 
-/** Build sudo prefix using piped password, matching existing app pattern */
-function sudoPrefix(sudoerPassword: string): string {
-  const escaped = sudoerPassword.replace(/'/g, "'\\''");
-  return `echo '${escaped}' | sudo -S `;
+/** Run nmcli with sudo — password piped to stdin, no shell */
+async function sudoNmcli(
+  sudoerPassword: string,
+  args: string[],
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const child = execFile(
+      "sudo",
+      ["-S", "nmcli", ...args],
+      { timeout: 30000 },
+      (error, stdout, stderr) => {
+        if (error) {
+          const msg = stderr
+            .split("\n")
+            .filter((l) => !l.includes("[sudo]") && l.trim())
+            .join(" ")
+            .trim();
+          reject(new Error(msg || error.message));
+        } else {
+          resolve(stdout.trimEnd());
+        }
+      },
+    );
+    child.stdin?.write(sudoerPassword + "\n");
+    child.stdin?.end();
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -24,7 +46,6 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { ifname, sudoerPassword } = body;
-    const sudo = sudoPrefix(sudoerPassword || "");
 
     if (!sudoerPassword) {
       return NextResponse.json(
@@ -35,13 +56,13 @@ export async function POST(request: NextRequest) {
 
     if (!ifname) {
       return NextResponse.json(
-        { success: false, message: "ifname is required." },
+        { success: false, message: "Interface name is required." },
         { status: 400 },
       );
     }
 
     const safeIfname = sanitize(ifname);
-    await execAsync(`${sudo}nmcli device disconnect ${safeIfname}`);
+    await sudoNmcli(sudoerPassword, ["device", "disconnect", safeIfname]);
 
     return NextResponse.json({
       success: true,
@@ -50,7 +71,7 @@ export async function POST(request: NextRequest) {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json(
-      { success: false, message: `Disconnect error: ${message}` },
+      { success: false, message: message },
       { status: 500 },
     );
   }
