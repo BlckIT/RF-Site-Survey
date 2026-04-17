@@ -12,6 +12,13 @@ function sanitizePassphrase(input: string): string {
   return input.replace(/[`$\\;"'!&|<>(){}]/g, "");
 }
 
+/** Build sudo prefix using piped password, matching existing app pattern */
+function sudoPrefix(sudoerPassword: string): string {
+  if (!sudoerPassword) return "sudo ";
+  const escaped = sudoerPassword.replace(/'/g, "'\\''");
+  return `echo '${escaped}' | sudo -S `;
+}
+
 export async function POST(request: NextRequest) {
   try {
     if (os.platform() !== "linux") {
@@ -22,7 +29,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { ssid, password, ifname, hidden } = body;
+    const { ssid, password, ifname, hidden, sudoerPassword } = body;
+    const sudo = sudoPrefix(sudoerPassword || "");
 
     if (!ssid || !ifname) {
       return NextResponse.json(
@@ -38,16 +46,16 @@ export async function POST(request: NextRequest) {
     if (hidden) {
       // For hidden networks: create connection profile then activate
       const addCmd = safePassword
-        ? `sudo nmcli connection add type wifi ifname ${safeIfname} con-name '${safeSsid}' ssid '${safeSsid}' wifi.hidden yes wifi-sec.key-mgmt wpa-psk wifi-sec.psk '${safePassword}'`
-        : `sudo nmcli connection add type wifi ifname ${safeIfname} con-name '${safeSsid}' ssid '${safeSsid}' wifi.hidden yes`;
+        ? `${sudo}nmcli connection add type wifi ifname ${safeIfname} con-name '${safeSsid}' ssid '${safeSsid}' wifi.hidden yes wifi-sec.key-mgmt wpa-psk wifi-sec.psk '${safePassword}'`
+        : `${sudo}nmcli connection add type wifi ifname ${safeIfname} con-name '${safeSsid}' ssid '${safeSsid}' wifi.hidden yes`;
 
       await execAsync(addCmd);
-      await execAsync(`sudo nmcli connection up '${safeSsid}'`);
+      await execAsync(`${sudo}nmcli connection up '${safeSsid}'`);
     } else {
       // For visible networks: direct connect
       const cmd = safePassword
-        ? `sudo nmcli device wifi connect '${safeSsid}' password '${safePassword}' ifname ${safeIfname}`
-        : `sudo nmcli device wifi connect '${safeSsid}' ifname ${safeIfname}`;
+        ? `${sudo}nmcli device wifi connect '${safeSsid}' password '${safePassword}' ifname ${safeIfname}`
+        : `${sudo}nmcli device wifi connect '${safeSsid}' ifname ${safeIfname}`;
 
       await execAsync(cmd);
     }

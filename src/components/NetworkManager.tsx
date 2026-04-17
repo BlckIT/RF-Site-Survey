@@ -15,6 +15,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { PasswordInput } from "@/components/PasswordInput";
+import { useSettings } from "@/components/GlobalSettings";
 import { Wifi, WifiOff, RefreshCw, Radio, Loader2 } from "lucide-react";
 
 interface NetworkDevice {
@@ -44,6 +45,9 @@ const inputClass =
   "w-full border border-gray-200 rounded-sm p-1.5 text-sm focus:outline-none focus:ring focus:ring-blue-300 focus:border-blue-400";
 
 export default function NetworkManager() {
+  const { settings } = useSettings();
+  const sudoerPassword = settings.sudoerPassword || "";
+
   // Interface state
   const [wifiInterfaces, setWifiInterfaces] = useState<string[]>([]);
   const [networkDevices, setNetworkDevices] = useState<NetworkDevice[]>([]);
@@ -150,6 +154,7 @@ export default function NetworkManager() {
           ifname: hotspotIface,
           ssid: hotspotSsid,
           password: hotspotPassword,
+          sudoerPassword,
         }),
       });
       const data = await res.json();
@@ -181,6 +186,7 @@ export default function NetworkManager() {
           password: connectPassword,
           ifname: connectIface,
           hidden: isHidden,
+          sudoerPassword,
         }),
       });
       const data = await res.json();
@@ -211,7 +217,7 @@ export default function NetworkManager() {
       const res = await fetch("/api/network/disconnect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ifname }),
+        body: JSON.stringify({ ifname, sudoerPassword }),
       });
       const data = await res.json();
       setStatusMsg(data.message);

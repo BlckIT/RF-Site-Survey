@@ -12,6 +12,13 @@ function sanitizePassphrase(input: string): string {
   return input.replace(/[`$\\;"'!&|<>(){}]/g, "");
 }
 
+/** Build sudo prefix using piped password, matching existing app pattern */
+function sudoPrefix(sudoerPassword: string): string {
+  if (!sudoerPassword) return "sudo ";
+  const escaped = sudoerPassword.replace(/'/g, "'\\''");
+  return `echo '${escaped}' | sudo -S `;
+}
+
 export async function GET(request: NextRequest) {
   try {
     if (os.platform() !== "linux") {
@@ -62,7 +69,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { action, ifname, ssid, password } = body;
+    const { action, ifname, ssid, password, sudoerPassword } = body;
+    const sudo = sudoPrefix(sudoerPassword || "");
 
     if (!action || !ifname) {
       return NextResponse.json(
@@ -91,7 +99,7 @@ export async function POST(request: NextRequest) {
       const safePassword = sanitizePassphrase(password);
 
       await execAsync(
-        `sudo nmcli device wifi hotspot ifname ${safeIfname} ssid ${safeSsid} password '${safePassword}'`,
+        `${sudo}nmcli device wifi hotspot ifname ${safeIfname} ssid ${safeSsid} password '${safePassword}'`,
       );
 
       return NextResponse.json({
@@ -101,7 +109,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "stop") {
-      await execAsync(`sudo nmcli device disconnect ${safeIfname}`);
+      await execAsync(`${sudo}nmcli device disconnect ${safeIfname}`);
       return NextResponse.json({
         success: true,
         message: `Hotspot stoppad på ${safeIfname}`,

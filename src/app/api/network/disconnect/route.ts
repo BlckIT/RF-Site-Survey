@@ -7,6 +7,13 @@ function sanitize(input: string): string {
   return input.replace(/[^a-zA-Z0-9_.\-]/g, "");
 }
 
+/** Build sudo prefix using piped password, matching existing app pattern */
+function sudoPrefix(sudoerPassword: string): string {
+  if (!sudoerPassword) return "sudo ";
+  const escaped = sudoerPassword.replace(/'/g, "'\\''");
+  return `echo '${escaped}' | sudo -S `;
+}
+
 export async function POST(request: NextRequest) {
   try {
     if (os.platform() !== "linux") {
@@ -17,7 +24,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { ifname } = body;
+    const { ifname, sudoerPassword } = body;
+    const sudo = sudoPrefix(sudoerPassword || "");
 
     if (!ifname) {
       return NextResponse.json(
@@ -27,7 +35,7 @@ export async function POST(request: NextRequest) {
     }
 
     const safeIfname = sanitize(ifname);
-    await execAsync(`sudo nmcli device disconnect ${safeIfname}`);
+    await execAsync(`${sudo}nmcli device disconnect ${safeIfname}`);
 
     return NextResponse.json({
       success: true,
