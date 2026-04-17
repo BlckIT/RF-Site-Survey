@@ -14,7 +14,6 @@ function sanitizePassphrase(input: string): string {
 
 /** Build sudo prefix using piped password, matching existing app pattern */
 function sudoPrefix(sudoerPassword: string): string {
-  if (!sudoerPassword) return "sudo ";
   const escaped = sudoerPassword.replace(/'/g, "'\\''");
   return `echo '${escaped}' | sudo -S `;
 }
@@ -31,6 +30,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { ssid, password, ifname, hidden, sudoerPassword } = body;
     const sudo = sudoPrefix(sudoerPassword || "");
+
+    if (!sudoerPassword) {
+      return NextResponse.json(
+        { success: false, message: "Sudo-lösenord krävs. Ange det under Settings." },
+        { status: 400 },
+      );
+    }
 
     if (!ssid || !ifname) {
       return NextResponse.json(
