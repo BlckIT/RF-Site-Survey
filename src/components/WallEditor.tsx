@@ -8,9 +8,13 @@ import React, {
 import { useSettings } from "./GlobalSettings";
 import { Wall, WallMaterial, MATERIAL_PRESETS } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 
 const WALL_HIT_RADIUS = 10; // px radius for detecting wall clicks (for splitting)
 const SHARED_ENDPOINT_EPSILON = 0.5; // px epsilon for detecting shared endpoints
+
+const inputClass =
+  "w-full border border-gray-200 rounded-sm p-1.5 text-sm focus:outline-none focus:ring focus:ring-blue-300 focus:border-blue-400";
 
 export default function WallEditor(): ReactNode {
   const { settings, updateSettings } = useSettings();
@@ -48,13 +52,19 @@ export default function WallEditor(): ReactNode {
 
   const isDrawing = chainPoints.length > 0;
 
-  // Load floor plan image
+  // Load floor plan image and update dimensions if needed
   useEffect(() => {
     if (settings.floorplanImagePath) {
       const img = new Image();
       img.src = settings.floorplanImagePath;
       img.onload = () => {
         imageRef.current = img;
+        // Ensure dimensions match the actual image
+        const imgW = img.naturalWidth;
+        const imgH = img.naturalHeight;
+        if (imgW !== settings.dimensions.width || imgH !== settings.dimensions.height) {
+          updateSettings({ dimensions: { width: imgW, height: imgH } });
+        }
         setImageLoaded(true);
       };
     }
@@ -650,9 +660,9 @@ export default function WallEditor(): ReactNode {
 
       {/* Active material indicator */}
       <div className="mb-4">
-        <label className="text-xs font-semibold text-gray-700">
+        <Label className="text-xs font-semibold text-gray-700">
           Active Material
-        </label>
+        </Label>
         <div className="flex items-center gap-2 mt-1">
           <div
             className="w-6 h-6 rounded border border-gray-300"
@@ -661,7 +671,7 @@ export default function WallEditor(): ReactNode {
           <select
             value={activeMaterial}
             onChange={(e) => setActiveMaterial(e.target.value as WallMaterial)}
-            className="w-full border border-gray-200 rounded-sm p-1.5 text-sm focus:outline-none focus:ring focus:ring-blue-300 focus:border-blue-400"
+            className={inputClass}
           >
             {(Object.keys(MATERIAL_PRESETS) as WallMaterial[]).map((mat) => (
               <option key={mat} value={mat}>
@@ -703,15 +713,15 @@ export default function WallEditor(): ReactNode {
           </h3>
           <div className="space-y-3">
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-gray-700">
+              <Label className="text-xs font-semibold text-gray-700">
                 Material
-              </label>
+              </Label>
               <select
                 value={selectedWall.material || "drywall"}
                 onChange={(e) =>
                   updateSelectedWallMaterial(e.target.value as WallMaterial)
                 }
-                className="w-full border border-gray-200 rounded-sm p-1.5 text-sm focus:outline-none focus:ring focus:ring-blue-300 focus:border-blue-400"
+                className={inputClass}
               >
                 {(Object.keys(MATERIAL_PRESETS) as WallMaterial[]).map(
                   (mat) => (
@@ -725,10 +735,10 @@ export default function WallEditor(): ReactNode {
 
             {selectedWall.material === "custom" && (
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-gray-700">
+                <Label className="text-xs font-semibold text-gray-700">
                   Custom Attenuation (dB):{" "}
                   {(selectedWall.customAttenuationDb ?? 5).toFixed(0)}
-                </label>
+                </Label>
                 <input
                   type="range"
                   min="0"
