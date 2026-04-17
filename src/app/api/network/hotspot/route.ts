@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
       const safePassword = sanitizePassphrase(password);
 
       await execAsync(
-        `nmcli device wifi hotspot ifname ${safeIfname} ssid ${safeSsid} password '${safePassword}'`,
+        `sudo nmcli device wifi hotspot ifname ${safeIfname} ssid ${safeSsid} password '${safePassword}'`,
       );
 
       return NextResponse.json({
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "stop") {
-      await execAsync(`nmcli device disconnect ${safeIfname}`);
+      await execAsync(`sudo nmcli device disconnect ${safeIfname}`);
       return NextResponse.json({
         success: true,
         message: `Hotspot stoppad på ${safeIfname}`,

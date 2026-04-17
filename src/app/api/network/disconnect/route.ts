@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     }
 
     const safeIfname = sanitize(ifname);
-    await execAsync(`nmcli device disconnect ${safeIfname}`);
+    await execAsync(`sudo nmcli device disconnect ${safeIfname}`);
 
     return NextResponse.json({
       success: true,

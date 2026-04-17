@@ -38,16 +38,16 @@ export async function POST(request: NextRequest) {
     if (hidden) {
       // For hidden networks: create connection profile then activate
       const addCmd = safePassword
-        ? `nmcli connection add type wifi ifname ${safeIfname} con-name '${safeSsid}' ssid '${safeSsid}' wifi.hidden yes wifi-sec.key-mgmt wpa-psk wifi-sec.psk '${safePassword}'`
-        : `nmcli connection add type wifi ifname ${safeIfname} con-name '${safeSsid}' ssid '${safeSsid}' wifi.hidden yes`;
+        ? `sudo nmcli connection add type wifi ifname ${safeIfname} con-name '${safeSsid}' ssid '${safeSsid}' wifi.hidden yes wifi-sec.key-mgmt wpa-psk wifi-sec.psk '${safePassword}'`
+        : `sudo nmcli connection add type wifi ifname ${safeIfname} con-name '${safeSsid}' ssid '${safeSsid}' wifi.hidden yes`;
 
       await execAsync(addCmd);
-      await execAsync(`nmcli connection up '${safeSsid}'`);
+      await execAsync(`sudo nmcli connection up '${safeSsid}'`);
     } else {
       // For visible networks: direct connect
       const cmd = safePassword
-        ? `nmcli device wifi connect '${safeSsid}' password '${safePassword}' ifname ${safeIfname}`
-        : `nmcli device wifi connect '${safeSsid}' ifname ${safeIfname}`;
+        ? `sudo nmcli device wifi connect '${safeSsid}' password '${safePassword}' ifname ${safeIfname}`
+        : `sudo nmcli device wifi connect '${safeSsid}' ifname ${safeIfname}`;
 
       await execAsync(cmd);
     }
