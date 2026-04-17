@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
   try {
     if (os.platform() !== "linux") {
       return NextResponse.json(
-        { success: false, message: "WiFi-anslutning stöds bara på Linux" },
+        { success: false, message: "WiFi connect is only supported on Linux." },
         { status: 400 },
       );
     }
@@ -33,14 +33,14 @@ export async function POST(request: NextRequest) {
 
     if (!sudoerPassword) {
       return NextResponse.json(
-        { success: false, message: "Sudo-lösenord krävs. Ange det under Settings." },
+        { success: false, message: "Sudo password required. Set it under Settings." },
         { status: 400 },
       );
     }
 
     if (!ssid || !ifname) {
       return NextResponse.json(
-        { success: false, message: "ssid och ifname krävs" },
+        { success: false, message: "ssid and ifname are required." },
         { status: 400 },
       );
     }
@@ -68,12 +68,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Ansluten till "${safeSsid}" via ${safeIfname}`,
+      message: `Connected to "${safeSsid}" via ${safeIfname}.`,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json(
-      { success: false, message: `Anslutningsfel: ${message}` },
+      { success: false, message: `Connection error: ${message}` },
       { status: 500 },
     );
   }

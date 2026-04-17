@@ -18,6 +18,9 @@ function sudoPrefix(sudoerPassword: string): string {
   return `echo '${escaped}' | sudo -S `;
 }
 
+/** Connection name used for the managed hotspot */
+const HOTSPOT_CON_NAME = "rf-survey-hotspot";
+
 export async function GET(request: NextRequest) {
   try {
     if (os.platform() !== "linux") {
@@ -28,31 +31,36 @@ export async function GET(request: NextRequest) {
       request.nextUrl.searchParams.get("ifname") || "wlan0",
     );
 
+    // Check if our managed hotspot connection is active on this interface
     const { stdout } = await execAsync(
-      `nmcli -t -f GENERAL.STATE,GENERAL.CONNECTION device show ${ifname}`,
+      `nmcli -t -f NAME,DEVICE,TYPE connection show --active`,
     );
 
     const lines = stdout.split("\n");
-    let connection = "";
-    let state = "";
+    let active = false;
+    let ssid = "";
 
     for (const line of lines) {
-      if (line.startsWith("GENERAL.CONNECTION:")) {
-        connection = line.split(":").slice(1).join(":").trim();
-      }
-      if (line.startsWith("GENERAL.STATE:")) {
-        state = line.split(":").slice(1).join(":").trim();
+      const parts = line.split(":");
+      if (parts[0] === HOTSPOT_CON_NAME && parts[1] === ifname) {
+        active = true;
+        break;
       }
     }
 
-    const isConnected = state.includes("100");
-    const isHotspot = connection.toLowerCase().includes("hotspot");
+    // Get SSID from the connection profile if it exists
+    if (active) {
+      try {
+        const { stdout: ssidOut } = await execAsync(
+          `nmcli -t -f 802-11-wireless.ssid connection show ${HOTSPOT_CON_NAME}`,
+        );
+        ssid = ssidOut.split(":").slice(1).join(":").trim();
+      } catch {
+        ssid = HOTSPOT_CON_NAME;
+      }
+    }
 
-    return NextResponse.json({
-      active: isConnected && isHotspot,
-      ssid: isHotspot ? connection : "",
-      ifname,
-    });
+    return NextResponse.json({ active, ssid, ifname });
   } catch {
     return NextResponse.json({ active: false, ssid: "", ifname: "" });
   }
@@ -62,25 +70,26 @@ export async function POST(request: NextRequest) {
   try {
     if (os.platform() !== "linux") {
       return NextResponse.json(
-        { success: false, message: "Hotspot stöds bara på Linux" },
+        { success: false, message: "Hotspot is only supported on Linux." },
         { status: 400 },
       );
     }
 
     const body = await request.json();
     const { action, ifname, ssid, password, sudoerPassword } = body;
-    const sudo = sudoPrefix(sudoerPassword || "");
 
     if (!sudoerPassword) {
       return NextResponse.json(
-        { success: false, message: "Sudo-lösenord krävs. Ange det under Settings." },
+        { success: false, message: "Sudo password required. Set it under Settings." },
         { status: 400 },
       );
     }
 
+    const sudo = sudoPrefix(sudoerPassword);
+
     if (!action || !ifname) {
       return NextResponse.json(
-        { success: false, message: "action och ifname krävs" },
+        { success: false, message: "action and ifname are required." },
         { status: 400 },
       );
     }
@@ -90,13 +99,13 @@ export async function POST(request: NextRequest) {
     if (action === "start") {
       if (!ssid || !password) {
         return NextResponse.json(
-          { success: false, message: "ssid och password krävs för start" },
+          { success: false, message: "SSID and password are required to start." },
           { status: 400 },
         );
       }
       if (password.length < 8) {
         return NextResponse.json(
-          { success: false, message: "Lösenord måste vara minst 8 tecken" },
+          { success: false, message: "Password must be at least 8 characters." },
           { status: 400 },
         );
       }
@@ -104,32 +113,63 @@ export async function POST(request: NextRequest) {
       const safeSsid = sanitize(ssid);
       const safePassword = sanitizePassphrase(password);
 
+      // Remove any existing hotspot connection profile to start clean
+      try {
+        await execAsync(`${sudo}nmcli connection delete ${HOTSPOT_CON_NAME}`);
+      } catch {
+        // Ignore — profile may not exist yet
+      }
+
+      // Create a persistent AP connection with power save disabled
       await execAsync(
-        `${sudo}nmcli device wifi hotspot ifname ${safeIfname} ssid ${safeSsid} password '${safePassword}'`,
+        `${sudo}nmcli connection add type wifi ifname ${safeIfname} con-name ${HOTSPOT_CON_NAME} ` +
+        `ssid ${safeSsid} ` +
+        `802-11-wireless.mode ap ` +
+        `802-11-wireless.band bg ` +
+        `802-11-wireless.powersave 2 ` +
+        `wifi-sec.key-mgmt wpa-psk ` +
+        `wifi-sec.psk '${safePassword}' ` +
+        `ipv4.method shared ` +
+        `ipv6.method disabled ` +
+        `connection.autoconnect no`,
       );
+
+      // Activate the connection
+      await execAsync(`${sudo}nmcli connection up ${HOTSPOT_CON_NAME}`);
 
       return NextResponse.json({
         success: true,
-        message: `Hotspot "${safeSsid}" startad på ${safeIfname}`,
+        message: `Hotspot "${safeSsid}" started on ${safeIfname}.`,
       });
     }
 
     if (action === "stop") {
-      await execAsync(`${sudo}nmcli device disconnect ${safeIfname}`);
+      // Deactivate and remove the connection profile
+      try {
+        await execAsync(`${sudo}nmcli connection down ${HOTSPOT_CON_NAME}`);
+      } catch {
+        // May already be down
+      }
+      try {
+        await execAsync(`${sudo}nmcli connection delete ${HOTSPOT_CON_NAME}`);
+      } catch {
+        // May already be deleted
+      }
+
       return NextResponse.json({
         success: true,
-        message: `Hotspot stoppad på ${safeIfname}`,
+        message: `Hotspot stopped on ${safeIfname}.`,
       });
     }
 
     return NextResponse.json(
-      { success: false, message: `Okänd action: ${action}` },
+      { success: false, message: `Unknown action: ${action}` },
       { status: 400 },
     );
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json(
-      { success: false, message: `Hotspot-fel: ${message}` },
+      { success: false, message: `Hotspot error: ${message}` },
       { status: 500 },
     );
   }
