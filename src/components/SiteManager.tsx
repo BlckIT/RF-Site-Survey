@@ -15,6 +15,9 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
+const inputClass =
+  "w-full border border-gray-200 rounded-sm p-1.5 text-sm focus:outline-none focus:ring focus:ring-blue-300 focus:border-blue-400";
+
 /**
  * SiteManager — site/project and floor management panel.
  * Replaces the old FloorPlanSelector with full site + multi-floor support.
@@ -104,7 +107,7 @@ export default function SiteManager() {
         </Label>
         <div className="flex items-center gap-2">
           <select
-            className="flex-1 border border-gray-200 rounded-sm p-1.5 text-sm focus:outline-none focus:ring focus:ring-blue-300 focus:border-blue-400"
+            className={`flex-1 ${inputClass}`}
             value={settings.site.name}
             onChange={(e) => {
               const val = e.target.value;
@@ -155,15 +158,17 @@ export default function SiteManager() {
         </Label>
         <div className="flex items-center gap-1 flex-wrap">
           {settings.site.floors.map((floor, idx) => (
-            <button
+            <Button
               key={idx}
+              variant="outline"
+              size="sm"
               onClick={() => setActiveFloor(idx)}
               onDoubleClick={() => {
                 setRenameFloorIndex(idx);
                 setNewName(floor.name);
                 setShowRenameFloorDialog(true);
               }}
-              className={`px-3 py-1.5 text-sm rounded-t-md border border-b-0 transition-colors ${
+              className={`px-3 py-1.5 text-sm rounded-t-md border-b-0 h-auto ${
                 idx === settings.site.activeFloorIndex
                   ? "bg-white font-semibold border-gray-400 text-black"
                   : "bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-50"
@@ -171,7 +176,7 @@ export default function SiteManager() {
               title={`Switch to ${floor.name}. Double-click to rename.`}
             >
               {floor.name}
-            </button>
+            </Button>
           ))}
           <Button
             variant="ghost"

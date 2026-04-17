@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import { Button } from "@/components/ui/button"; // shadcn or your own button component
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 type PasswordInputProps = {
   value: string;
@@ -12,7 +13,7 @@ export function PasswordInput({ value, onChange }: PasswordInputProps) {
 
   return (
     <div className="relative w-full">
-      <input
+      <Input
         type={visible ? "text" : "password"}
         className="w-full border border-gray-200 rounded-sm p-1.5 pr-10 text-sm focus:outline-none focus:ring focus:ring-blue-300 focus:border-blue-400"
         placeholder="Enter password"

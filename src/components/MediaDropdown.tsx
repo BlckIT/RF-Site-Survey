@@ -3,6 +3,7 @@
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { pdfToImage } from "@/lib/pdfToImage";
 
 type MediaDropdownProps = {
@@ -147,7 +148,7 @@ export default function MediaDropdown({
           className="z-50 bg-white border rounded shadow-md py-1 min-w-[200px]"
         >
           <div className="px-2 pb-2">
-            <input
+            <Input
               type="text"
               placeholder="Search..."
               value={search}

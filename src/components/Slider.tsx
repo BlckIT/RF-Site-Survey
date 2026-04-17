@@ -1,5 +1,6 @@
 import React from "react";
 import { PopoverHelper } from "@/components/PopoverHelpText";
+import { Label } from "@/components/ui/label";
 import * as Slider from "@radix-ui/react-slider";
 
 interface HeatmapSliderProps {
@@ -10,10 +11,10 @@ interface HeatmapSliderProps {
 export function HeatmapSlider({ value, onChange }: HeatmapSliderProps) {
   return (
     <div className="w-64">
-      <label className="block mb-2 text-xs font-semibold text-gray-700">
+      <Label className="block mb-2 text-xs font-semibold text-gray-700">
         Radius: {[value]} &nbsp;
         <PopoverHelper text="Control how much each measured point blurs into the others. Drag to zero to reset to the automatically-calculated value. Ranges from 0 to 500." />
-      </label>
+      </Label>
 
       <Slider.Root
         className="relative flex items-center h-3 select-none touch-none w-full"

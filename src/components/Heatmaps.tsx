@@ -15,6 +15,7 @@ import { getColorAt, objectToRGBAString } from "@/lib/utils-gradient";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { HeatmapSlider } from "./Slider";
 
 import { IperfTestProperty } from "@/lib/types";
@@ -585,12 +586,12 @@ export function Heatmaps() {
                 checked={selectedMetrics.includes(metric)}
                 onCheckedChange={() => toggleMetric(metric)}
               />
-              <label
+              <Label
                 htmlFor={`metric-${metric}`}
                 className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
               >
                 {metricTitles[metric]}
-              </label>
+              </Label>
             </div>
           ))}
         </div>
@@ -610,12 +611,12 @@ export function Heatmaps() {
                   checked={selectedProperties.includes(property)}
                   onCheckedChange={() => toggleProperty(property)}
                 />
-                <label
+                <Label
                   htmlFor={`property-${property}`}
                   className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                 >
                   {propertyTitles[property]}
-                </label>
+                </Label>
               </div>
             ))}
         </div>
@@ -638,12 +639,12 @@ export function Heatmaps() {
                       checked={showSignalStrengthAsPercentage}
                       onCheckedChange={setShowSignalStrengthAsPercentage}
                     />
-                    <label
+                    <Label
                       htmlFor="signal-strength-percentage"
                       className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                     >
                       Show Signal Strength as Percentage
-                    </label>
+                    </Label>
                   </div>
                   <HeatmapImage
                     src={heatmaps[metric]}
