@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -15,8 +14,9 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { PasswordInput } from "@/components/PasswordInput";
+import { PopoverHelper } from "@/components/PopoverHelpText";
 import { useSettings } from "@/components/GlobalSettings";
-import { Wifi, WifiOff, RefreshCw, Radio, Loader2 } from "lucide-react";
+import { Wifi, WifiOff, RefreshCw, Loader2 } from "lucide-react";
 
 interface NetworkDevice {
   device: string;
@@ -40,9 +40,10 @@ interface HotspotStatus {
   ifname: string;
 }
 
-const sectionHeaderClass = "text-sm font-semibold text-gray-700 mb-2 mt-0";
 const inputClass =
   "w-full border border-gray-200 rounded-sm p-1.5 text-sm focus:outline-none focus:ring focus:ring-blue-300 focus:border-blue-400";
+
+const sectionHeaderClass = "text-sm font-semibold text-gray-700 mb-2 mt-0";
 
 export default function NetworkManager() {
   const { settings } = useSettings();
@@ -68,9 +69,7 @@ export default function NetworkManager() {
   const [scannedNetworks, setScannedNetworks] = useState<ScannedNetwork[]>([]);
   const [scanning, setScanning] = useState(false);
   const [connectDialogOpen, setConnectDialogOpen] = useState(false);
-  const [selectedNetwork, setSelectedNetwork] = useState<ScannedNetwork | null>(
-    null,
-  );
+  const [selectedNetwork, setSelectedNetwork] = useState<ScannedNetwork | null>(null);
   const [connectPassword, setConnectPassword] = useState("");
   const [connecting, setConnecting] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
@@ -162,9 +161,7 @@ export default function NetworkManager() {
       await fetchHotspotStatus();
       await fetchDeviceStatus();
     } catch (err) {
-      setStatusMsg(
-        `Fel: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      setStatusMsg(`Error: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setHotspotLoading(false);
     }
@@ -201,9 +198,7 @@ export default function NetworkManager() {
         await scanNetworks();
       }
     } catch (err) {
-      setStatusMsg(
-        `Fel: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      setStatusMsg(`Error: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setConnecting(false);
     }
@@ -224,9 +219,7 @@ export default function NetworkManager() {
       await fetchDeviceStatus();
       await fetchHotspotStatus();
     } catch (err) {
-      setStatusMsg(
-        `Fel: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      setStatusMsg(`Error: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setDisconnecting(false);
     }
@@ -246,7 +239,7 @@ export default function NetworkManager() {
     if (connectIface) scanNetworks();
   }, [connectIface, scanNetworks]);
 
-  // ── Signal strength bar helper ──
+  // ── Signal strength indicator ──
   const signalBars = (strength: number) => {
     const bars = Math.ceil(strength / 25);
     return (
@@ -254,9 +247,7 @@ export default function NetworkManager() {
         {[1, 2, 3, 4].map((i) => (
           <span
             key={i}
-            className={`inline-block w-1 rounded-sm ${
-              i <= bars ? "bg-green-500" : "bg-gray-300"
-            }`}
+            className={`inline-block w-1 rounded-sm ${i <= bars ? "bg-green-500" : "bg-gray-300"}`}
             style={{ height: `${i * 4}px` }}
           />
         ))}
@@ -264,9 +255,7 @@ export default function NetworkManager() {
     );
   };
 
-  // Find active connection for an interface
-  const getDeviceInfo = (ifname: string) =>
-    networkDevices.find((d) => d.device === ifname);
+  const wifiDevices = networkDevices.filter((d) => d.type === "wifi");
 
   return (
     <div className="space-y-6">
@@ -280,94 +269,59 @@ export default function NetworkManager() {
       {/* ── Device Status ── */}
       <section className="space-y-3">
         <h3 className={sectionHeaderClass}>
-          <span className="inline-flex items-center gap-1.5">
-            <Radio className="w-4 h-4" />
-            Nätverksstatus
-          </span>
+          Device Status&nbsp;
+          <PopoverHelper text="Shows the current state of all WiFi interfaces on this device." />
         </h3>
-        {networkDevices.length === 0 ? (
-          <p className="text-sm text-gray-500">Inga enheter hittades</p>
+        {wifiDevices.length === 0 ? (
+          <p className="text-sm text-gray-500">No WiFi devices found.</p>
         ) : (
-          <div className="border border-gray-200 rounded-sm overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 text-left">
-                  <th className="px-3 py-1.5 font-medium">Enhet</th>
-                  <th className="px-3 py-1.5 font-medium">Typ</th>
-                  <th className="px-3 py-1.5 font-medium">Status</th>
-                  <th className="px-3 py-1.5 font-medium">Anslutning</th>
-                  <th className="px-3 py-1.5 font-medium"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {networkDevices
-                  .filter((d) => d.type === "wifi")
-                  .map((d) => (
-                    <tr key={d.device} className="border-t border-gray-100">
-                      <td className="px-3 py-1.5 font-mono text-xs">
-                        {d.device}
-                      </td>
-                      <td className="px-3 py-1.5">{d.type}</td>
-                      <td className="px-3 py-1.5">
-                        <span
-                          className={`inline-flex items-center gap-1 ${
-                            d.state.includes("connected")
-                              ? "text-green-600"
-                              : "text-gray-500"
-                          }`}
-                        >
-                          {d.state.includes("connected") ? (
-                            <Wifi className="w-3 h-3" />
-                          ) : (
-                            <WifiOff className="w-3 h-3" />
-                          )}
-                          {d.state}
-                        </span>
-                      </td>
-                      <td className="px-3 py-1.5">{d.connection || "—"}</td>
-                      <td className="px-3 py-1.5">
-                        {d.state.includes("connected") && d.connection && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={disconnecting}
-                            onClick={() => disconnectIface(d.device)}
-                            className="text-xs text-red-500 hover:text-red-700"
-                          >
-                            Koppla från
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
+          <div className="space-y-2">
+            {wifiDevices.map((d) => (
+              <div key={d.device} className="flex items-center justify-between text-sm border border-gray-200 rounded-sm px-3 py-2">
+                <div className="flex items-center gap-2">
+                  {d.state.includes("connected") ? (
+                    <Wifi className="w-3.5 h-3.5 text-green-600" />
+                  ) : (
+                    <WifiOff className="w-3.5 h-3.5 text-gray-400" />
+                  )}
+                  <span className="font-mono text-xs">{d.device}</span>
+                  <span className="text-gray-500">
+                    {d.connection ? `— ${d.connection}` : "— disconnected"}
+                  </span>
+                </div>
+                {d.state.includes("connected") && d.connection && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={disconnecting}
+                    onClick={() => disconnectIface(d.device)}
+                    className="text-xs text-red-500 hover:text-red-700 h-7"
+                  >
+                    Disconnect
+                  </Button>
+                )}
+              </div>
+            ))}
           </div>
         )}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            fetchDeviceStatus();
-            fetchInterfaces();
-          }}
-        >
+        <Button variant="outline" size="sm" onClick={() => { fetchDeviceStatus(); fetchInterfaces(); }}>
           <RefreshCw className="w-3 h-3 mr-1" />
-          Uppdatera
+          Refresh
         </Button>
       </section>
 
       {/* ── Hotspot ── */}
       <section className="space-y-3">
         <h3 className={sectionHeaderClass}>
-          <span className="inline-flex items-center gap-1.5">
-            <Wifi className="w-4 h-4" />
-            Hotspot
-          </span>
+          Hotspot&nbsp;
+          <PopoverHelper text="Create a WiFi hotspot so clients can connect directly to this device for surveying without an external network." />
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="flex flex-col gap-1">
-            <Label className="text-xs font-semibold">Interface</Label>
+            <Label className="text-xs font-semibold">
+              Interface&nbsp;
+              <PopoverHelper text="Select which WiFi adapter to use for the hotspot." />
+            </Label>
             <select
               className={inputClass}
               value={hotspotIface}
@@ -375,24 +329,26 @@ export default function NetworkManager() {
               disabled={hotspotStatus.active}
             >
               {wifiInterfaces.map((iface) => (
-                <option key={iface} value={iface}>
-                  {iface}
-                </option>
+                <option key={iface} value={iface}>{iface}</option>
               ))}
             </select>
           </div>
           <div className="flex flex-col gap-1">
             <Label className="text-xs font-semibold">SSID</Label>
-            <Input
+            <input
+              type="text"
+              className={inputClass}
               value={hotspotSsid}
               onChange={(e) => setHotspotSsid(e.target.value)}
               placeholder="BlckIT-Survey"
               disabled={hotspotStatus.active}
-              className="h-8 text-sm"
             />
           </div>
           <div className="flex flex-col gap-1">
-            <Label className="text-xs font-semibold">Lösenord (min 8 tecken)</Label>
+            <Label className="text-xs font-semibold">
+              Password (min 8 characters)&nbsp;
+              <PopoverHelper text="WPA2 password for the hotspot. Must be at least 8 characters." />
+            </Label>
             <PasswordInput
               value={hotspotPassword}
               onChange={(val) => setHotspotPassword(val)}
@@ -405,18 +361,17 @@ export default function NetworkManager() {
                 onCheckedChange={toggleHotspot}
                 disabled={
                   hotspotLoading ||
-                  (!hotspotStatus.active &&
-                    (hotspotPassword.length < 8 || !hotspotSsid))
+                  (!hotspotStatus.active && (hotspotPassword.length < 8 || !hotspotSsid))
                 }
-                aria-label="Hotspot av/på"
+                aria-label="Toggle hotspot"
               />
               <span className="text-sm">
                 {hotspotLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin inline" />
                 ) : hotspotStatus.active ? (
-                  <span className="text-green-600 font-medium">Aktiv</span>
+                  <span className="text-green-600 font-medium">Active</span>
                 ) : (
-                  <span className="text-gray-500">Inaktiv</span>
+                  <span className="text-gray-500">Inactive</span>
                 )}
               </span>
             </div>
@@ -424,15 +379,13 @@ export default function NetworkManager() {
         </div>
       </section>
 
-      {/* ── WiFi-anslutning ── */}
+      {/* ── WiFi Connect ── */}
       <section className="space-y-3">
         <h3 className={sectionHeaderClass}>
-          <span className="inline-flex items-center gap-1.5">
-            <Wifi className="w-4 h-4" />
-            WiFi-anslutning
-          </span>
+          WiFi Connect&nbsp;
+          <PopoverHelper text="Connect this device to an existing WiFi network. Useful for providing internet access or connecting to a specific survey network." />
         </h3>
-        <div className="flex items-end gap-3 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="flex flex-col gap-1">
             <Label className="text-xs font-semibold">Interface</Label>
             <select
@@ -441,24 +394,15 @@ export default function NetworkManager() {
               onChange={(e) => setConnectIface(e.target.value)}
             >
               {wifiInterfaces.map((iface) => (
-                <option key={iface} value={iface}>
-                  {iface}
-                </option>
+                <option key={iface} value={iface}>{iface}</option>
               ))}
             </select>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={scanNetworks}
-            disabled={scanning || !connectIface}
-          >
-            {scanning ? (
-              <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-            ) : (
-              <RefreshCw className="w-3 h-3 mr-1" />
-            )}
-            Skanna
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={scanNetworks} disabled={scanning || !connectIface}>
+            {scanning ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-1" />}
+            Scan
           </Button>
           <Button
             variant="outline"
@@ -471,82 +415,50 @@ export default function NetworkManager() {
               setConnectDialogOpen(true);
             }}
           >
-            Dolt nätverk
+            Hidden Network
           </Button>
         </div>
 
         {/* Network list */}
         {scannedNetworks.length > 0 && (
-          <div className="border border-gray-200 rounded-sm overflow-hidden max-h-64 overflow-y-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 text-left sticky top-0">
-                  <th className="px-3 py-1.5 font-medium">SSID</th>
-                  <th className="px-3 py-1.5 font-medium">Signal</th>
-                  <th className="px-3 py-1.5 font-medium">Kanal</th>
-                  <th className="px-3 py-1.5 font-medium">Band</th>
-                  <th className="px-3 py-1.5 font-medium">Säkerhet</th>
-                  <th className="px-3 py-1.5 font-medium"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {scannedNetworks.map((net) => {
-                  const deviceInfo = getDeviceInfo(connectIface);
-                  const isConnected =
-                    net.currentSSID ||
-                    (deviceInfo?.connection === net.ssid &&
-                      deviceInfo?.state.includes("connected"));
-
-                  return (
-                    <tr
-                      key={net.ssid}
-                      className={`border-t border-gray-100 hover:bg-gray-50 cursor-pointer ${
-                        isConnected ? "bg-green-50" : ""
-                      }`}
-                      onClick={() => {
-                        if (!isConnected) {
-                          setSelectedNetwork(net);
-                          setIsHidden(false);
-                          setConnectPassword("");
-                          setConnectDialogOpen(true);
-                        }
-                      }}
-                    >
-                      <td className="px-3 py-1.5 font-medium">
-                        {isConnected && (
-                          <Wifi className="w-3 h-3 inline mr-1 text-green-600" />
-                        )}
-                        {net.ssid}
-                      </td>
-                      <td className="px-3 py-1.5">
-                        {signalBars(net.signalStrength)}
-                      </td>
-                      <td className="px-3 py-1.5">{net.channel}</td>
-                      <td className="px-3 py-1.5">{net.band}</td>
-                      <td className="px-3 py-1.5 text-xs">{net.security}</td>
-                      <td className="px-3 py-1.5">
-                        {isConnected ? (
-                          <span className="text-xs text-green-600 font-medium">
-                            Ansluten
-                          </span>
-                        ) : (
-                          <Button variant="ghost" size="sm" className="text-xs">
-                            Anslut
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="space-y-1 max-h-64 overflow-y-auto">
+            {scannedNetworks.map((net) => {
+              const isConnected = net.currentSSID;
+              return (
+                <div
+                  key={net.ssid}
+                  className={`flex items-center justify-between text-sm border rounded-sm px-3 py-2 cursor-pointer hover:bg-gray-50 ${
+                    isConnected ? "border-green-300 bg-green-50" : "border-gray-200"
+                  }`}
+                  onClick={() => {
+                    if (!isConnected) {
+                      setSelectedNetwork(net);
+                      setIsHidden(false);
+                      setConnectPassword("");
+                      setConnectDialogOpen(true);
+                    }
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    {isConnected && <Wifi className="w-3 h-3 text-green-600" />}
+                    <span className={isConnected ? "font-medium" : ""}>{net.ssid}</span>
+                    {signalBars(net.signalStrength)}
+                    <span className="text-xs text-gray-400">ch{net.channel}</span>
+                    <span className="text-xs text-gray-400">{net.security}</span>
+                  </div>
+                  {isConnected ? (
+                    <span className="text-xs text-green-600 font-medium">Connected</span>
+                  ) : (
+                    <span className="text-xs text-blue-500">Connect</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
         {scannedNetworks.length === 0 && !scanning && connectIface && (
-          <p className="text-sm text-gray-500">
-            Inga nätverk hittades. Klicka Skanna för att söka.
-          </p>
+          <p className="text-sm text-gray-500">No networks found. Click Scan to search.</p>
         )}
       </section>
 
@@ -555,14 +467,12 @@ export default function NetworkManager() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {isHidden
-                ? "Anslut till dolt nätverk"
-                : `Anslut till "${selectedNetwork?.ssid}"`}
+              {isHidden ? "Connect to Hidden Network" : `Connect to "${selectedNetwork?.ssid}"`}
             </DialogTitle>
             <DialogDescription>
               {isHidden
-                ? "Ange SSID och lösenord för det dolda nätverket."
-                : `Ange lösenord för att ansluta via ${connectIface}.`}
+                ? "Enter the SSID and password for the hidden network."
+                : `Enter the password to connect via ${connectIface}.`}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
@@ -572,53 +482,35 @@ export default function NetworkManager() {
                 <Input
                   value={hiddenSsid}
                   onChange={(e) => setHiddenSsid(e.target.value)}
-                  placeholder="Nätverksnamn"
+                  placeholder="Network name"
                   className="h-8 text-sm"
                   autoFocus
                 />
               </div>
             )}
             <div className="flex flex-col gap-1">
-              <Label className="text-xs font-semibold">Lösenord</Label>
+              <Label className="text-xs font-semibold">Password</Label>
               <PasswordInput
                 value={connectPassword}
                 onChange={(val) => setConnectPassword(val)}
               />
             </div>
-            {!isHidden && (
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="hidden-check"
-                  checked={isHidden}
-                  onCheckedChange={(checked) => setIsHidden(checked === true)}
-                />
-                <Label htmlFor="hidden-check" className="text-xs">
-                  Dolt nätverk
-                </Label>
-              </div>
-            )}
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setConnectDialogOpen(false)}
-            >
-              Avbryt
+            <Button variant="outline" onClick={() => setConnectDialogOpen(false)}>
+              Cancel
             </Button>
             <Button
               onClick={connectToNetwork}
-              disabled={
-                connecting ||
-                (isHidden ? !hiddenSsid : !selectedNetwork?.ssid)
-              }
+              disabled={connecting || (isHidden ? !hiddenSsid : !selectedNetwork?.ssid)}
             >
               {connecting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                  Ansluter...
+                  Connecting...
                 </>
               ) : (
-                "Anslut"
+                "Connect"
               )}
             </Button>
           </DialogFooter>
