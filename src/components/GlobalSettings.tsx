@@ -210,7 +210,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<HeatmapSettings>(getDefaults(""));
   const [currentSiteName, setCurrentSiteName] = useState<string>("");
   const migrationDone = useRef(false);
-  const defaultFloorPlan = "EmptyFloorPlan.png";
+  const defaultFloorPlan = "Planritning_nybyggnad";
 
   // Load settings (and migrate on first run)
   useEffect(() => {

@@ -67,8 +67,8 @@ export async function initServer() {
       logger.error("Failed to log system information:", error);
     });
 
-    copyToMediaFolder("EmptyFloorPlan.png"); // seed with empty floorplan
-    copyToMediaFolder("House & Garage.jpg"); // seed with generic Google map view
+    copyToMediaFolder("Planritning_nybyggnad.pdf"); // demo floor plan (PDF source)
+    copyToMediaFolder("Planritning_nybyggnad.png"); // demo floor plan (pre-rendered)
 
     // only load the localization code if it's running on Windows
     if (os.platform() == "win32") {

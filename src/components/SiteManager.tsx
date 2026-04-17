@@ -73,7 +73,7 @@ export default function SiteManager() {
     const siteName = settings.site.name;
     await deleteSite(siteName);
     // Load default after deletion
-    loadSite("EmptyFloorPlan.png");
+    loadSite("Planritning_nybyggnad");
     setTimeout(fetchSurveys, 500);
   };
 
