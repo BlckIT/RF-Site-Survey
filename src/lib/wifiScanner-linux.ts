@@ -238,7 +238,7 @@ export class LinuxWifiActions implements WifiActions {
         // Default: read connected network info
         const [linkOutput, infoOutput] = await Promise.all([
           iwDevLink(wlanInterface, settings.sudoerPassword),
-          iwDevInfo(wlanInterface),
+          iwDevInfo(wlanInterface, settings.sudoerPassword),
         ]);
 
         logger.trace("IW output:", linkOutput);
@@ -283,8 +283,11 @@ async function iwDevLink(interfaceId: string, pw: string): Promise<string> {
   return stdout;
 }
 
-async function iwDevInfo(interfaceId: string): Promise<string> {
-  const command = `iw dev ${interfaceId} info`;
+async function iwDevInfo(interfaceId: string, pw: string): Promise<string> {
+  let command = `iw dev ${interfaceId} info`;
+  if (!isDocker() && pw) {
+    command = `echo '${pw.replace(/'/g, "'\\''")}'  | sudo -S ` + command;
+  }
   const { stdout } = await execAsync(command);
   return stdout;
 }
