@@ -115,13 +115,16 @@ export async function POST() {
       timeout = 120000,
       env?: Record<string, string>,
     ) => {
-      const mergedEnv = { ...process.env, ...env };
+      const mergedEnv: Record<string, string | undefined> = {
+        ...process.env,
+        ...env,
+      };
       // Rensa NODE_ENV om det inte explicit sätts — Next.js build kräver production
-      if (!env?.NODE_ENV) delete mergedEnv.NODE_ENV;
+      if (!env?.NODE_ENV) mergedEnv.NODE_ENV = undefined;
       return execFileAsync("/bin/bash", ["-lc", cmd], {
         cwd: PROJECT_ROOT,
         timeout,
-        env: mergedEnv,
+        env: mergedEnv as NodeJS.ProcessEnv,
       });
     };
 
