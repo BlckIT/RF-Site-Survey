@@ -1794,6 +1794,16 @@ function SurveyHeatmapOverlayWrapper() {
   const [showOverlay, setShowOverlay] = useState(false);
   const heatmapUrl = useHeatmapOverlay();
 
+  const overlayElement =
+    showOverlay && heatmapUrl ? (
+      <img
+        src={heatmapUrl}
+        alt="Heatmap overlay"
+        className="absolute inset-0 w-full h-full object-contain pointer-events-none opacity-60"
+        style={{ mixBlendMode: "multiply" }}
+      />
+    ) : null;
+
   return (
     <>
       <div className="flex items-center gap-4 mb-2">
@@ -1815,16 +1825,8 @@ function SurveyHeatmapOverlayWrapper() {
       </div>
       <SurveySettingsBar />
       <div className="flex gap-4">
-        <div className="flex-1 min-w-0 relative">
-          <ClickableFloorplan />
-          {showOverlay && heatmapUrl && (
-            <img
-              src={heatmapUrl}
-              alt="Heatmap overlay"
-              className="absolute inset-0 w-full h-full object-contain pointer-events-none opacity-60"
-              style={{ mixBlendMode: "multiply" }}
-            />
-          )}
+        <div className="flex-1 min-w-0">
+          <ClickableFloorplan overlay={overlayElement} />
         </div>
         <div className="w-[320px] shrink-0 overflow-auto">
           <PointsTable

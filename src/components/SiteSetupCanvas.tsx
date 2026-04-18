@@ -3,9 +3,9 @@ import { useSettings } from "./GlobalSettings";
 import ScaleCalibration from "./ScaleCalibration";
 import WallEditor from "./WallEditor";
 import { Button } from "@/components/ui/button";
-import { Ruler, Layers, Eye, Check } from "lucide-react";
+import { Ruler, Layers, Check, RotateCw } from "lucide-react";
 
-type SetupTool = "scale" | "walls" | "preview";
+type SetupTool = "scale" | "walls" | "rotate";
 
 /** Verktygsväljare + en gemensam vy för Site Setup-fliken */
 export default function SiteSetupCanvas() {
@@ -15,6 +15,7 @@ export default function SiteSetupCanvas() {
   const hasCalibration =
     settings.pixelsPerMeter > 0 && settings.pixelsPerMeter !== 10;
   const hasWalls = settings.walls.length > 0;
+  const hasRotation = (settings.rotation ?? 0) !== 0;
 
   if (!settings.floorplanImagePath) {
     return (
@@ -43,10 +44,10 @@ export default function SiteSetupCanvas() {
       done: hasWalls,
     },
     {
-      id: "preview",
-      label: "Preview",
-      icon: <Eye className="w-4 h-4" />,
-      done: false,
+      id: "rotate",
+      label: "Rotate",
+      icon: <RotateCw className="w-4 h-4" />,
+      done: hasRotation,
     },
   ];
 
@@ -72,35 +73,55 @@ export default function SiteSetupCanvas() {
       {/* Aktivt verktyg */}
       {activeTool === "scale" && <ScaleCalibration />}
       {activeTool === "walls" && <WallEditor />}
-      {activeTool === "preview" && <PreviewPane />}
+      {activeTool === "rotate" && <RotateFloorPlan />}
     </div>
   );
 }
 
-/** Enkel förhandsvisning av planritningen utan verktyg */
-function PreviewPane() {
-  const { settings } = useSettings();
+/** Rotera planritningen i 90°-steg */
+function RotateFloorPlan() {
+  const { settings, updateSettings } = useSettings();
+  const currentRotation = settings.rotation ?? 0;
 
-  const hasCalibration =
-    settings.pixelsPerMeter > 0 && settings.pixelsPerMeter !== 10;
+  const rotateStep = () => {
+    const next = ((currentRotation + 90) % 360) as 0 | 90 | 180 | 270;
+    updateSettings({ rotation: next });
+  };
+
+  const setRotation = (deg: number) => {
+    updateSettings({ rotation: deg });
+  };
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-3 text-xs text-gray-500">
-        {hasCalibration && (
-          <span>Scale: {settings.pixelsPerMeter.toFixed(1)} px/m</span>
-        )}
-        <span>Walls: {settings.walls.length}</span>
-        <span>
-          Image: {settings.dimensions.width} × {settings.dimensions.height} px
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm" onClick={rotateStep}>
+          <RotateCw className="w-4 h-4 mr-1" />
+          Rotate 90° CW
+        </Button>
+        <span className="text-sm text-gray-500">
+          Current: {currentRotation}°
         </span>
       </div>
-      <div className="relative max-h-[calc(100vh-200px)] overflow-hidden">
+      <div className="flex gap-1">
+        {[0, 90, 180, 270].map((deg) => (
+          <Button
+            key={deg}
+            variant={currentRotation === deg ? "default" : "outline"}
+            size="sm"
+            onClick={() => setRotation(deg)}
+          >
+            {deg}°
+          </Button>
+        ))}
+      </div>
+      <div className="relative max-h-[calc(100vh-280px)] overflow-hidden flex items-center justify-center bg-gray-50 rounded border border-gray-200">
         <img
           key={settings.floorplanImagePath}
           src={settings.floorplanImagePath}
           alt="Floor plan preview"
-          className="border border-gray-200 rounded-sm w-full h-auto max-h-[calc(100vh-200px)] object-contain"
+          className="max-w-full max-h-[calc(100vh-280px)] object-contain transition-transform duration-300"
+          style={{ transform: `rotate(${currentRotation}deg)` }}
         />
       </div>
     </div>

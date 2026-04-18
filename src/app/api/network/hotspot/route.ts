@@ -1,38 +1,11 @@
 import { NextResponse, NextRequest } from "next/server";
 import os from "os";
 import { execFile } from "child_process";
+import { sudoNmcli } from "@/lib/sudo-utils";
 
 /** Sanitize interface name */
 function sanitize(input: string): string {
   return input.replace(/[^a-zA-Z0-9_.-]/g, "");
-}
-
-/** Run nmcli with sudo — password piped to stdin, no shell */
-async function sudoNmcli(
-  sudoerPassword: string,
-  args: string[],
-): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const child = execFile(
-      "sudo",
-      ["-S", "nmcli", ...args],
-      { timeout: 30000 },
-      (error, stdout, stderr) => {
-        if (error) {
-          const msg = stderr
-            .split("\n")
-            .filter((l) => !l.includes("[sudo]") && l.trim())
-            .join(" ")
-            .trim();
-          reject(new Error(msg || error.message));
-        } else {
-          resolve(stdout.trimEnd());
-        }
-      },
-    );
-    child.stdin?.write(sudoerPassword + "\n");
-    child.stdin?.end();
-  });
 }
 
 /** Connection name used for the managed hotspot */
@@ -55,7 +28,7 @@ export async function GET(request: NextRequest) {
           ["-t", "-f", "NAME,DEVICE,TYPE", "connection", "show", "--active"],
           (error, stdout, stderr) => {
             if (error) reject(error);
-            else resolve({ stdout, stderr });
+            else resolve({ stdout: String(stdout), stderr: String(stderr) });
           },
         );
       },
@@ -91,7 +64,7 @@ export async function GET(request: NextRequest) {
             ],
             (error, stdout, stderr) => {
               if (error) reject(error);
-              else resolve({ stdout, stderr });
+              else resolve({ stdout: String(stdout), stderr: String(stderr) });
             },
           );
         });
@@ -119,16 +92,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { action, ifname, ssid, password, sudoerPassword } = body;
 
-    if (!sudoerPassword) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Sudo password required. Set it under Settings.",
-        },
-        { status: 400 },
-      );
-    }
-
     if (!action || !ifname) {
       return NextResponse.json(
         { success: false, message: "action and ifname are required." },
@@ -139,21 +102,9 @@ export async function POST(request: NextRequest) {
     const safeIfname = sanitize(ifname);
 
     if (action === "start") {
-      if (!ssid || !password) {
+      if (!ssid) {
         return NextResponse.json(
-          {
-            success: false,
-            message: "SSID and password are required to start.",
-          },
-          { status: 400 },
-        );
-      }
-      if (password.length < 8) {
-        return NextResponse.json(
-          {
-            success: false,
-            message: "Password must be at least 8 characters.",
-          },
+          { success: false, message: "SSID is required to start." },
           { status: 400 },
         );
       }
@@ -169,8 +120,8 @@ export async function POST(request: NextRequest) {
         // Profile may not exist
       }
 
-      // Create persistent AP connection with stable WPA2
-      await sudoNmcli(sudoerPassword, [
+      // Build connection args — open network if no password
+      const addArgs = [
         "connection",
         "add",
         "type",
@@ -187,25 +138,30 @@ export async function POST(request: NextRequest) {
         "bg",
         "802-11-wireless.powersave",
         "2",
-        "wifi-sec.key-mgmt",
-        "wpa-psk",
-        "wifi-sec.proto",
-        "rsn",
-        "wifi-sec.pairwise",
-        "ccmp",
-        "wifi-sec.group",
-        "ccmp",
-        "wifi-sec.psk",
-        password,
         "ipv4.method",
         "shared",
         "ipv6.method",
         "disabled",
         "connection.autoconnect",
         "no",
-      ]);
+      ];
 
-      // Activate
+      if (password && password.length >= 8) {
+        addArgs.push(
+          "wifi-sec.key-mgmt",
+          "wpa-psk",
+          "wifi-sec.proto",
+          "rsn",
+          "wifi-sec.pairwise",
+          "ccmp",
+          "wifi-sec.group",
+          "ccmp",
+          "wifi-sec.psk",
+          password,
+        );
+      }
+
+      await sudoNmcli(sudoerPassword, addArgs);
       await sudoNmcli(sudoerPassword, ["connection", "up", HOTSPOT_CON_NAME]);
 
       return NextResponse.json({

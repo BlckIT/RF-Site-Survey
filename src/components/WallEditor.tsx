@@ -508,26 +508,11 @@ export default function WallEditor(): ReactNode {
 
     const raw = getCanvasCoords(e);
 
-    // If not drawing, check if clicking on a wall to select it and show popover
+    // Vänsterklick = ALLTID bygga väggar, aldrig material-picker
     if (!isDrawing) {
-      const wallId = findNearWall(raw.x, raw.y);
-      if (wallId) {
-        setSelectedWallId(wallId);
-        // Visa material-popover vid klickpositionen (screen coords relativt container)
-        const rect = e.currentTarget.getBoundingClientRect();
-        const containerRect = containerRef.current?.getBoundingClientRect();
-        const offsetX = containerRect ? rect.left - containerRect.left : 0;
-        const offsetY = containerRect ? rect.top - containerRect.top : 0;
-        setMaterialPopover({
-          wallId,
-          x: e.clientX - rect.left + offsetX,
-          y: e.clientY - rect.top + offsetY,
-        });
-        return;
-      }
       setSelectedWallId(null);
       setMaterialPopover(null);
-      // Start a new chain — check for endpoint/t-junction snap first
+      // Starta ny kedja — kolla endpoint/t-junction snap först
       const snap = findSnapTarget(raw);
       if (snap) {
         if (snap.type === "t-junction" && snap.wallId) {
@@ -539,7 +524,45 @@ export default function WallEditor(): ReactNode {
         }
         setChainPoints([{ x: snap.x, y: snap.y }]);
       } else {
-        setChainPoints([raw]);
+        // Kolla om klick är nära mitten av en vägg (splitta + starta kedja)
+        const nearWallId = findNearWall(raw.x, raw.y);
+        if (nearWallId) {
+          const wall = settings.walls.find((w) => w.id === nearWallId);
+          if (wall) {
+            const closest = closestPointOnSegment(
+              raw.x,
+              raw.y,
+              wall.x1,
+              wall.y1,
+              wall.x2,
+              wall.y2,
+            );
+            // Kolla om det är nära en endpoint (redan hanterat av snap ovan)
+            const distToStart = Math.hypot(
+              closest.x - wall.x1,
+              closest.y - wall.y1,
+            );
+            const distToEnd = Math.hypot(
+              closest.x - wall.x2,
+              closest.y - wall.y2,
+            );
+            if (distToStart > 1 && distToEnd > 1) {
+              // Mitt på väggen — registrera T-junction split och starta kedja
+              pendingTJunctionSplits.current.push({
+                wallId: nearWallId,
+                x: closest.x,
+                y: closest.y,
+              });
+              setChainPoints([{ x: closest.x, y: closest.y }]);
+            } else {
+              setChainPoints([{ x: closest.x, y: closest.y }]);
+            }
+          } else {
+            setChainPoints([raw]);
+          }
+        } else {
+          setChainPoints([raw]);
+        }
       }
       return;
     }
@@ -700,22 +723,22 @@ export default function WallEditor(): ReactNode {
       return;
     }
 
+    // Högerklick på vägg → öppna material-picker popover
     const { x, y } = getCanvasCoords(e);
-    const threshold = 10;
-    let closestIdx = -1;
-    let closestDist = Infinity;
-
-    settings.walls.forEach((wall, idx) => {
-      const dist = pointToSegmentDist(x, y, wall.x1, wall.y1, wall.x2, wall.y2);
-      if (dist < closestDist) {
-        closestDist = dist;
-        closestIdx = idx;
-      }
-    });
-
-    if (closestDist < threshold && closestIdx >= 0) {
-      const newWalls = settings.walls.filter((_, i) => i !== closestIdx);
-      updateSettings({ walls: newWalls });
+    const wallId = findNearWall(x, y);
+    if (wallId) {
+      setSelectedWallId(wallId);
+      const rect = e.currentTarget.getBoundingClientRect();
+      const containerRect = containerRef.current?.getBoundingClientRect();
+      const offsetX = containerRect ? rect.left - containerRect.left : 0;
+      const offsetY = containerRect ? rect.top - containerRect.top : 0;
+      setMaterialPopover({
+        wallId,
+        x: e.clientX - rect.left + offsetX,
+        y: e.clientY - rect.top + offsetY,
+      });
+    } else {
+      setMaterialPopover(null);
       setSelectedWallId(null);
     }
   };
@@ -809,10 +832,7 @@ export default function WallEditor(): ReactNode {
         <p>
           Hold Shift for horizontal/vertical snap. Drag endpoints to adjust.
         </p>
-        <p>
-          Right-click a wall to delete it. Click a wall to select and edit
-          material.
-        </p>
+        <p>Right-click a wall to change its material.</p>
         <p className="mt-1 text-gray-500">
           Wall count: {settings.walls.length}
           {isDrawing &&

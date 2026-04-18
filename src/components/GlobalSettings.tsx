@@ -75,6 +75,7 @@ function buildSettings(
     | "dimensions"
     | "walls"
     | "pixelsPerMeter"
+    | "rotation"
   >,
 ): HeatmapSettings {
   const floor = getActiveFloor(site);
@@ -89,6 +90,7 @@ function buildSettings(
     dimensions: floor.dimensions,
     walls: floor.walls,
     pixelsPerMeter: floor.pixelsPerMeter,
+    rotation: floor.rotation ?? 0,
   };
 }
 
@@ -322,6 +324,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
           "dimensions",
           "walls",
           "pixelsPerMeter",
+          "rotation",
         ];
 
         const floorUpdates: Partial<Floor> = {};

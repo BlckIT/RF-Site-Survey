@@ -91,6 +91,7 @@ export interface Floor {
   surveyPoints: SurveyPoint[];
   pixelsPerMeter: number;
   nextPointNum: number;
+  rotation?: number; // 0, 90, 180, 270 — CSS-rotation av planritningen
 }
 
 /**
@@ -141,6 +142,7 @@ export interface HeatmapSettings extends GlobalAppSettings {
   dimensions: { width: number; height: number };
   walls: Wall[];
   pixelsPerMeter: number;
+  rotation?: number;
 }
 
 // part of "scan wifi" effort

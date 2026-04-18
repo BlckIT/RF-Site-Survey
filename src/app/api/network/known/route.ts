@@ -1,40 +1,12 @@
 import { NextResponse, NextRequest } from "next/server";
 import os from "os";
-import { execFile } from "child_process";
 import { readFile, writeFile, mkdir } from "fs/promises";
 import path from "path";
+import { sudoNmcli } from "@/lib/sudo-utils";
 
 /** Sanitera input — tillåt bara alfanumeriska, bindestreck, understreck, punkt, mellanslag */
 function sanitize(input: string): string {
   return input.replace(/[^a-zA-Z0-9_.\- ]/g, "");
-}
-
-/** Kör nmcli med sudo — lösenord pipas till stdin, ingen shell */
-async function sudoNmcli(
-  sudoerPassword: string,
-  args: string[],
-): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const child = execFile(
-      "sudo",
-      ["-S", "nmcli", ...args],
-      { timeout: 30000 },
-      (error, stdout, stderr) => {
-        if (error) {
-          const msg = stderr
-            .split("\n")
-            .filter((l) => !l.includes("[sudo]") && l.trim())
-            .join(" ")
-            .trim();
-          reject(new Error(msg || error.message));
-        } else {
-          resolve(stdout.trimEnd());
-        }
-      },
-    );
-    child.stdin?.write(sudoerPassword + "\n");
-    child.stdin?.end();
-  });
 }
 
 interface KnownWifi {
@@ -44,19 +16,14 @@ interface KnownWifi {
   autoConnect: boolean;
 }
 
-const HOTSPOT_CONFIG_DIR = path.join(process.cwd(), "data");
-const _HOTSPOT_CONFIG_PATH = path.join(
-  HOTSPOT_CONFIG_DIR,
-  "hotspot-config.json",
-);
+const DATA_DIR = path.join(process.cwd(), "data");
 
 /** Prefix för NM connections skapade av appen */
 const NM_CON_PREFIX = "rf-known-";
 
 export async function GET() {
   try {
-    // Läs known networks från hotspot-config (eller separat fil)
-    const configPath = path.join(HOTSPOT_CONFIG_DIR, "known-networks.json");
+    const configPath = path.join(DATA_DIR, "known-networks.json");
     try {
       const data = await readFile(configPath, "utf-8");
       const networks: KnownWifi[] = JSON.parse(data);
@@ -85,15 +52,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { networks, sudoerPassword } = body as {
       networks: KnownWifi[];
-      sudoerPassword: string;
+      sudoerPassword: string | undefined;
     };
-
-    if (!sudoerPassword) {
-      return NextResponse.json(
-        { success: false, message: "Sudo password required." },
-        { status: 400 },
-      );
-    }
 
     if (!Array.isArray(networks)) {
       return NextResponse.json(
@@ -103,8 +63,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 1. Spara till fil
-    await mkdir(HOTSPOT_CONFIG_DIR, { recursive: true });
-    const configPath = path.join(HOTSPOT_CONFIG_DIR, "known-networks.json");
+    await mkdir(DATA_DIR, { recursive: true });
+    const configPath = path.join(DATA_DIR, "known-networks.json");
     await writeFile(configPath, JSON.stringify(networks, null, 2));
 
     // 2. Ta bort gamla rf-known-* connections från NM

@@ -15,7 +15,11 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getLogger } from "../lib/logger";
 const logger = getLogger("Floorplan");
 
-export default function ClickableFloorplan(): ReactNode {
+export default function ClickableFloorplan({
+  overlay,
+}: {
+  overlay?: React.ReactNode;
+}): ReactNode {
   const { settings, updateSettings, surveyPointActions } = useSettings();
 
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -560,6 +564,8 @@ export default function ClickableFloorplan(): ReactNode {
           onClick={handleCanvasClick}
           className="border border-gray-300 rounded-lg cursor-pointer w-full h-auto max-h-[calc(100vh-200px)] object-contain"
         />
+
+        {overlay}
 
         <div
           style={{

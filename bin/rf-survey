@@ -137,6 +137,24 @@ cmd_setup() {
   echo -e "${YELLOW}Run the following command as root to enable auto-start on boot:${NC}"
   pm2 startup
 
+  # Sudoers-regel för passwordless nmcli/iw/iperf3
+  SUDOERS_FILE="/etc/sudoers.d/rf-survey"
+  CURRENT_USER=$(whoami)
+  if [ -f "$SUDOERS_FILE" ]; then
+    echo -e "${GREEN}Sudoers rule already exists at $SUDOERS_FILE${NC}"
+  else
+    echo -e "${CYAN}Setting up passwordless sudo for network commands...${NC}"
+    SUDOERS_CONTENT="$CURRENT_USER ALL=(ALL) NOPASSWD: /usr/bin/nmcli, /usr/sbin/iw, /usr/bin/iperf3"
+    if [ "$(id -u)" -eq 0 ]; then
+      echo "$SUDOERS_CONTENT" > "$SUDOERS_FILE"
+      chmod 0440 "$SUDOERS_FILE"
+      echo -e "${GREEN}Sudoers rule installed. No sudo password needed for nmcli/iw/iperf3.${NC}"
+    else
+      echo -e "${YELLOW}Run the following as root to enable passwordless network commands:${NC}"
+      echo -e "  echo '$SUDOERS_CONTENT' | sudo tee $SUDOERS_FILE && sudo chmod 0440 $SUDOERS_FILE"
+    fi
+  fi
+
   echo -e "${GREEN}Setup complete. $APP_NAME is running on port 3000.${NC}"
 }
 
