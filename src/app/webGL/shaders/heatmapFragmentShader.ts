@@ -82,6 +82,13 @@ const generateHeatmapFragmentShader = (
   void main() {
     vec2 pixel = v_uv * u_resolution;
 
+    // Avgör om skalan är kalibrerad (default/okalibrerad = 10 eller 0)
+    bool calibrated = u_pixelsPerMeter > 10.0;
+    // Skalfaktor: pixlar → meter. Om okalibrerad, använd 1.0 (pixelbaserat som förut)
+    float ppm = calibrated ? u_pixelsPerMeter : 1.0;
+
+    float radiusSq = u_radius * u_radius;
+
     float weightedSum = 0.0;
     float weightTotal = 0.0;
 
@@ -92,24 +99,22 @@ const generateHeatmapFragmentShader = (
       float value = u_points[i].z;
 
       vec2 diff = pixel - point;
-      float distSq = dot(diff, diff);
+      float distSqPx = dot(diff, diff);
 
-      if (distSq < 1e-6) {
+      if (distSqPx < 1e-6) {
         weightedSum = value;
         weightTotal = 1.0;
         break;
       }
 
-      if (distSq > u_radius * u_radius) continue;
+      // Radius-cutoff i pixlar (u_radius är alltid i pixlar)
+      if (distSqPx > radiusSq) continue;
 
-      // Konvertera pixelavstånd till meter om kalibrerad (u_pixelsPerMeter > 10)
-      // Fallback till pixelbaserad beräkning om okalibrerad (0 eller default 10)
-      bool calibrated = u_pixelsPerMeter > 10.0;
-      float effectiveDistSq = calibrated
-        ? distSq / (u_pixelsPerMeter * u_pixelsPerMeter)
-        : distSq;
+      // Konvertera till meter för IDW-viktning
+      float distSqUnit = distSqPx / (ppm * ppm);
 
-      float weight = 1.0 / pow(effectiveDistSq, u_pathLossExponent * 0.5);
+      // IDW-vikt baserad på avstånd i meter (eller pixlar om okalibrerad)
+      float weight = 1.0 / pow(distSqUnit, u_pathLossExponent * 0.5);
 
       // Wall attenuation in dB
       float wallDb = calcWallAttenuationDb(pixel, point);
@@ -131,10 +136,10 @@ const generateHeatmapFragmentShader = (
     float normalized = clamp(signal / 100.0, 0.0, 1.0);
     vec3 color = texture2D(u_lut, vec2(normalized, 0.5)).rgb;
 
-    // Confidence: pixels near measurement points get full opacity, far pixels fade out
-    // Scale factor tuned so that a pixel within one influence radius of a point ≈ full confidence
-    float confidenceScale = u_radius * u_radius;
-    float confidence = clamp(weightTotal * confidenceScale, 0.0, 1.0);
+    // Confidence: pixlar nära mätpunkter får full opacity, avlägsna pixlar fadar ut
+    // Normalisera weightTotal med ppm² så confidence fungerar oavsett skala
+    float refWeight = 1.0 / pow(radiusSq / (ppm * ppm), u_pathLossExponent * 0.5);
+    float confidence = clamp(weightTotal * refWeight * 0.1, 0.0, 1.0);
     float alpha = mix(u_minOpacity, u_maxOpacity, normalized) * confidence;
     gl_FragColor = vec4(color, alpha);
   }
