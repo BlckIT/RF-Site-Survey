@@ -46,6 +46,7 @@ const initialStates = {
   tcp: "-/- Mbps",
   udp: "-/- Mbps",
   snrInfo: "",
+  bandInfo: "",
 };
 
 // The measurement process updates these variables
@@ -57,6 +58,7 @@ let displayStates = {
   tcp: "-/- Mbps",
   udp: "-/- Mbps",
   snrInfo: "",
+  bandInfo: "",
 };
 
 /**
@@ -71,7 +73,7 @@ function getUpdatedMessage(): SSEMessageType {
   return {
     type: displayStates.type,
     header: displayStates.header,
-    status: `Signal strength: ${strength}${displayStates.snrInfo}\nTCP: ${displayStates.tcp}\nUDP: ${displayStates.udp}`,
+    status: `Signal: ${strength}${displayStates.snrInfo}${displayStates.bandInfo ? "\n" + displayStates.bandInfo : ""}\nTCP: ${displayStates.tcp}\nUDP: ${displayStates.udp}`,
   };
 }
 
@@ -309,15 +311,10 @@ export async function runSurveyTests(
             logger.warn(`Dual-band collection failed: ${dbErr}`);
           }
           // SSE-meddelande med dual-band resultat
-          if (bandMeasurements && bandMeasurements.length > 1) {
-            const bandInfo = bandMeasurements
+          if (bandMeasurements && bandMeasurements.length > 0) {
+            displayStates.bandInfo = bandMeasurements
               .map((bm) => `${bm.band} GHz: ${bm.signal} dBm`)
               .join(" | ");
-            sendSSEMessage({
-              type: "done",
-              header: "Measurement complete",
-              status: `${bandInfo}\nTCP: ${displayStates.tcp}\nUDP: ${displayStates.udp}`,
-            });
           }
         }
       } catch (error: any) {

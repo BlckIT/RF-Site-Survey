@@ -120,7 +120,7 @@ function extractGlobals(settings: HeatmapSettings) {
 
 const DEFAULT_GLOBALS = {
   iperfServerAdrs: "localhost",
-  testDuration: 1,
+  testDuration: 10,
   sudoerPassword: "",
   apMapping: [] as HeatmapSettings["apMapping"],
   radiusDivider: null as number | null,
@@ -129,12 +129,14 @@ const DEFAULT_GLOBALS = {
   blur: 0.99,
   gradient: {
     0: "rgba(255, 0, 0, 0.6)",
+    0.25: "rgba(255, 128, 0, 0.6)",
     0.45: "rgba(255, 255, 0, 0.6)",
     0.5: "rgba(0, 0, 255, 0.6)",
     0.6: "rgba(0, 255, 255, 0.6)",
-    0.75: "rgba(0, 255, 0, 0.6)",
-    0.9: "rgba(0, 255, 0, 0.6)",
-    1.0: "rgba(0, 255, 0, 0.6)",
+    0.75: "rgba(0, 200, 0, 0.6)",
+    0.85: "rgba(0, 160, 0, 0.6)",
+    0.95: "rgba(0, 128, 0, 0.6)",
+    1.0: "rgba(0, 100, 0, 0.6)",
   } as HeatmapSettings["gradient"],
   iperfCommands: {
     tcpDownload: "iperf3 -c {server} {port} -t {duration} -R -J",
