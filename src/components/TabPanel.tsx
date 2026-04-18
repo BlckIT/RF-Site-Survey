@@ -1,7 +1,6 @@
 import * as Tabs from "@radix-ui/react-tabs";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSettings } from "./GlobalSettings";
-import debounce from "lodash/debounce";
 
 import SiteManager from "@/components/SiteManager";
 import FloorSelector from "@/components/FloorSelector";
@@ -9,8 +8,7 @@ import SurveySettingsBar from "@/components/SurveySettingsBar";
 import ClickableFloorplan from "@/components/Floorplan";
 import { Heatmaps } from "@/components/Heatmaps";
 import PointsTable from "@/components/PointsTable";
-import WallEditor from "@/components/WallEditor";
-import ScaleCalibration from "@/components/ScaleCalibration";
+import SiteSetupCanvas from "@/components/SiteSetupCanvas";
 import EditableApMapping from "@/components/ApMapping";
 import { PasswordInput } from "@/components/PasswordInput";
 import { Label } from "@/components/ui/label";
@@ -62,10 +60,64 @@ const sectionHeaderClass = "text-sm font-semibold text-gray-700 mb-2 mt-0";
 const inputClass =
   "w-full border border-gray-200 rounded-sm p-1.5 text-sm focus:outline-none focus:ring focus:ring-blue-300 focus:border-blue-400";
 
+/** Extrahera de settings-fält som buffras lokalt (inte nätverksoperationer) */
+function pickDraftFields(s: HeatmapSettings) {
+  return {
+    wifiInterface: s.wifiInterface,
+    targetSSID: s.targetSSID,
+    iperfServerAdrs: s.iperfServerAdrs,
+    testDuration: s.testDuration,
+    iperfCommands: s.iperfCommands,
+    apMapping: s.apMapping,
+    minOpacity: s.minOpacity,
+    maxOpacity: s.maxOpacity,
+    blur: s.blur,
+    gradient: s.gradient,
+    snapRadius: s.snapRadius,
+    sudoerPassword: s.sudoerPassword,
+  };
+}
+
+type DraftSettings = ReturnType<typeof pickDraftFields>;
+
+/** Djupjämförelse för att avgöra om draft skiljer sig från sparade settings */
+function draftEquals(a: DraftSettings, b: DraftSettings): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
 function SettingsPanel() {
   const { settings, updateSettings } = useSettings();
   const { toast } = useToast();
   const [wifiInterfaces, setWifiInterfaces] = useState<string[]>([]);
+
+  // ── Buffrad draft-state för settings ──
+  const [draft, setDraft] = useState<DraftSettings>(() => pickDraftFields(settings));
+  const isDirtyRef = useRef(false);
+  const isDirty = !draftEquals(draft, pickDraftFields(settings));
+  isDirtyRef.current = isDirty;
+
+  // Synka draft när settings ändras utifrån (t.ex. site-byte), men inte om användaren har osparade ändringar
+  useEffect(() => {
+    if (!isDirtyRef.current) {
+      setDraft(pickDraftFields(settings));
+    }
+  }, [settings]);
+
+  /** Uppdatera draft lokalt — ingen disk-save */
+  const updateDraft = useCallback((partial: Partial<DraftSettings>) => {
+    setDraft(prev => ({ ...prev, ...partial }));
+  }, []);
+
+  /** Spara draft till disk */
+  const saveDraft = useCallback(() => {
+    updateSettings(draft);
+    toast({ description: "Settings saved." });
+  }, [draft, updateSettings, toast]);
+
+  /** Kasta bort ändringar */
+  const discardDraft = useCallback(() => {
+    setDraft(pickDraftFields(settings));
+  }, [settings]);
 
   // Network management state
   const [networkDevices, setNetworkDevices] = useState<NetworkDevice[]>([]);
@@ -86,7 +138,7 @@ function SettingsPanel() {
   const [disconnecting, setDisconnecting] = useState(false);
 
 
-  const sudoerPassword = settings.sudoerPassword || "";
+  const sudoerPassword = draft.sudoerPassword || "";
 
   // Fetch WiFi interfaces
   const fetchInterfaces = useCallback(async () => {
@@ -242,15 +294,12 @@ function SettingsPanel() {
     if (connectIface) scanNetworks();
   }, [connectIface, scanNetworks]);
 
-  const debouncedUpdate = useCallback(
-    debounce((s: Partial<HeatmapSettings>) => updateSettings(s), 500),
-    [updateSettings],
-  );
+
 
   const wifiDevices = networkDevices.filter((d) => d.type === "wifi");
 
-  const sortedGradientEntries = () => {
-    return Object.entries(settings.gradient).sort(([a], [b]) => {
+  const sortedDraftGradientEntries = () => {
+    return Object.entries(draft.gradient).sort(([a], [b]) => {
       const numA = parseFloat(a);
       const numB = parseFloat(b);
       return isNaN(numA) || isNaN(numB) ? 0 : numA - numB;
@@ -259,7 +308,7 @@ function SettingsPanel() {
 
   // Hjälpfunktion: kolla om ett interface redan används av en annan funktion
   const ifaceUsedBy = (iface: string, exclude: "scan" | "hotspot" | "connect"): string | null => {
-    if (exclude !== "scan" && settings.wifiInterface === iface) return "Scan";
+    if (exclude !== "scan" && draft.wifiInterface === iface) return "Scan";
     if (exclude !== "hotspot" && hotspotIface === iface && hotspotActive) return "Hotspot";
     if (exclude !== "connect" && connectIface === iface) return "WiFi Connect";
     return null;
@@ -268,6 +317,18 @@ function SettingsPanel() {
 
   return (
     <div className="max-w-3xl">
+      {/* Sticky save-bar vid osparade ändringar */}
+      {isDirty && (
+        <div className="sticky top-0 z-10 flex items-center gap-2 bg-amber-50 border border-amber-300 rounded-md px-3 py-2 mb-3 shadow-sm">
+          <span className="text-sm text-amber-800 font-medium flex-1">Unsaved changes</span>
+          <Button variant="outline" size="sm" onClick={discardDraft}>
+            Discard
+          </Button>
+          <Button size="sm" onClick={saveDraft}>
+            Save Settings
+          </Button>
+        </div>
+      )}
       <Tabs.Root defaultValue="network">
         <Tabs.List className="flex gap-1 mb-4">
           <Tabs.Trigger value="network" className={subTabClass}>Network</Tabs.Trigger>
@@ -491,8 +552,8 @@ function SettingsPanel() {
                       <PopoverHelper text="Enter the sudo password: required on macOS or Linux." />
                     </Label>
                     <PasswordInput
-                      value={settings.sudoerPassword}
-                      onChange={(e) => updateSettings({ sudoerPassword: e })}
+                      value={draft.sudoerPassword}
+                      onChange={(e) => updateDraft({ sudoerPassword: e })}
                     />
                   </div>
                 </div>
@@ -567,8 +628,8 @@ function SettingsPanel() {
               </Label>
               <select
                 className={inputClass}
-                value={settings.wifiInterface || ""}
-                onChange={(e) => updateSettings({ wifiInterface: e.target.value })}
+                value={draft.wifiInterface || ""}
+                onChange={(e) => updateDraft({ wifiInterface: e.target.value })}
               >
                 <option value="">Auto</option>
                 {wifiInterfaces.map((iface) => {
@@ -590,8 +651,8 @@ function SettingsPanel() {
                 type="text"
                 placeholder="Leave empty to use connected network"
                 className={inputClass}
-                value={settings.targetSSID || ""}
-                onChange={(e) => updateSettings({ targetSSID: e.target.value.trim() })}
+                value={draft.targetSSID || ""}
+                onChange={(e) => updateDraft({ targetSSID: e.target.value.trim() })}
               />
             </div>
             <div className="flex flex-col gap-1">
@@ -603,8 +664,8 @@ function SettingsPanel() {
                 type="text"
                 placeholder="192.168.1.10"
                 className={inputClass}
-                value={settings.iperfServerAdrs}
-                onChange={(e) => updateSettings({ iperfServerAdrs: e.target.value.trim() })}
+                value={draft.iperfServerAdrs}
+                onChange={(e) => updateDraft({ iperfServerAdrs: e.target.value.trim() })}
               />
             </div>
             <div className="flex flex-col gap-1">
@@ -617,8 +678,8 @@ function SettingsPanel() {
                 min={1}
                 max={60}
                 className={inputClass}
-                value={settings.testDuration}
-                onChange={(e) => updateSettings({ testDuration: Math.max(1, Math.min(60, parseInt(e.target.value) || 1)) })}
+                value={draft.testDuration}
+                onChange={(e) => updateDraft({ testDuration: Math.max(1, Math.min(60, parseInt(e.target.value) || 1)) })}
               />
             </div>
           </div>
@@ -635,8 +696,8 @@ function SettingsPanel() {
                     <Input
                       type="text"
                       className={inputClass + " font-mono"}
-                      value={settings.iperfCommands?.tcpDownload || ""}
-                      onChange={(e) => debouncedUpdate({ iperfCommands: { ...settings.iperfCommands, tcpDownload: e.target.value } })}
+                      value={draft.iperfCommands?.tcpDownload || ""}
+                      onChange={(e) => updateDraft({ iperfCommands: { ...draft.iperfCommands, tcpDownload: e.target.value } })}
                     />
                   </div>
                   <div className="flex flex-col gap-1">
@@ -644,8 +705,8 @@ function SettingsPanel() {
                     <Input
                       type="text"
                       className={inputClass + " font-mono"}
-                      value={settings.iperfCommands?.tcpUpload || ""}
-                      onChange={(e) => debouncedUpdate({ iperfCommands: { ...settings.iperfCommands, tcpUpload: e.target.value } })}
+                      value={draft.iperfCommands?.tcpUpload || ""}
+                      onChange={(e) => updateDraft({ iperfCommands: { ...draft.iperfCommands, tcpUpload: e.target.value } })}
                     />
                   </div>
                   <div className="flex flex-col gap-1">
@@ -656,8 +717,8 @@ function SettingsPanel() {
                     <Input
                       type="text"
                       className={inputClass + " font-mono"}
-                      value={settings.iperfCommands?.udpDownload || ""}
-                      onChange={(e) => debouncedUpdate({ iperfCommands: { ...settings.iperfCommands, udpDownload: e.target.value } })}
+                      value={draft.iperfCommands?.udpDownload || ""}
+                      onChange={(e) => updateDraft({ iperfCommands: { ...draft.iperfCommands, udpDownload: e.target.value } })}
                     />
                   </div>
                   <div className="flex flex-col gap-1">
@@ -668,8 +729,8 @@ function SettingsPanel() {
                     <Input
                       type="text"
                       className={inputClass + " font-mono"}
-                      value={settings.iperfCommands?.udpUpload || ""}
-                      onChange={(e) => debouncedUpdate({ iperfCommands: { ...settings.iperfCommands, udpUpload: e.target.value } })}
+                      value={draft.iperfCommands?.udpUpload || ""}
+                      onChange={(e) => updateDraft({ iperfCommands: { ...draft.iperfCommands, udpUpload: e.target.value } })}
                     />
                   </div>
                 </div>
@@ -681,8 +742,8 @@ function SettingsPanel() {
               </AccordionTrigger>
               <AccordionContent>
                 <EditableApMapping
-                  apMapping={settings.apMapping}
-                  onSave={(apMapping) => updateSettings({ apMapping })}
+                  apMapping={draft.apMapping}
+                  onSave={(apMapping) => updateDraft({ apMapping })}
                 />
               </AccordionContent>
             </AccordionItem>
@@ -705,8 +766,8 @@ function SettingsPanel() {
               max="1"
               step="0.1"
               className={inputClass}
-              value={settings.minOpacity}
-              onChange={(e) => debouncedUpdate({ minOpacity: parseFloat(e.target.value) })}
+              value={draft.minOpacity}
+              onChange={(e) => updateDraft({ minOpacity: parseFloat(e.target.value) })}
             />
           </div>
           <div className="flex flex-col gap-1">
@@ -720,8 +781,8 @@ function SettingsPanel() {
               max="1"
               step="0.1"
               className={inputClass}
-              value={settings.maxOpacity}
-              onChange={(e) => debouncedUpdate({ maxOpacity: parseFloat(e.target.value) })}
+              value={draft.maxOpacity}
+              onChange={(e) => updateDraft({ maxOpacity: parseFloat(e.target.value) })}
             />
           </div>
           <div className="flex flex-col gap-1">
@@ -735,8 +796,8 @@ function SettingsPanel() {
               max="1"
               step="0.01"
               className={inputClass}
-              value={settings.blur}
-              onChange={(e) => debouncedUpdate({ blur: parseFloat(e.target.value) })}
+              value={draft.blur}
+              onChange={(e) => updateDraft({ blur: parseFloat(e.target.value) })}
             />
           </div>
         </div>
@@ -754,7 +815,7 @@ function SettingsPanel() {
               <span className="w-20 text-center">Opacity</span>
               <span className="w-8" />
             </div>
-            {sortedGradientEntries().map(([key, value]) => {
+            {sortedDraftGradientEntries().map(([key, value]) => {
               const hexColor = rgbaToHex(value);
               const alpha = parseFloat(value.split(",")[3]) || 1;
               return (
@@ -763,10 +824,10 @@ function SettingsPanel() {
                     type="text"
                     value={key}
                     onChange={(e) => {
-                      const newGradient = { ...settings.gradient };
+                      const newGradient = { ...draft.gradient };
                       delete newGradient[parseInt(key)];
                       newGradient[parseInt(e.target.value)] = value;
-                      debouncedUpdate({ gradient: newGradient });
+                      updateDraft({ gradient: newGradient });
                     }}
                     className={inputClass + " w-20"}
                   />
@@ -775,8 +836,8 @@ function SettingsPanel() {
                     value={hexColor}
                     onChange={(e) => {
                       const newColor = hexToRgba(e.target.value, alpha);
-                      const newGradient = { ...settings.gradient, [key]: newColor };
-                      debouncedUpdate({ gradient: newGradient });
+                      const newGradient = { ...draft.gradient, [key]: newColor };
+                      updateDraft({ gradient: newGradient });
                     }}
                     className="w-10 h-8 border border-gray-200 rounded-sm cursor-pointer"
                   />
@@ -789,8 +850,8 @@ function SettingsPanel() {
                     onChange={(e) => {
                       const newAlpha = parseFloat(e.target.value);
                       const newColor = hexToRgba(hexColor, newAlpha);
-                      const newGradient = { ...settings.gradient, [key]: newColor };
-                      debouncedUpdate({ gradient: newGradient });
+                      const newGradient = { ...draft.gradient, [key]: newColor };
+                      updateDraft({ gradient: newGradient });
                     }}
                     className={inputClass + " w-20"}
                   />
@@ -799,9 +860,9 @@ function SettingsPanel() {
                     size="sm"
                     type="button"
                     onClick={() => {
-                      const newGradient = { ...settings.gradient };
+                      const newGradient = { ...draft.gradient };
                       delete newGradient[parseFloat(key)];
-                      debouncedUpdate({ gradient: newGradient });
+                      updateDraft({ gradient: newGradient });
                     }}
                     title="Remove color stop"
                     className="text-gray-400 hover:text-red-500"
@@ -816,8 +877,8 @@ function SettingsPanel() {
               size="sm"
               type="button"
               onClick={() => {
-                const newGradient = { ...settings.gradient, [0.5]: "rgba(0, 0, 0, 1)" };
-                debouncedUpdate({ gradient: newGradient });
+                const newGradient = { ...draft.gradient, [0.5]: "rgba(0, 0, 0, 1)" };
+                updateDraft({ gradient: newGradient });
               }}
               className="mt-3"
             >
@@ -839,18 +900,18 @@ function SettingsPanel() {
               type="number"
               min={2}
               max={30}
-              value={settings.snapRadius}
-              onChange={(e) => updateSettings({ snapRadius: Math.max(2, Math.min(30, parseInt(e.target.value) || 8)) })}
+              value={draft.snapRadius}
+              onChange={(e) => updateDraft({ snapRadius: Math.max(2, Math.min(30, parseInt(e.target.value) || 8)) })}
               className={inputClass}
             />
           </div>
         </div>
           </section>
 
-          <section className="pt-4 border-t border-gray-200">
+          <section className="pt-4 border-t border-gray-200 flex items-center gap-2">
             <Button variant="destructive" size="sm" onClick={() => {
               const defaults = getDefaults(settings.floorplanImageName);
-              updateSettings({
+              updateDraft({
                 maxOpacity: defaults.maxOpacity,
                 minOpacity: defaults.minOpacity,
                 blur: defaults.blur,
@@ -935,15 +996,12 @@ export default function TabPanel() {
           <SettingsPanel />
         </Tabs.Content>
 
-        {/* Tab 1: Site Setup — site manager + wall editor */}
+        {/* Tab 1: Site Setup — site manager + verktygsväljare */}
         <Tabs.Content value="site-setup" className="p-4">
           <div className="mb-4">
             <SiteManager />
           </div>
-          <ScaleCalibration />
-          <div className="mt-6">
-            <WallEditor />
-          </div>
+          <SiteSetupCanvas />
         </Tabs.Content>
 
         {/* Tab 2: Survey — floor selector, compact settings bar, floor plan + sidebar */}
