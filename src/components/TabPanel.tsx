@@ -1292,7 +1292,7 @@ function SettingsPanel() {
                 Target SSID&nbsp;
                 <PopoverHelper text="If set, measure signal strength for this SSID instead of the connected network. Useful for passive scanning of a specific network." />
               </Label>
-              <div className="flex gap-1">
+              <div className="flex gap-1 w-full">
                 <SSIDDropdown
                   value={draft.targetSSID || ""}
                   onChange={(ssid) => updateDraft({ targetSSID: ssid })}

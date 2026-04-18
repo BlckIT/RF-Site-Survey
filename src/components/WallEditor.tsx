@@ -54,6 +54,11 @@ export default function WallEditor(): ReactNode {
   const [activeMaterial, setActiveMaterial] = useState<WallMaterial>("drywall");
   const [selectedWallId, setSelectedWallId] = useState<string | null>(null);
 
+  // Undo/redo historik för väggar
+  const [wallHistory, setWallHistory] = useState<Wall[][]>([settings.walls]);
+  const [historyIndex, setHistoryIndex] = useState(0);
+  const isUndoRedoRef = useRef(false);
+
   // Snap radius from global settings
   const snapRadius = settings.snapRadius ?? 8;
   const [snapTarget, setSnapTarget] = useState<{
@@ -113,7 +118,55 @@ export default function WallEditor(): ReactNode {
     }
   }, [settings.floorplanImagePath]);
 
-  // Track shift key globally
+  // Pusha ny historik-state när walls ändras (men inte vid undo/redo)
+  const pushHistory = useCallback(
+    (newWalls: Wall[]) => {
+      setWallHistory((prev) => {
+        // Trimma framtida states och lägg till ny
+        const trimmed = prev.slice(0, historyIndex + 1);
+        const updated = [...trimmed, newWalls];
+        // Max 50 steg
+        if (updated.length > 50) updated.shift();
+        return updated;
+      });
+      setHistoryIndex((prev) => {
+        const newIdx = Math.min(prev + 1, 49);
+        return newIdx;
+      });
+    },
+    [historyIndex],
+  );
+
+  // Synka historik när walls ändras externt (inte via undo/redo)
+  useEffect(() => {
+    if (isUndoRedoRef.current) {
+      isUndoRedoRef.current = false;
+      return;
+    }
+    // Kolla om walls faktiskt skiljer sig från nuvarande historik-state
+    const currentHistoryWalls = wallHistory[historyIndex];
+    if (currentHistoryWalls !== settings.walls) {
+      pushHistory(settings.walls);
+    }
+  }, [settings.walls]);
+
+  const undo = useCallback(() => {
+    if (historyIndex <= 0) return;
+    const newIndex = historyIndex - 1;
+    isUndoRedoRef.current = true;
+    setHistoryIndex(newIndex);
+    updateSettings({ walls: wallHistory[newIndex] });
+  }, [historyIndex, wallHistory, updateSettings]);
+
+  const redo = useCallback(() => {
+    if (historyIndex >= wallHistory.length - 1) return;
+    const newIndex = historyIndex + 1;
+    isUndoRedoRef.current = true;
+    setHistoryIndex(newIndex);
+    updateSettings({ walls: wallHistory[newIndex] });
+  }, [historyIndex, wallHistory, updateSettings]);
+
+  // Track shift key + undo/redo keyboard shortcuts
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Shift") setShiftHeld(true);
@@ -123,6 +176,20 @@ export default function WallEditor(): ReactNode {
         setSnapTarget(null);
         pendingTJunctionSplits.current = [];
         setMaterialPopover(null);
+      }
+      // Ctrl+Z = undo, Ctrl+Y eller Ctrl+Shift+Z = redo
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      }
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        (e.key === "y" ||
+          (e.key === "z" && e.shiftKey) ||
+          (e.key === "Z" && e.shiftKey))
+      ) {
+        e.preventDefault();
+        redo();
       }
     };
     const onKeyUp = (e: KeyboardEvent) => {
@@ -134,7 +201,7 @@ export default function WallEditor(): ReactNode {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
     };
-  }, []);
+  }, [undo, redo]);
 
   // Beräkna skalning när bilden laddas eller dimensioner ändras
   useEffect(() => {
@@ -956,10 +1023,11 @@ export default function WallEditor(): ReactNode {
     const wallId = findNearWall(x, y);
     if (wallId) {
       setSelectedWallId(wallId);
-      const rect = e.currentTarget.getBoundingClientRect();
+      // Använd skärmkoordinater relativt containern för korrekt positionering
+      // oavsett rotation
       const containerRect = containerRef.current?.getBoundingClientRect();
-      const offsetX = containerRect ? rect.left - containerRect.left : 0;
-      const offsetY = containerRect ? rect.top - containerRect.top : 0;
+      const popX = e.clientX - (containerRect?.left ?? 0);
+      const popY = e.clientY - (containerRect?.top ?? 0);
 
       // Kolla om högerklicket är nära en endpoint (för "Delete node")
       const nearEp = findNearEndpoint(x, y);
@@ -976,8 +1044,8 @@ export default function WallEditor(): ReactNode {
 
       setMaterialPopover({
         wallId,
-        x: e.clientX - rect.left + offsetX,
-        y: e.clientY - rect.top + offsetY,
+        x: popX,
+        y: popY,
         nodePoint,
       });
     } else {
@@ -1222,6 +1290,25 @@ export default function WallEditor(): ReactNode {
 
       {/* Knappar med fast höjd så layouten inte hoppar när de dyker upp */}
       <div className="h-9 mb-2 flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={undo}
+          disabled={historyIndex <= 0}
+          title="Undo (Ctrl+Z)"
+        >
+          ↩ Undo
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={redo}
+          disabled={historyIndex >= wallHistory.length - 1}
+          title="Redo (Ctrl+Y)"
+        >
+          ↪ Redo
+        </Button>
+
         {isDrawing && (
           <Button variant="outline" size="sm" onClick={commitChain}>
             Finish chain
@@ -1295,93 +1382,93 @@ export default function WallEditor(): ReactNode {
             onContextMenu={handleContextMenu}
             className="border border-gray-200 rounded-sm cursor-crosshair w-full h-auto max-h-[calc(100vh-200px)] object-contain"
           />
+        </div>
 
-          {/* Material popover vid klick på vägg */}
-          {materialPopover &&
-            (() => {
-              const popoverWall = settings.walls.find(
-                (w) => w.id === materialPopover.wallId,
-              );
-              if (!popoverWall) return null;
-              return (
-                <div
-                  className="absolute z-20 bg-white border border-gray-300 rounded-md shadow-lg p-2 min-w-[140px]"
-                  style={{
-                    left: `${materialPopover.x + 8}px`,
-                    top: `${materialPopover.y - 4}px`,
+        {/* Material popover — utanför roterad wrapper, positionerad relativt containern */}
+        {materialPopover &&
+          (() => {
+            const popoverWall = settings.walls.find(
+              (w) => w.id === materialPopover.wallId,
+            );
+            if (!popoverWall) return null;
+            return (
+              <div
+                className="absolute z-20 bg-white border border-gray-300 rounded-md shadow-lg p-2 min-w-[140px]"
+                style={{
+                  left: `${materialPopover.x + 8}px`,
+                  top: `${materialPopover.y - 4}px`,
+                }}
+              >
+                <p className="text-xs font-semibold text-gray-600 mb-1">
+                  Wall Material
+                </p>
+                {(Object.keys(MATERIAL_PRESETS) as WallMaterial[]).map(
+                  (mat) => {
+                    const preset = MATERIAL_PRESETS[mat];
+                    const isActive =
+                      (popoverWall.material || "drywall") === mat;
+                    return (
+                      <button
+                        key={mat}
+                        className={`flex items-center gap-2 w-full text-left px-2 py-1 text-xs rounded hover:bg-gray-100 ${
+                          isActive ? "bg-blue-50 font-semibold" : ""
+                        }`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const updatedWalls = settings.walls.map((w) =>
+                            w.id === materialPopover.wallId
+                              ? { ...w, material: mat }
+                              : w,
+                          );
+                          updateSettings({ walls: updatedWalls });
+                          setMaterialPopover(null);
+                        }}
+                      >
+                        <span
+                          className="w-3 h-3 rounded-sm border border-gray-300 inline-block"
+                          style={{ backgroundColor: preset.color }}
+                        />
+                        {preset.label} ({preset.attenuationDb} dB)
+                      </button>
+                    );
+                  },
+                )}
+                <hr className="my-1 border-gray-200" />
+                <button
+                  className="flex items-center gap-2 w-full text-left px-2 py-1 text-xs rounded text-red-600 hover:bg-red-50"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteWall(materialPopover.wallId);
                   }}
                 >
-                  <p className="text-xs font-semibold text-gray-600 mb-1">
-                    Wall Material
-                  </p>
-                  {(Object.keys(MATERIAL_PRESETS) as WallMaterial[]).map(
-                    (mat) => {
-                      const preset = MATERIAL_PRESETS[mat];
-                      const isActive =
-                        (popoverWall.material || "drywall") === mat;
-                      return (
-                        <button
-                          key={mat}
-                          className={`flex items-center gap-2 w-full text-left px-2 py-1 text-xs rounded hover:bg-gray-100 ${
-                            isActive ? "bg-blue-50 font-semibold" : ""
-                          }`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const updatedWalls = settings.walls.map((w) =>
-                              w.id === materialPopover.wallId
-                                ? { ...w, material: mat }
-                                : w,
-                            );
-                            updateSettings({ walls: updatedWalls });
-                            setMaterialPopover(null);
-                          }}
-                        >
-                          <span
-                            className="w-3 h-3 rounded-sm border border-gray-300 inline-block"
-                            style={{ backgroundColor: preset.color }}
-                          />
-                          {preset.label} ({preset.attenuationDb} dB)
-                        </button>
-                      );
-                    },
-                  )}
-                  <hr className="my-1 border-gray-200" />
+                  Delete wall
+                </button>
+                {materialPopover.nodePoint && (
                   <button
                     className="flex items-center gap-2 w-full text-left px-2 py-1 text-xs rounded text-red-600 hover:bg-red-50"
                     onClick={(e) => {
                       e.stopPropagation();
-                      deleteWall(materialPopover.wallId);
+                      deleteNode(
+                        materialPopover.nodePoint!.x,
+                        materialPopover.nodePoint!.y,
+                      );
                     }}
                   >
-                    Delete wall
+                    Delete node (all connected)
                   </button>
-                  {materialPopover.nodePoint && (
-                    <button
-                      className="flex items-center gap-2 w-full text-left px-2 py-1 text-xs rounded text-red-600 hover:bg-red-50"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteNode(
-                          materialPopover.nodePoint!.x,
-                          materialPopover.nodePoint!.y,
-                        );
-                      }}
-                    >
-                      Delete node (all connected)
-                    </button>
-                  )}
-                  <button
-                    className="mt-1 text-xs text-gray-400 hover:text-gray-600 w-full text-left px-2"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setMaterialPopover(null);
-                    }}
-                  >
-                    Close
-                  </button>
-                </div>
-              );
-            })()}
-        </div>
+                )}
+                <button
+                  className="mt-1 text-xs text-gray-400 hover:text-gray-600 w-full text-left px-2"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMaterialPopover(null);
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+            );
+          })()}
       </div>
     </div>
   );

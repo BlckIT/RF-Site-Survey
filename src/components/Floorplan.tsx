@@ -361,6 +361,94 @@ export default function ClickableFloorplan({
    * @returns nothing
    */
 
+  /**
+   * Beräkna canvas-koordinater från musklick, med rotationskompensation.
+   * Samma logik som WallEditor.getCanvasCoords.
+   */
+  const getCanvasCoords = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = event.currentTarget;
+    const rect = canvas.getBoundingClientRect();
+    const rotation = settings.rotation ?? 0;
+
+    if (rotation === 0) {
+      return {
+        x: (event.clientX - rect.left) / scale,
+        y: (event.clientY - rect.top) / scale,
+      };
+    }
+
+    // När canvasen är CSS-roterad returnerar getBoundingClientRect() den
+    // axis-aligned bounding boxen av det roterade elementet.
+    // Beräkna klickpositionen relativt canvasens oroterade centrum.
+    const rad = (-rotation * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+
+    // Canvasens visuella mitt (rect-mitt = roterad mitt)
+    const rcx = rect.left + rect.width / 2;
+    const rcy = rect.top + rect.height / 2;
+
+    // Klickposition relativt visuell mitt
+    const dx = event.clientX - rcx;
+    const dy = event.clientY - rcy;
+
+    // Rotera tillbaka till canvasens lokala koordinatsystem
+    const localX = cos * dx - sin * dy;
+    const localY = sin * dx + cos * dy;
+
+    // Canvasens oroterade dimensioner i skärmpixlar
+    const canvasScreenW = settings.dimensions.width * scale;
+    const canvasScreenH = settings.dimensions.height * scale;
+
+    return {
+      x: (localX + canvasScreenW / 2) / scale,
+      y: (localY + canvasScreenH / 2) / scale,
+    };
+  };
+
+  /**
+   * Beräkna skärmposition (pixlar) för en canvas-punkt, med rotationskompensation.
+   * Används för att positionera popup-element korrekt.
+   */
+  const canvasToScreenPos = (
+    canvasX: number,
+    canvasY: number,
+    canvasEl: HTMLCanvasElement,
+  ) => {
+    const rotation = settings.rotation ?? 0;
+    if (rotation === 0) {
+      return { x: canvasX * scale, y: canvasY * scale };
+    }
+
+    const rect = canvasEl.getBoundingClientRect();
+    const containerRect = containerRef.current?.getBoundingClientRect();
+    const rad = (rotation * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+
+    // Punkt relativt canvasens oroterade centrum (i skärmpixlar)
+    const canvasScreenW = settings.dimensions.width * scale;
+    const canvasScreenH = settings.dimensions.height * scale;
+    const lx = canvasX * scale - canvasScreenW / 2;
+    const ly = canvasY * scale - canvasScreenH / 2;
+
+    // Rotera till skärmkoordinater
+    const sx = cos * lx - sin * ly;
+    const sy = sin * lx + cos * ly;
+
+    // Absolut skärmposition
+    const rcx = rect.left + rect.width / 2;
+    const rcy = rect.top + rect.height / 2;
+
+    // Returnera relativt containern
+    const contLeft = containerRect?.left ?? 0;
+    const contTop = containerRect?.top ?? 0;
+    return {
+      x: rcx + sx - contLeft,
+      y: rcy + sy - contTop,
+    };
+  };
+
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
     // if a point was selected, they have "clicked away"
     // also closes PopupDetails by clicking away
@@ -373,9 +461,7 @@ export default function ClickableFloorplan({
     // then display the popup window
     // otherwise, measure the signal strength/speeds at that X/Y
     const canvas = event.currentTarget;
-    const rect = canvas.getBoundingClientRect();
-    const x = (event.clientX - rect.left) / scale;
-    const y = (event.clientY - rect.top) / scale;
+    const { x, y } = getCanvasCoords(event);
     setSurveyClick({ x: x, y: y }); // retain the X/Y of the clicked point
 
     // Find closest surveyPoint (within 20 units?)
@@ -385,13 +471,11 @@ export default function ClickableFloorplan({
 
     // if they clicked an existing point, set the selected point
     // and display the PopupDetails
-    // (not sure what all this machinery does - why not just setSelectedPoint(clickedPoint)?)
     if (clickedPoint) {
       setSelectedPoint(selectedPoint == clickedPoint ? null : clickedPoint);
-      setPopupPosition({
-        x: clickedPoint.x * scale,
-        y: clickedPoint.y * scale,
-      });
+      setPopupPosition(
+        canvasToScreenPos(clickedPoint.x, clickedPoint.y, canvas),
+      );
     } else {
       // otherwise, start a measurement
       drawEmptyPoint({ x, y } as SurveyPoint, canvas.getContext("2d")!, {
