@@ -25,6 +25,7 @@ export default function WallEditor(): ReactNode {
   const imageRef = useRef<HTMLImageElement | null>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [scale, setScale] = useState(1);
+  const rotation = settings.rotation ?? 0;
 
   // Chain-drawing state
   const [chainPoints, setChainPoints] = useState<{ x: number; y: number }[]>(
@@ -453,8 +454,6 @@ export default function WallEditor(): ReactNode {
       drawCanvas();
     }
   }, [imageLoaded, drawCanvas]);
-
-  const rotation = settings.rotation ?? 0;
 
   const getCanvasCoords = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = e.currentTarget;
