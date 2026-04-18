@@ -1,11 +1,14 @@
 // pm2 ecosystem config för RF-Site-Survey
 // Används av rf-survey CLI för att hantera applikationen som en tjänst
+const path = require('path');
+const APP_DIR = path.resolve(__dirname);
+
 module.exports = {
   apps: [{
     name: 'rf-site-survey',
     script: 'node_modules/.bin/next',
     args: 'start',
-    cwd: '/opt/rf-site-survey',
+    cwd: APP_DIR,
     env: {
       NODE_ENV: 'production',
       PORT: 3000
