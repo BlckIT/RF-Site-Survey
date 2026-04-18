@@ -68,6 +68,15 @@ export default function WallEditor(): ReactNode {
     { wallId: string; x: number; y: number }[]
   >([]);
 
+  // Aktiva alignment guide-linjer (för visuell feedback)
+  const alignmentGuideLinesRef = useRef<
+    {
+      type: "h" | "v";
+      from: { x: number; y: number };
+      to: { x: number; y: number };
+    }[]
+  >([]);
+
   const isDrawing = chainPoints.length > 0;
 
   // Ladda planritningsbild — använd decode() för att undvika race condition
@@ -177,7 +186,7 @@ export default function WallEditor(): ReactNode {
     [shiftHeld, rotation],
   );
 
-  // Collect all existing wall endpoints
+  // Collect all existing wall endpoints (deduplicerade)
   const getAllEndpoints = useCallback((): { x: number; y: number }[] => {
     const points: { x: number; y: number }[] = [];
     for (const wall of settings.walls) {
@@ -186,6 +195,78 @@ export default function WallEditor(): ReactNode {
     }
     return points;
   }, [settings.walls]);
+
+  // Hitta X/Y alignment snap mot alla befintliga endpoints
+  // Returnerar snapped X och/eller Y samt guide-linjer för visuell feedback
+  const findAlignmentSnap = useCallback(
+    (
+      pos: { x: number; y: number },
+      allEndpoints: { x: number; y: number }[],
+      threshold: number,
+    ): {
+      x: number | null;
+      y: number | null;
+      guideLines: {
+        type: "h" | "v";
+        from: { x: number; y: number };
+        to: { x: number; y: number };
+      }[];
+    } => {
+      let snapX: number | null = null;
+      let snapY: number | null = null;
+      let bestDx = threshold;
+      let bestDy = threshold;
+      let snapSourceX: { x: number; y: number } | null = null;
+      let snapSourceY: { x: number; y: number } | null = null;
+
+      for (const ep of allEndpoints) {
+        const dx = Math.abs(pos.x - ep.x);
+        const dy = Math.abs(pos.y - ep.y);
+
+        // X-alignment: musens X nära en befintlig nods X
+        if (dx < bestDx) {
+          bestDx = dx;
+          snapX = ep.x;
+          snapSourceX = ep;
+        }
+        // Y-alignment: musens Y nära en befintlig nods Y
+        if (dy < bestDy) {
+          bestDy = dy;
+          snapY = ep.y;
+          snapSourceY = ep;
+        }
+      }
+
+      const guideLines: {
+        type: "h" | "v";
+        from: { x: number; y: number };
+        to: { x: number; y: number };
+      }[] = [];
+
+      // Vertikal guide-linje vid X-snap (samma X, olika Y)
+      if (snapX !== null && snapSourceX) {
+        const finalY = snapY !== null ? snapY : pos.y;
+        guideLines.push({
+          type: "v",
+          from: { x: snapSourceX.x, y: snapSourceX.y },
+          to: { x: snapX, y: finalY },
+        });
+      }
+
+      // Horisontell guide-linje vid Y-snap (samma Y, olika X)
+      if (snapY !== null && snapSourceY) {
+        const finalX = snapX !== null ? snapX : pos.x;
+        guideLines.push({
+          type: "h",
+          from: { x: snapSourceY.x, y: snapSourceY.y },
+          to: { x: finalX, y: snapY },
+        });
+      }
+
+      return { x: snapX, y: snapY, guideLines };
+    },
+    [],
+  );
 
   // Find nearest snap target (existing endpoint, chain-close, or T-junction on wall segment)
   const findSnapTarget = useCallback(
@@ -262,19 +343,52 @@ export default function WallEditor(): ReactNode {
     [snapRadius, scale, chainPoints, getAllEndpoints, settings.walls],
   );
 
-  // Get the effective mouse position (with endpoint snap > shift-snap)
+  // Get the effective mouse position (med prioritet: endpoint > t-junction > alignment > shift-snap)
   const getEffectiveMousePos = useCallback(() => {
     if (!mousePos) return null;
     if (chainPoints.length > 0) {
-      // First check endpoint/close snap
+      // Högst prioritet: endpoint/close/t-junction snap
       const snap = findSnapTarget(mousePos);
-      if (snap) return { x: snap.x, y: snap.y };
-      // Fall back to shift-snap
+      if (snap) {
+        alignmentGuideLinesRef.current = [];
+        return { x: snap.x, y: snap.y };
+      }
+
+      // Näst: alignment snap (X/Y mot befintliga endpoints)
+      const threshold = snapRadius / scale;
+      const endpoints = getAllEndpoints();
+      // Inkludera chain-punkter som alignment-källor
+      const allPts = [...endpoints, ...chainPoints];
+      const alignment = findAlignmentSnap(mousePos, allPts, threshold);
+
+      if (alignment.x !== null || alignment.y !== null) {
+        const aligned = {
+          x: alignment.x !== null ? alignment.x : mousePos.x,
+          y: alignment.y !== null ? alignment.y : mousePos.y,
+        };
+        // Applicera shift-snap OVANPÅ alignment om shift hålls ned
+        const lastPoint = chainPoints[chainPoints.length - 1];
+        const result = applySnap(aligned, lastPoint);
+        alignmentGuideLinesRef.current = alignment.guideLines;
+        return result;
+      }
+
+      alignmentGuideLinesRef.current = [];
+      // Lägst prioritet: shift-snap
       const lastPoint = chainPoints[chainPoints.length - 1];
       return applySnap(mousePos, lastPoint);
     }
     return mousePos;
-  }, [mousePos, chainPoints, applySnap, findSnapTarget]);
+  }, [
+    mousePos,
+    chainPoints,
+    applySnap,
+    findSnapTarget,
+    snapRadius,
+    scale,
+    getAllEndpoints,
+    findAlignmentSnap,
+  ]);
 
   // Draw canvas
   const drawCanvas = useCallback(() => {
@@ -416,6 +530,21 @@ export default function WallEditor(): ReactNode {
         ctx.lineWidth = 1;
         ctx.stroke();
       }
+    }
+
+    // Rita alignment guide-linjer
+    if (alignmentGuideLinesRef.current.length > 0) {
+      ctx.save();
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = "#00bcd4"; // Cyan
+      for (const guide of alignmentGuideLinesRef.current) {
+        ctx.beginPath();
+        ctx.moveTo(guide.from.x, guide.from.y);
+        ctx.lineTo(guide.to.x, guide.to.y);
+        ctx.stroke();
+      }
+      ctx.restore();
     }
 
     // Highlight dragged endpoint
@@ -645,7 +774,27 @@ export default function WallEditor(): ReactNode {
       return;
     }
 
-    // Apply shift-snap if we have a previous chain point
+    // Alignment snap (X/Y mot befintliga endpoints) — lägre prioritet än endpoint/t-junction
+    if (chainPoints.length > 0) {
+      const threshold = snapRadius / scale;
+      const endpoints = getAllEndpoints();
+      const allPts = [...endpoints, ...chainPoints];
+      const alignment = findAlignmentSnap(raw, allPts, threshold);
+
+      if (alignment.x !== null || alignment.y !== null) {
+        const aligned = {
+          x: alignment.x !== null ? alignment.x : raw.x,
+          y: alignment.y !== null ? alignment.y : raw.y,
+        };
+        // Applicera shift-snap ovanpå alignment om shift hålls ned
+        const lastPoint = chainPoints[chainPoints.length - 1];
+        const pos = applySnap(aligned, lastPoint);
+        setChainPoints((prev) => [...prev, pos]);
+        return;
+      }
+    }
+
+    // Lägst prioritet: enbart shift-snap
     const pos =
       chainPoints.length > 0
         ? applySnap(raw, chainPoints[chainPoints.length - 1])
@@ -736,27 +885,53 @@ export default function WallEditor(): ReactNode {
     if (dragging && dragOriginRef.current) {
       const origPt = dragOriginRef.current;
 
+      // Kolla endpoint snap först, sedan alignment snap vid drag
+      let finalPos = pos;
+      const epSnap = findSnapTarget(pos);
+      if (epSnap) {
+        finalPos = { x: epSnap.x, y: epSnap.y };
+        alignmentGuideLinesRef.current = [];
+      } else {
+        const threshold = snapRadius / scale;
+        // Exkludera den punkt som dras (origPt) från alignment-källor
+        const endpoints = getAllEndpoints().filter(
+          (ep) =>
+            Math.hypot(ep.x - origPt.x, ep.y - origPt.y) >
+            SHARED_ENDPOINT_EPSILON,
+        );
+        const alignment = findAlignmentSnap(pos, endpoints, threshold);
+        if (alignment.x !== null || alignment.y !== null) {
+          finalPos = {
+            x: alignment.x !== null ? alignment.x : pos.x,
+            y: alignment.y !== null ? alignment.y : pos.y,
+          };
+          alignmentGuideLinesRef.current = alignment.guideLines;
+        } else {
+          alignmentGuideLinesRef.current = [];
+        }
+      }
+
       const updatedWalls = settings.walls.map((wall) => {
         const updated = { ...wall };
         if (
           Math.hypot(wall.x1 - origPt.x, wall.y1 - origPt.y) <
           SHARED_ENDPOINT_EPSILON
         ) {
-          updated.x1 = pos.x;
-          updated.y1 = pos.y;
+          updated.x1 = finalPos.x;
+          updated.y1 = finalPos.y;
         }
         if (
           Math.hypot(wall.x2 - origPt.x, wall.y2 - origPt.y) <
           SHARED_ENDPOINT_EPSILON
         ) {
-          updated.x2 = pos.x;
-          updated.y2 = pos.y;
+          updated.x2 = finalPos.x;
+          updated.y2 = finalPos.y;
         }
         return updated;
       });
       updateSettings({ walls: updatedWalls });
-      // Update origin to track the new position for continuous dragging
-      dragOriginRef.current = { x: pos.x, y: pos.y };
+      // Uppdatera origin för kontinuerlig drag
+      dragOriginRef.current = { x: finalPos.x, y: finalPos.y };
     }
   };
 
@@ -764,6 +939,7 @@ export default function WallEditor(): ReactNode {
     if (dragging) {
       setDragging(null);
       dragOriginRef.current = null;
+      alignmentGuideLinesRef.current = [];
     }
   };
 
