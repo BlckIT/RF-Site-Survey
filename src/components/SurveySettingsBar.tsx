@@ -4,6 +4,7 @@ import { PopoverHelper } from "@/components/PopoverHelpText";
 import { useState, useEffect, useCallback } from "react";
 import { WifiResults } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import { groupNetworksBySSID } from "@/lib/groupNetworks";
 
 /**
  * SurveySettingsBar — compact horizontal settings bar for the Survey tab.
@@ -31,6 +32,9 @@ export default function SurveySettingsBar() {
     fetchSSIDs();
   }, [fetchSSIDs]);
 
+  const grouped = groupNetworksBySSID(scannedSSIDs);
+  const selectedGrouped = grouped.find((n) => n.ssid === settings.targetSSID);
+
   const inputClass =
     "w-full border border-gray-200 rounded-sm p-1.5 text-sm focus:outline-none focus:ring focus:ring-blue-300 focus:border-blue-400";
 
@@ -49,10 +53,13 @@ export default function SurveySettingsBar() {
             onChange={(e) => updateSettings({ targetSSID: e.target.value })}
           >
             <option value="">Connected (auto)</option>
-            {scannedSSIDs.map((s) => (
-              <option key={`${s.ssid}-${s.bssid}`} value={s.ssid}>
-                {s.ssid} ({s.rssi} dBm,{" "}
-                {s.band === 5 ? "5G" : s.band === 6 ? "6G" : "2.4G"})
+            {grouped.map((net) => (
+              <option key={net.ssid} value={net.ssid}>
+                {net.ssid} (
+                {net.bands
+                  .map((b) => (b === "2.4" ? "2.4 GHz" : "5 GHz"))
+                  .join(" + ")}
+                )
               </option>
             ))}
           </select>
@@ -67,6 +74,22 @@ export default function SurveySettingsBar() {
             {ssidLoading ? "..." : "↻"}
           </Button>
         </div>
+        {selectedGrouped && (
+          <div className="flex items-center gap-1 mt-1">
+            {selectedGrouped.bands.map((b) => (
+              <span
+                key={b}
+                className={
+                  b === "2.4"
+                    ? "bg-blue-100 text-blue-700 text-xs px-1.5 py-0.5 rounded"
+                    : "bg-green-100 text-green-700 text-xs px-1.5 py-0.5 rounded"
+                }
+              >
+                {b === "2.4" ? "2.4 GHz" : "5 GHz"}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Test Duration */}

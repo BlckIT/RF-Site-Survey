@@ -23,6 +23,7 @@ export async function GET(request: Request) {
 
     const { stdout } = await execAsync(cmd);
     const lines = stdout.split("\n");
+    // Behåll alla poster per SSID+band (för gruppering i frontend)
     const seen = new Map<string, WifiResults>();
 
     for (const line of lines) {
@@ -34,21 +35,25 @@ export async function GET(request: Request) {
       if (!ssid) continue; // skip hidden networks
 
       const signalStrength = parseInt(cols[6]);
-      // keep only the strongest entry per SSID
-      const existing = seen.get(ssid);
+      const channel = parseInt(cols[4]);
+      const band = channelToBand(channel);
+      const key = `${ssid}::${band}`;
+
+      // Behåll starkaste per SSID+band kombination
+      const existing = seen.get(key);
       if (existing && existing.signalStrength >= signalStrength) continue;
 
       const entry = getDefaultWifiResults();
       entry.currentSSID = cols[0] === "*";
       entry.bssid = cols[1];
       entry.ssid = ssid;
-      entry.channel = parseInt(cols[4]);
+      entry.channel = channel;
       entry.signalStrength = signalStrength;
       entry.rssi = percentageToRssi(signalStrength);
-      entry.band = channelToBand(entry.channel);
+      entry.band = band;
       entry.security = cols[8] || "";
 
-      seen.set(ssid, entry);
+      seen.set(key, entry);
     }
 
     const ssids = Array.from(seen.values()).sort(bySignalStrength);

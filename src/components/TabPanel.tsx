@@ -46,6 +46,7 @@ import { Input } from "@/components/ui/input";
 import { getDefaults } from "@/components/GlobalSettings";
 import { useToast } from "@/components/ui/use-toast";
 import { KnownWifi } from "@/lib/types";
+import { groupNetworksBySSID } from "@/lib/groupNetworks";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -71,6 +72,26 @@ interface ScannedNetwork {
   currentSSID: boolean;
   channel: number;
   band: string;
+}
+
+/** Band-taggar som små inline badges */
+function BandBadges({ bands }: { bands: ("2.4" | "5")[] }) {
+  return (
+    <span className="inline-flex gap-1">
+      {bands.map((b) => (
+        <span
+          key={b}
+          className={
+            b === "2.4"
+              ? "bg-blue-100 text-blue-700 text-xs px-1.5 py-0.5 rounded"
+              : "bg-green-100 text-green-700 text-xs px-1.5 py-0.5 rounded"
+          }
+        >
+          {b === "2.4" ? "2.4 GHz" : "5 GHz"}
+        </span>
+      ))}
+    </span>
+  );
 }
 
 const tabTriggerClass =
@@ -180,6 +201,12 @@ function SettingsPanel() {
   const [hotspotAutoActivate, setHotspotAutoActivate] = useState(true);
   const [savingHotspotConfig, setSavingHotspotConfig] = useState(false);
 
+  // Survey Target SSID scan state
+  const [surveyScannedNetworks, setSurveyScannedNetworks] = useState<
+    ScannedNetwork[]
+  >([]);
+  const [surveyScanning, setSurveyScanning] = useState(false);
+
   // Varningsdialog-state för riskfyllda nätverksoperationer
   const [warningDialog, setWarningDialog] = useState<{
     open: boolean;
@@ -247,6 +274,22 @@ function SettingsPanel() {
       setScanning(false);
     }
   }, [connectIface]);
+
+  // Skanna nätverk för Survey Target SSID (använder scan-interfacet)
+  const scanSurveyNetworks = useCallback(async () => {
+    setSurveyScanning(true);
+    try {
+      const iface = draft.wifiInterface || "";
+      const params = iface ? `?iface=${encodeURIComponent(iface)}` : "";
+      const res = await fetch(`/api/wifi-scan${params}`);
+      const data = await res.json();
+      setSurveyScannedNetworks(data.ssids || []);
+    } catch {
+      setSurveyScannedNetworks([]);
+    } finally {
+      setSurveyScanning(false);
+    }
+  }, [draft.wifiInterface]);
 
   // Hämta known networks från API
   const fetchKnownNetworks = useCallback(async () => {
@@ -921,7 +964,7 @@ function SettingsPanel() {
                   </div>
                   {scannedNetworks.length > 0 && (
                     <div className="space-y-1 max-h-64 overflow-y-auto">
-                      {scannedNetworks.map((net) => (
+                      {groupNetworksBySSID(scannedNetworks).map((net) => (
                         <div
                           key={net.ssid}
                           className={`flex items-center justify-between text-sm border rounded-sm px-3 py-2 cursor-pointer hover:bg-gray-50 ${
@@ -931,10 +974,16 @@ function SettingsPanel() {
                           }`}
                           onClick={() => {
                             if (!net.currentSSID) {
-                              setSelectedNetwork(net);
-                              setIsHidden(false);
-                              setConnectPassword("");
-                              setConnectDialogOpen(true);
+                              // Hitta originalnätverket för connect-dialogen
+                              const original = scannedNetworks.find(
+                                (s) => s.ssid === net.ssid,
+                              );
+                              if (original) {
+                                setSelectedNetwork(original);
+                                setIsHidden(false);
+                                setConnectPassword("");
+                                setConnectDialogOpen(true);
+                              }
                             }
                           }}
                         >
@@ -947,10 +996,8 @@ function SettingsPanel() {
                             >
                               {net.ssid}
                             </span>
+                            <BandBadges bands={net.bands} />
                             {signalBars(net.signalStrength)}
-                            <span className="text-xs text-gray-400">
-                              ch{net.channel}
-                            </span>
                             <span className="text-xs text-gray-400">
                               {net.security}
                             </span>
@@ -1241,15 +1288,53 @@ function SettingsPanel() {
                 Target SSID&nbsp;
                 <PopoverHelper text="If set, measure signal strength for this SSID instead of the connected network. Useful for passive scanning of a specific network." />
               </Label>
-              <Input
-                type="text"
-                placeholder="Leave empty to use connected network"
-                className={inputClass}
-                value={draft.targetSSID || ""}
-                onChange={(e) =>
-                  updateDraft({ targetSSID: e.target.value.trim() })
-                }
-              />
+              <div className="flex gap-1">
+                <select
+                  className={inputClass}
+                  value={draft.targetSSID || ""}
+                  onChange={(e) => updateDraft({ targetSSID: e.target.value })}
+                >
+                  <option value="">Connected (auto)</option>
+                  {groupNetworksBySSID(surveyScannedNetworks).map((net) => (
+                    <option key={net.ssid} value={net.ssid}>
+                      {net.ssid} (
+                      {net.bands
+                        .map((b) => (b === "2.4" ? "2.4 GHz" : "5 GHz"))
+                        .join(" + ")}
+                      )
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  type="button"
+                  onClick={scanSurveyNetworks}
+                  disabled={surveyScanning}
+                  title="Scan for networks"
+                >
+                  {surveyScanning ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-3 h-3" />
+                  )}
+                </Button>
+              </div>
+              {draft.targetSSID &&
+                surveyScannedNetworks.length > 0 &&
+                (() => {
+                  const grouped = groupNetworksBySSID(surveyScannedNetworks);
+                  const match = grouped.find(
+                    (n) => n.ssid === draft.targetSSID,
+                  );
+                  if (!match) return null;
+                  return (
+                    <div className="flex items-center gap-1 mt-1">
+                      <BandBadges bands={match.bands} />
+                      {signalBars(match.signalStrength)}
+                    </div>
+                  );
+                })()}
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-xs font-semibold">
