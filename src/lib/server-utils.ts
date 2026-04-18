@@ -36,7 +36,10 @@ export const execAsync = async (
         reject(error);
       } else {
         logger.debug(`Command result: ${JSON.stringify(stdout)}`);
-        resolve({ stdout: stdout.trimEnd(), stderr: stderr.trimEnd() });
+        resolve({
+          stdout: String(stdout).trimEnd(),
+          stderr: String(stderr).trimEnd(),
+        });
       }
     });
   });
