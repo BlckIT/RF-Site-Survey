@@ -256,7 +256,13 @@ export function useSettings() {
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<HeatmapSettings>(getDefaults(""));
-  const [currentSiteName, setCurrentSiteName] = useState<string>("");
+  const [currentSiteName, setCurrentSiteName] = useState<string>(() => {
+    // Återställ senast valt projekt från localStorage
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("rf-survey-current-site") || "";
+    }
+    return "";
+  });
   const migrationDone = useRef(false);
   const defaultFloorPlan = "Planritning_nybyggnad";
 
@@ -336,6 +342,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   const loadSite = useCallback((siteName: string) => {
     setCurrentSiteName(siteName);
+    // Spara senast valt projekt i localStorage
+    if (typeof window !== "undefined") {
+      localStorage.setItem("rf-survey-current-site", siteName);
+    }
   }, []);
 
   // ── Synk-polling: ladda om settings när en annan klient sparar ──

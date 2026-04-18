@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { SurveyPoint, HeatmapSettings, SurveyPointActions } from "@/lib/types";
-import { formatMacAddress, metricFormatter } from "@/lib/utils";
+import { formatMacAddress } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -11,18 +11,12 @@ interface PopupDetailsProps {
   point: SurveyPoint | null;
   settings: HeatmapSettings;
   surveyPointActions: SurveyPointActions;
-  onClose: () => void; // New prop to close the popup
+  onClose: () => void;
 }
 
 /**
- * PopupDetails is a "conditionally rendered <div>" that appears when its "point"
- * is non-null (otherwise it simply returns, not rendering anything)
- * (Original code had this test in Floorplan...)
- * @param point
- * @param settings
- * @param surveyPointActions
- * @param onClose - called when window should be closed
- * @returns
+ * PopupDetails — visas vid klick på en mätpunkt.
+ * Visar RSSI (dBm), SNR, noise floor, kanal, band, interface, och dual-band data.
  */
 const PopupDetails: React.FC<PopupDetailsProps> = ({
   point,
@@ -30,107 +24,107 @@ const PopupDetails: React.FC<PopupDetailsProps> = ({
   surveyPointActions,
   onClose,
 }) => {
-  // if no point passed in, just return
-  if (!point) return;
+  if (!point) return null;
 
-  //   | Stat | Value |
-  // | ---- | ----- |
-  // | ID | Point ###  |
-  // | SSID | abcdef |
-  // | Signal Strength | 50% |
-  // | RSSI | -70 dBm |
-  // | Channel | 6 |
-  // | Band | 2.4 GHz |
-  // | BSSID | ##:##:##:##:##:## |
-  // | AP Name | |
-  // |  |  |
-  // | Strongest SSID |<link to another PopupDetail?> |
-  // | TCP Download | 0.00 Mbps |
-  // | TCP Upload | 0.00 Mbps |
-  // | Position | X: 274, Y: 47 |
-  // | Created  | 9/16/2025, 9:39:44 PM |
-
-  // const { settings, updateSettings } = useSettings();
   const [isEnabled, setIsEnabled] = useState(point.isEnabled);
-  const rows = [
+
+  const toMbps = (bps: number) => `${(bps / 1e6).toFixed(1)} Mbps`;
+
+  // Grundläggande rader — alltid dBm som primärt signalvärde
+  const rows: { label: string; value: string | number | undefined }[] = [
     { label: "ID", value: point.id },
     { label: "SSID", value: point.wifiData?.ssid },
-    {
-      label: "Signal Strength",
-      value: `${point.wifiData.signalStrength}%`,
-      // value: `${point.wifiData?.signalStrength || rssiToPercentage(point.wifiData?.rssi)}%`,
-    },
     { label: "RSSI", value: `${point.wifiData.rssi} dBm` },
-    ...(point.wifiData.noiseFloor != null
-      ? [{ label: "Noise Floor", value: `${point.wifiData.noiseFloor} dBm` }]
-      : []),
-    ...(point.wifiData.snr != null
-      ? [{ label: "SNR", value: `${point.wifiData.snr} dB` }]
-      : []),
-    ...(point.wifiData.channelUtilization != null
-      ? [
-          {
-            label: "Channel Utilization",
-            value: `${point.wifiData.channelUtilization}%`,
-          },
-        ]
-      : []),
-    { label: "Channel", value: point.wifiData?.channel },
-    // Band visas i dual-band-sektionen nedan om bandMeasurements finns, annars fallback
-    ...(!point.bandMeasurements || point.bandMeasurements.length === 0
-      ? [{ label: "Band", value: `${point.wifiData?.band} GHz` }]
-      : []),
-    { label: "BSSID", value: formatMacAddress(point.wifiData?.bssid || "") },
-    {
-      label: "AP Name",
-      value: settings.apMapping.find(
-        (ap) => ap.macAddress === point.wifiData?.bssid,
-      )?.apName,
-    },
   ];
 
-  if (point.iperfData) {
-    rows.push(
-      {
-        label: "TCP Download",
-        value: metricFormatter(
-          point.iperfData.tcpDownload.bitsPerSecond,
-          "tcpDownload",
-          "bitsPerSecond",
-        ),
-      },
-      {
-        label: "TCP Upload",
-        value: metricFormatter(
-          point.iperfData.tcpUpload.bitsPerSecond,
-          "tcpUpload",
-          "bitsPerSecond",
-        ),
-      },
-    );
+  // Noise floor och SNR om tillgängligt
+  if (point.wifiData.noiseFloor != null) {
+    rows.push({
+      label: "Noise Floor",
+      value: `${point.wifiData.noiseFloor} dBm`,
+    });
+  }
+  if (point.wifiData.snr != null) {
+    rows.push({ label: "SNR", value: `${point.wifiData.snr} dB` });
+  }
+  if (point.wifiData.channelUtilization != null) {
+    rows.push({
+      label: "Channel Utilization",
+      value: `${point.wifiData.channelUtilization}%`,
+    });
   }
 
-  // Dual-band sektion — tydlig per-band visning
+  rows.push({ label: "Channel", value: point.wifiData?.channel });
+
+  // Band visas bara om inga bandMeasurements finns (annars visas per-band nedan)
+  if (!point.bandMeasurements || point.bandMeasurements.length === 0) {
+    rows.push({ label: "Band", value: `${point.wifiData?.band} GHz` });
+  }
+
+  rows.push({
+    label: "BSSID",
+    value: formatMacAddress(point.wifiData?.bssid || ""),
+  });
+
+  // AP-namn från mapping
+  const apName = settings.apMapping.find(
+    (ap) => ap.macAddress === point.wifiData?.bssid,
+  )?.apName;
+  if (apName) {
+    rows.push({ label: "AP Name", value: apName });
+  }
+
+  // WiFi interface om tillgängligt
+  if (settings.wifiInterface) {
+    rows.push({ label: "Interface", value: settings.wifiInterface });
+  }
+
+  // TCP/UDP — visa varje metric en gång
+  if (point.iperfData) {
+    if (point.iperfData.tcpDownload.bitsPerSecond > 0) {
+      rows.push({
+        label: "TCP Download",
+        value: toMbps(point.iperfData.tcpDownload.bitsPerSecond),
+      });
+    }
+    if (point.iperfData.tcpUpload.bitsPerSecond > 0) {
+      rows.push({
+        label: "TCP Upload",
+        value: toMbps(point.iperfData.tcpUpload.bitsPerSecond),
+      });
+    }
+    if (point.iperfData.udpDownload.bitsPerSecond > 0) {
+      rows.push({
+        label: "UDP Download",
+        value: toMbps(point.iperfData.udpDownload.bitsPerSecond),
+      });
+    }
+    if (point.iperfData.udpUpload.bitsPerSecond > 0) {
+      rows.push({
+        label: "UDP Upload",
+        value: toMbps(point.iperfData.udpUpload.bitsPerSecond),
+      });
+    }
+  }
+
+  // Dual-band sektion — tydlig per-band visning utan felaktig "(connected)"
   if (point.bandMeasurements && point.bandMeasurements.length > 0) {
-    const connectedBand: "2.4" | "5" = point.wifiData.band < 5 ? "2.4" : "5";
     rows.push({ label: "── Per Band ──", value: "" });
     for (const bm of point.bandMeasurements) {
-      const isConnected = bm.band === connectedBand;
-      const tag = isConnected ? " (connected)" : "";
       rows.push({
         label: `${bm.band} GHz`,
-        value: `${bm.signal} dBm${tag}`,
+        value: `${bm.signal} dBm`,
       });
-      if (bm.tcpDown != null && bm.tcpUp != null) {
+      if (bm.tcpDown != null || bm.tcpUp != null) {
         rows.push({
-          label: `  TCP`,
-          value: `${bm.tcpDown.toFixed(1)} / ${bm.tcpUp.toFixed(1)} Mbps`,
+          label: `  TCP ↓/↑`,
+          value: `${(bm.tcpDown ?? 0).toFixed(1)} / ${(bm.tcpUp ?? 0).toFixed(1)} Mbps`,
         });
       }
-      if (bm.udpDown != null && bm.udpUp != null) {
+      if (bm.udpDown != null || bm.udpUp != null) {
         rows.push({
-          label: `  UDP`,
-          value: `${bm.udpDown.toFixed(1)} / ${bm.udpUp.toFixed(1)} Mbps`,
+          label: `  UDP ↓/↑`,
+          value: `${(bm.udpDown ?? 0).toFixed(1)} / ${(bm.udpUp ?? 0).toFixed(1)} Mbps`,
         });
       }
     }
@@ -142,10 +136,6 @@ const PopupDetails: React.FC<PopupDetailsProps> = ({
     value: new Date(point.timestamp).toLocaleString(),
   });
 
-  /**
-   * User clicked the Enabled switch.
-   * Report back to the parent
-   */
   const handleToggle = () => {
     setIsEnabled((prev) => {
       const newState = !prev;
@@ -154,12 +144,8 @@ const PopupDetails: React.FC<PopupDetailsProps> = ({
     });
   };
 
-  /**
-   * User clicked the Delete button
-   * Report back to the parent
-   */
-  const handleDelete = (point: SurveyPoint) => {
-    surveyPointActions.delete([point]); // single-element array containing the point
+  const handleDelete = (p: SurveyPoint) => {
+    surveyPointActions.delete([p]);
     onClose();
   };
 
@@ -180,7 +166,7 @@ const PopupDetails: React.FC<PopupDetailsProps> = ({
         <TableBody>
           {rows.map((row, index) => (
             <TableRow
-              key={row.label}
+              key={`${row.label}-${index}`}
               className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}
             >
               <TableCell className="py-1 px-2 font-medium">

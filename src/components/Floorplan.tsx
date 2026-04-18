@@ -23,7 +23,6 @@ export default function ClickableFloorplan({
   const containerRef = useRef<HTMLDivElement>(null);
   const [selectedPoint, setSelectedPoint] = useState<SurveyPoint | null>(null);
   const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
-  // const [dimensions, setDimensions] = useState(settings.dimensions);
   const [alertMessage, setAlertMessage] = useState("");
   const [isToastOpen, setIsToastOpen] = useState(false);
   const [surveyClick, setSurveyClick] = useState({ x: 0, y: 0 });
@@ -43,8 +42,10 @@ export default function ClickableFloorplan({
         .then(() => {
           if (cancelled) return;
           const newDimensions = { width: img.width, height: img.height };
-          updateSettings({ dimensions: newDimensions });
           imageRef.current = img;
+          // Uppdatera dimensions och markera som laddad i samma tick
+          // så att nästa useEffect ritar canvasen korrekt
+          updateSettings({ dimensions: newDimensions });
           setImageLoaded(true);
         })
         .catch(() => {
@@ -277,8 +278,8 @@ export default function ClickableFloorplan({
     ctx.closePath();
     ctx.stroke();
 
-    // Annotation
-    const annotation = `${wifiInfo.signalStrength}%`;
+    // Annotation — visa dBm som primärt värde
+    const annotation = `${wifiInfo.rssi} dBm`;
     ctx.font = `${FONT}px Arial`;
     const lines = annotation.split("\n");
     const boxWidth =

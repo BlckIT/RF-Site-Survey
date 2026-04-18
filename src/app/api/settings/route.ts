@@ -8,50 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readFile, writeFile, mkdir, readdir, unlink } from "fs/promises";
 import path from "path";
-import { sanitizeFilename } from "@/lib/utils";
-
-const SURVEYS_DIR = path.join(process.cwd(), "data", "surveys");
-
-/**
- * Get the full path for a survey file
- */
-function getSurveyPath(floorplanName: string): string {
-  const sanitized = sanitizeFilename(floorplanName);
-  return path.join(SURVEYS_DIR, `${sanitized}.json`);
-}
-
-/**
- * Hitta survey-fil via namn — matchar både filnamn och site.name i JSON-innehållet.
- * Returnerar filens fulla sökväg eller null om den inte hittas.
- */
-async function findSurveyFile(name: string): Promise<string | null> {
-  // 1. Försök direkt filnamn
-  const directPath = getSurveyPath(name);
-  try {
-    await readFile(directPath, "utf-8");
-    return directPath;
-  } catch {
-    // Inte hittad via direkt filnamn
-  }
-
-  // 2. Sök igenom alla filer och matcha site.name
-  try {
-    const files = await readdir(SURVEYS_DIR);
-    for (const f of files.filter((f) => f.endsWith(".json"))) {
-      const filePath = path.join(SURVEYS_DIR, f);
-      try {
-        const content = await readFile(filePath, "utf-8");
-        const data = JSON.parse(content);
-        if (data.site?.name === name) return filePath;
-      } catch {
-        continue;
-      }
-    }
-  } catch {
-    // Katalogen finns inte
-  }
-  return null;
-}
+import { findSurveyFile, getSurveyPath, SURVEYS_DIR } from "@/lib/survey-utils";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;

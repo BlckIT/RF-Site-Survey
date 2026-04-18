@@ -161,9 +161,7 @@ export function Heatmaps({ showWalls = true }: { showWalls?: boolean } = {}) {
       .filter((p): p is SurveyPoint => p !== null);
   }, [points, bandFilter, hasDualBandData]);
 
-  // const r1 = calculateRadiusByDensity; // bad for small numbers of points
   const r2 = calculateRadiusByBoundingBox;
-  // const r3 = calculateOptimalRadius; // bad for small numbers of points
 
   // Beräkna default-radie baserat på skala om kalibrerad, annars bounding box
   const isCalibrated =
@@ -199,8 +197,6 @@ export function Heatmaps({ showWalls = true }: { showWalls?: boolean } = {}) {
       metric: MeasurementTestType,
       testType?: keyof IperfTestProperty,
     ): number => {
-      // console.log(`metric/testType: ${metric} ${testType}`);
-      // console.log(`getMetricValue: ${JSON.stringify(point, null, 2)}`);
       switch (metric) {
         case "signalStrength": // data collection always captures both values
           return showSignalStrengthAsPercentage
@@ -473,12 +469,6 @@ export function Heatmaps({ showWalls = true }: { showWalls?: boolean } = {}) {
         glCanvas.height = settings.dimensions.height;
 
         const wallsForRender = settings.walls || [];
-        console.log(
-          `[Heatmap] Rendering with ${wallsForRender.length} walls, dims: ${settings.dimensions.width}x${settings.dimensions.height}, points: ${heatmapData.length}`,
-        );
-        if (wallsForRender.length > 0) {
-          console.log(`[Heatmap] First wall:`, wallsForRender[0]);
-        }
 
         const renderer = createHeatmapWebGLRenderer(
           glCanvas,

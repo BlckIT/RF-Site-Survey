@@ -7,10 +7,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { readFile, stat } from "fs/promises";
-import path from "path";
-import { sanitizeFilename } from "@/lib/utils";
-
-const SURVEYS_DIR = path.join(process.cwd(), "data", "surveys");
+import { findSurveyFile } from "@/lib/survey-utils";
 
 export async function GET(request: NextRequest) {
   const name = request.nextUrl.searchParams.get("name");
@@ -21,8 +18,10 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const sanitized = sanitizeFilename(name);
-  const filePath = path.join(SURVEYS_DIR, `${sanitized}.json`);
+  const filePath = await findSurveyFile(name);
+  if (!filePath) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   try {
     const [fileContent, fileStat] = await Promise.all([

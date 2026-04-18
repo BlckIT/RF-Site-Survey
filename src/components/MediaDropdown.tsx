@@ -234,17 +234,19 @@ export default function MediaDropdown({
   };
 
   // Filtrera på söktext + begränsa till projektets filer om allowedFiles anges
+  // Nyuppladdade filer (inte i allowedFiles) visas alltid
   const filteredFiles = files.filter((f) => {
-    if (allowedFiles) {
-      // Visa filen om den matchar allowedFiles (eller dess .pdf-variant)
+    if (!f.toLowerCase().includes(search.toLowerCase())) return false;
+    if (allowedFiles && allowedFiles.length > 0) {
       const base = f.replace(/\.(png|jpe?g)$/i, "").toLowerCase();
       const match = allowedFiles.some((a) => {
+        if (!a) return false;
         const aBase = a.replace(/\.(png|jpe?g|pdf)$/i, "").toLowerCase();
         return f === a || base === aBase;
       });
-      if (!match) return false;
+      return match;
     }
-    return f.toLowerCase().includes(search.toLowerCase());
+    return true;
   });
 
   return (

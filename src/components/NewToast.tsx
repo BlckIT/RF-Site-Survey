@@ -1,19 +1,23 @@
 "use client";
 import { useState, useEffect } from "react";
-import * as Toast from "@radix-ui/react-toast";
 import { Button } from "@/components/ui/button";
 
 interface NewToastProps {
   onClose: () => void;
   toastIsReady: () => void;
 }
+
+/**
+ * NewToast — mätnings-statuskort som visas under pågående survey.
+ * Standardiserad Tailwind-design som matchar resten av appen.
+ */
 export default function NewToast({ onClose, toastIsReady }: NewToastProps) {
   const [toastHeader, setToastHeader] = useState("");
   const [toastStatus, setToastStatus] = useState("");
   const [taskRunning, setTaskRunning] = useState(true);
 
   useEffect(() => {
-    const eventSource = new EventSource("/api/events"); // issue GET to open connection to the SSE server
+    const eventSource = new EventSource("/api/events");
 
     eventSource.onmessage = (event: MessageEvent) => {
       try {
@@ -25,13 +29,11 @@ export default function NewToast({ onClose, toastIsReady }: NewToastProps) {
           return;
         }
         if (data.type === "update") {
-          // just an update
           setToastHeader(data.header);
           setToastStatus(data.status);
         }
 
-        if (data.type == "done") {
-          // we're done (complete, error, canceled)
+        if (data.type === "done") {
           setToastHeader(data.header);
           setToastStatus(data.status);
           eventSource.close();
@@ -50,9 +52,8 @@ export default function NewToast({ onClose, toastIsReady }: NewToastProps) {
       eventSource.close();
     };
 
-    // Handle browser reload/unload
     const handleUnload = () => {
-      eventSource.close(); // cleanly closes connection
+      eventSource.close();
     };
 
     window.addEventListener("beforeunload", handleUnload);
@@ -63,42 +64,35 @@ export default function NewToast({ onClose, toastIsReady }: NewToastProps) {
       window.removeEventListener("beforeunload", handleUnload);
       window.removeEventListener("unload", handleUnload);
     };
-  }, []);
+  }, [onClose, toastIsReady]);
 
   const handleCancel = async () => {
-    // tell the server to stop doing work
     await fetch("/api/start-task?action=stop", { method: "POST" });
-    setToastStatus("Task Canceled ❌");
+    setToastStatus("Task Canceled");
     setToastHeader("Canceled");
     setTaskRunning(false);
     setTimeout(() => onClose(), 3000);
   };
 
   return (
-    <Toast.Provider swipeDirection="right">
-      <Toast.Root
-        className="fixed bottom-[10px] right-[5px] w-96 bg-gray-100 text-gray-800 p-4 rounded-md shadow-lg flex justify-between items-center border border-gray-200"
-        duration={Infinity} // Keeps open until manually closed
-      >
-        <div>
-          <Toast.Title className="font-bold">{toastHeader}</Toast.Title>
-          {/* Convert \n into actual <br /> elements */}
-          <Toast.Description className="text-sm text-gray-800 leading-relaxed">
-            {toastStatus.split("\n").map((line, index) => (
-              <span key={index}>
-                <div>{line}</div>
-              </span>
-            ))}
-          </Toast.Description>
-        </div>
+    <div className="fixed bottom-4 right-4 z-50 w-80 bg-white border border-gray-200 rounded-md shadow-lg overflow-hidden">
+      <div className="flex items-center justify-between bg-gray-50 px-3 py-2 border-b border-gray-200">
+        <span className="text-sm font-semibold text-gray-800">
+          {toastHeader || "Measuring..."}
+        </span>
         {taskRunning && (
           <Button variant="destructive" size="sm" onClick={handleCancel}>
             Cancel
           </Button>
         )}
-      </Toast.Root>
-
-      <Toast.Viewport className="fixed bottom-4 right-4 flex flex-col gap-2 w-64" />
-    </Toast.Provider>
+      </div>
+      <div className="px-3 py-2">
+        {toastStatus.split("\n").map((line, index) => (
+          <p key={index} className="text-sm text-gray-700 leading-relaxed">
+            {line}
+          </p>
+        ))}
+      </div>
+    </div>
   );
 }
