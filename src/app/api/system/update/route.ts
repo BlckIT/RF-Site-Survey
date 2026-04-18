@@ -108,24 +108,23 @@ export async function POST() {
   try {
     const remote = await detectRemote();
     const branch = "dev";
-    const nodeBin = process.execPath;
-    const npmPath = require.resolve("npm/bin/npm-cli.js");
+
+    // Hjälpfunktion: kör shell-kommando med korrekt PATH (nvm-kompatibelt)
+    const shell = (cmd: string, timeout = 120000) =>
+      execFileAsync("/bin/bash", ["-lc", cmd], {
+        cwd: PROJECT_ROOT,
+        timeout,
+        env: { ...process.env, NODE_ENV: "development" },
+      });
 
     // 1. git pull
     const pull = await git(["pull", remote, branch], 30000);
 
-    // 2. npm install (via samma node-binär som kör appen)
-    const install = await execFileAsync(nodeBin, [npmPath, "install"], {
-      cwd: PROJECT_ROOT,
-      timeout: 120000,
-      env: { ...process.env, NODE_ENV: "development" },
-    });
+    // 2. npm install (login shell laddar nvm)
+    const install = await shell("npm install", 120000);
 
     // 3. npm run build
-    const build = await execFileAsync(nodeBin, [npmPath, "run", "build"], {
-      cwd: PROJECT_ROOT,
-      timeout: 120000,
-    });
+    const build = await shell("npm run build", 120000);
 
     // 4. Hämta ny commit-hash
     const { stdout: newCommitRaw } = await git([
@@ -136,10 +135,9 @@ export async function POST() {
     const newCommit = newCommitRaw.trim();
 
     // 5. pm2 restart — kör i bakgrunden, klienten tappar anslutning
-    const npxPath = require.resolve("npm/bin/npx-cli.js");
     execFile(
-      nodeBin,
-      [npxPath, "pm2", "restart", "ecosystem.config.cjs"],
+      "/bin/bash",
+      ["-lc", "npx pm2 restart ecosystem.config.cjs"],
       { cwd: PROJECT_ROOT, timeout: 30000 },
       () => {
         /* Avsiktligt tomt — appen startar om */
