@@ -243,7 +243,11 @@ export function Heatmaps({ showWalls = true }: { showWalls?: boolean } = {}) {
               break;
             case "signalStrength":
               // Skicka rssi (dBm) direkt — shadern interpolerar i dBm-domänen
-              value = point.wifiData.rssi;
+              // Fallback: beräkna från signalStrength om rssi saknas
+              value =
+                point.wifiData.rssi && point.wifiData.rssi < 0
+                  ? point.wifiData.rssi
+                  : -100 + (point.wifiData.signalStrength / 100) * 60;
           }
           return value !== null ? { x: point.x, y: point.y, value } : null;
         })
@@ -846,7 +850,11 @@ export function useHeatmapOverlay(): string | null {
     const heatmapData = points
       .filter((p) => p.isEnabled)
       .map((point) => {
-        const value = point.wifiData.rssi;
+        // Använd rssi (dBm) direkt, fallback från signalStrength om rssi saknas
+        const value =
+          point.wifiData.rssi && point.wifiData.rssi < 0
+            ? point.wifiData.rssi
+            : -100 + (point.wifiData.signalStrength / 100) * 60;
         return value !== null ? { x: point.x, y: point.y, value } : null;
       })
       .filter((v) => v !== null);

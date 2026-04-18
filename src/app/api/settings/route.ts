@@ -20,6 +20,39 @@ function getSurveyPath(floorplanName: string): string {
   return path.join(SURVEYS_DIR, `${sanitized}.json`);
 }
 
+/**
+ * Hitta survey-fil via namn — matchar både filnamn och site.name i JSON-innehållet.
+ * Returnerar filens fulla sökväg eller null om den inte hittas.
+ */
+async function findSurveyFile(name: string): Promise<string | null> {
+  // 1. Försök direkt filnamn
+  const directPath = getSurveyPath(name);
+  try {
+    await readFile(directPath, "utf-8");
+    return directPath;
+  } catch {
+    // Inte hittad via direkt filnamn
+  }
+
+  // 2. Sök igenom alla filer och matcha site.name
+  try {
+    const files = await readdir(SURVEYS_DIR);
+    for (const f of files.filter((f) => f.endsWith(".json"))) {
+      const filePath = path.join(SURVEYS_DIR, f);
+      try {
+        const content = await readFile(filePath, "utf-8");
+        const data = JSON.parse(content);
+        if (data.site?.name === name) return filePath;
+      } catch {
+        continue;
+      }
+    }
+  } catch {
+    // Katalogen finns inte
+  }
+  return null;
+}
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const listAll = searchParams.get("list");
@@ -60,13 +93,13 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const filePath = getSurveyPath(name);
+    const filePath = await findSurveyFile(name);
+    if (!filePath) {
+      return NextResponse.json({ error: "Survey not found" }, { status: 404 });
+    }
     const data = await readFile(filePath, "utf-8");
     return NextResponse.json(JSON.parse(data));
   } catch (err: unknown) {
-    if (err instanceof Error && "code" in err && err.code === "ENOENT") {
-      return NextResponse.json({ error: "Survey not found" }, { status: 404 });
-    }
     return NextResponse.json(
       { error: `Unable to read survey: ${err}` },
       { status: 500 },
@@ -122,13 +155,13 @@ export async function DELETE(request: NextRequest) {
   }
 
   try {
-    const filePath = getSurveyPath(name);
+    const filePath = await findSurveyFile(name);
+    if (!filePath) {
+      return NextResponse.json({ error: "Survey not found" }, { status: 404 });
+    }
     await unlink(filePath);
     return NextResponse.json({ status: "success" });
   } catch (err: unknown) {
-    if (err instanceof Error && "code" in err && err.code === "ENOENT") {
-      return NextResponse.json({ error: "Survey not found" }, { status: 404 });
-    }
     return NextResponse.json(
       { error: `Unable to delete survey: ${err}` },
       { status: 500 },
