@@ -52,7 +52,12 @@ ExecStart=/bin/bash -c '\
   if [ "$ACTIVE" -gt 0 ]; then \
     echo "App hotspot already active, skipping fallback activation"; \
   else \
-    nmcli connection up rf-survey-fallback || true; \
+    ACTIVE_STATION=$(nmcli -t -f NAME,TYPE connection show --active | grep ":802-11-wireless:" | grep -v "rf-survey-fallback" | grep -v "rf-survey-hotspot" | head -1); \
+    if [ -n "$ACTIVE_STATION" ]; then \
+      echo "WiFi station already active ($ACTIVE_STATION), skipping fallback"; \
+    else \
+      nmcli connection up rf-survey-fallback || true; \
+    fi; \
   fi'
 
 ExecStop=/bin/bash -c 'nmcli connection down rf-survey-fallback 2>/dev/null || true'

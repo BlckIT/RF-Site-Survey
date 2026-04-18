@@ -127,6 +127,13 @@ echo -e "\n${BOLD}[8/8] Setting up fallback hotspot...${NC}"
 if [ -f "$INSTALL_DIR/system/rf-survey-hotspot-setup.sh" ]; then
   bash "$INSTALL_DIR/system/rf-survey-hotspot-setup.sh"
   echo -e "${GREEN}Fallback hotspot configured (SSID: Buster).${NC}"
+
+  # Installera NM dispatcher för automatisk fallback
+  if [ -f "$INSTALL_DIR/system/rf-survey-hotspot-dispatcher.sh" ]; then
+    cp "$INSTALL_DIR/system/rf-survey-hotspot-dispatcher.sh" /etc/NetworkManager/dispatcher.d/99-rf-survey-hotspot
+    chmod +x /etc/NetworkManager/dispatcher.d/99-rf-survey-hotspot
+    echo -e "${GREEN}Hotspot dispatcher installed.${NC}"
+  fi
 else
   echo -e "${YELLOW}Hotspot setup script not found, skipping.${NC}"
 fi
