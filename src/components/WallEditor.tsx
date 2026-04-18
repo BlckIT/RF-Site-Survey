@@ -971,84 +971,92 @@ export default function WallEditor(): ReactNode {
       )}
 
       <div
-        className="relative max-h-[calc(100vh-200px)] overflow-hidden"
+        className="relative max-h-[calc(100vh-200px)] overflow-hidden flex items-center justify-center"
         ref={containerRef}
         tabIndex={0}
       >
-        <canvas
-          ref={canvasRef}
-          width={settings.dimensions.width}
-          height={settings.dimensions.height}
-          onMouseDown={handleMouseDown}
-          onClick={handleClick}
-          onDoubleClick={handleDoubleClick}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onContextMenu={handleContextMenu}
-          className="border border-gray-200 rounded-sm cursor-crosshair w-full h-auto max-h-[calc(100vh-200px)] object-contain"
-        />
+        <div
+          style={{
+            transform: `rotate(${settings.rotation ?? 0}deg)`,
+            transformOrigin: "center",
+          }}
+          className="relative transition-transform duration-300"
+        >
+          <canvas
+            ref={canvasRef}
+            width={settings.dimensions.width}
+            height={settings.dimensions.height}
+            onMouseDown={handleMouseDown}
+            onClick={handleClick}
+            onDoubleClick={handleDoubleClick}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onContextMenu={handleContextMenu}
+            className="border border-gray-200 rounded-sm cursor-crosshair w-full h-auto max-h-[calc(100vh-200px)] object-contain"
+          />
 
-        {/* Material popover vid klick på vägg */}
-        {materialPopover &&
-          (() => {
-            const popoverWall = settings.walls.find(
-              (w) => w.id === materialPopover.wallId,
-            );
-            if (!popoverWall) return null;
-            return (
-              <div
-                className="absolute z-20 bg-white border border-gray-300 rounded-md shadow-lg p-2 min-w-[140px]"
-                style={{
-                  left: `${materialPopover.x + 8}px`,
-                  top: `${materialPopover.y - 4}px`,
-                }}
-              >
-                <p className="text-xs font-semibold text-gray-600 mb-1">
-                  Wall Material
-                </p>
-                {(Object.keys(MATERIAL_PRESETS) as WallMaterial[]).map(
-                  (mat) => {
-                    const preset = MATERIAL_PRESETS[mat];
-                    const isActive =
-                      (popoverWall.material || "drywall") === mat;
-                    return (
-                      <button
-                        key={mat}
-                        className={`flex items-center gap-2 w-full text-left px-2 py-1 text-xs rounded hover:bg-gray-100 ${
-                          isActive ? "bg-blue-50 font-semibold" : ""
-                        }`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const updatedWalls = settings.walls.map((w) =>
-                            w.id === materialPopover.wallId
-                              ? { ...w, material: mat }
-                              : w,
-                          );
-                          updateSettings({ walls: updatedWalls });
-                          setMaterialPopover(null);
-                        }}
-                      >
-                        <span
-                          className="w-3 h-3 rounded-sm border border-gray-300 inline-block"
-                          style={{ backgroundColor: preset.color }}
-                        />
-                        {preset.label} ({preset.attenuationDb} dB)
-                      </button>
-                    );
-                  },
-                )}
-                <button
-                  className="mt-1 text-xs text-gray-400 hover:text-gray-600 w-full text-left px-2"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setMaterialPopover(null);
+          {/* Material popover vid klick på vägg */}
+          {materialPopover &&
+            (() => {
+              const popoverWall = settings.walls.find(
+                (w) => w.id === materialPopover.wallId,
+              );
+              if (!popoverWall) return null;
+              return (
+                <div
+                  className="absolute z-20 bg-white border border-gray-300 rounded-md shadow-lg p-2 min-w-[140px]"
+                  style={{
+                    left: `${materialPopover.x + 8}px`,
+                    top: `${materialPopover.y - 4}px`,
                   }}
                 >
-                  Close
-                </button>
-              </div>
-            );
-          })()}
+                  <p className="text-xs font-semibold text-gray-600 mb-1">
+                    Wall Material
+                  </p>
+                  {(Object.keys(MATERIAL_PRESETS) as WallMaterial[]).map(
+                    (mat) => {
+                      const preset = MATERIAL_PRESETS[mat];
+                      const isActive =
+                        (popoverWall.material || "drywall") === mat;
+                      return (
+                        <button
+                          key={mat}
+                          className={`flex items-center gap-2 w-full text-left px-2 py-1 text-xs rounded hover:bg-gray-100 ${
+                            isActive ? "bg-blue-50 font-semibold" : ""
+                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const updatedWalls = settings.walls.map((w) =>
+                              w.id === materialPopover.wallId
+                                ? { ...w, material: mat }
+                                : w,
+                            );
+                            updateSettings({ walls: updatedWalls });
+                            setMaterialPopover(null);
+                          }}
+                        >
+                          <span
+                            className="w-3 h-3 rounded-sm border border-gray-300 inline-block"
+                            style={{ backgroundColor: preset.color }}
+                          />
+                          {preset.label} ({preset.attenuationDb} dB)
+                        </button>
+                      );
+                    },
+                  )}
+                  <button
+                    className="mt-1 text-xs text-gray-400 hover:text-gray-600 w-full text-left px-2"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMaterialPopover(null);
+                    }}
+                  >
+                    Close
+                  </button>
+                </div>
+              );
+            })()}
+        </div>
       </div>
     </div>
   );

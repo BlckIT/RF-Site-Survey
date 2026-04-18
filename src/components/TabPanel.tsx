@@ -47,6 +47,7 @@ import { getDefaults } from "@/components/GlobalSettings";
 import { useToast } from "@/components/ui/use-toast";
 import { KnownWifi } from "@/lib/types";
 import { groupNetworksBySSID } from "@/lib/groupNetworks";
+import SSIDDropdown from "@/components/SSIDDropdown";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -1289,18 +1290,11 @@ function SettingsPanel() {
                 <PopoverHelper text="If set, measure signal strength for this SSID instead of the connected network. Useful for passive scanning of a specific network." />
               </Label>
               <div className="flex gap-1">
-                <select
-                  className={inputClass}
+                <SSIDDropdown
                   value={draft.targetSSID || ""}
-                  onChange={(e) => updateDraft({ targetSSID: e.target.value })}
-                >
-                  <option value="">Connected (auto)</option>
-                  {groupNetworksBySSID(surveyScannedNetworks).map((net) => (
-                    <option key={net.ssid} value={net.ssid}>
-                      {net.ssid}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(ssid) => updateDraft({ targetSSID: ssid })}
+                  networks={groupNetworksBySSID(surveyScannedNetworks)}
+                />
                 <Button
                   variant="ghost"
                   size="sm"
@@ -1316,21 +1310,6 @@ function SettingsPanel() {
                   )}
                 </Button>
               </div>
-              {draft.targetSSID &&
-                surveyScannedNetworks.length > 0 &&
-                (() => {
-                  const grouped = groupNetworksBySSID(surveyScannedNetworks);
-                  const match = grouped.find(
-                    (n) => n.ssid === draft.targetSSID,
-                  );
-                  if (!match) return null;
-                  return (
-                    <div className="flex items-center gap-1 mt-1">
-                      <BandBadges bands={match.bands} />
-                      {signalBars(match.signalStrength)}
-                    </div>
-                  );
-                })()}
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-xs font-semibold">

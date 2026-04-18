@@ -322,19 +322,27 @@ export default function ScaleCalibration(): ReactNode {
         )}
       </div>
 
-      {/* Canvas */}
+      {/* Canvas — roteras visuellt med samma rotation som Rotate-verktyget */}
       <div
-        className="relative max-h-[calc(100vh-200px)] overflow-hidden"
+        className="relative max-h-[calc(100vh-200px)] overflow-hidden flex items-center justify-center"
         ref={containerRef}
       >
-        <canvas
-          ref={canvasRef}
-          width={settings.dimensions.width}
-          height={settings.dimensions.height}
-          onClick={handleClick}
-          onMouseMove={handleMouseMove}
-          className="border border-gray-200 rounded-sm cursor-crosshair w-full h-auto max-h-[calc(100vh-200px)] object-contain"
-        />
+        <div
+          style={{
+            transform: `rotate(${settings.rotation ?? 0}deg)`,
+            transformOrigin: "center",
+          }}
+          className="transition-transform duration-300"
+        >
+          <canvas
+            ref={canvasRef}
+            width={settings.dimensions.width}
+            height={settings.dimensions.height}
+            onClick={handleClick}
+            onMouseMove={handleMouseMove}
+            className="border border-gray-200 rounded-sm cursor-crosshair w-full h-auto max-h-[calc(100vh-200px)] object-contain"
+          />
+        </div>
       </div>
     </div>
   );

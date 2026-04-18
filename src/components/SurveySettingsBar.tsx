@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from "react";
 import { WifiResults } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { groupNetworksBySSID } from "@/lib/groupNetworks";
+import SSIDDropdown from "@/components/SSIDDropdown";
 
 /**
  * SurveySettingsBar — compact horizontal settings bar for the Survey tab.
@@ -33,7 +34,6 @@ export default function SurveySettingsBar() {
   }, [fetchSSIDs]);
 
   const grouped = groupNetworksBySSID(scannedSSIDs);
-  const selectedGrouped = grouped.find((n) => n.ssid === settings.targetSSID);
 
   const inputClass =
     "w-full border border-gray-200 rounded-sm p-1.5 text-sm focus:outline-none focus:ring focus:ring-blue-300 focus:border-blue-400";
@@ -47,18 +47,11 @@ export default function SurveySettingsBar() {
           <PopoverHelper text="Measure a specific SSID without being connected to it (passive scanning). Leave empty to use the currently connected network." />
         </Label>
         <div className="flex gap-1">
-          <select
-            className={inputClass}
+          <SSIDDropdown
             value={settings.targetSSID || ""}
-            onChange={(e) => updateSettings({ targetSSID: e.target.value })}
-          >
-            <option value="">Connected (auto)</option>
-            {grouped.map((net) => (
-              <option key={net.ssid} value={net.ssid}>
-                {net.ssid}
-              </option>
-            ))}
-          </select>
+            onChange={(ssid) => updateSettings({ targetSSID: ssid })}
+            networks={grouped}
+          />
           <Button
             variant="ghost"
             size="sm"
@@ -70,22 +63,6 @@ export default function SurveySettingsBar() {
             {ssidLoading ? "..." : "↻"}
           </Button>
         </div>
-        {selectedGrouped && (
-          <div className="flex items-center gap-1 mt-1">
-            {selectedGrouped.bands.map((b) => (
-              <span
-                key={b}
-                className={
-                  b === "2.4"
-                    ? "bg-blue-100 text-blue-700 text-xs px-1.5 py-0.5 rounded"
-                    : "bg-green-100 text-green-700 text-xs px-1.5 py-0.5 rounded"
-                }
-              >
-                {b === "2.4" ? "2.4 GHz" : "5 GHz"}
-              </span>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Test Duration */}
