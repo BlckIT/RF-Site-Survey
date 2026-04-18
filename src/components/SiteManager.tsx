@@ -223,6 +223,9 @@ export default function SiteManager() {
             onChange={(val) =>
               updateFloorImage(settings.site.activeFloorIndex, val)
             }
+            allowedFiles={settings.site.floors
+              .map((f) => f.floorplanImageName)
+              .filter(Boolean)}
             onMultiPageImport={(pages) => {
               // Första sidan uppdaterar aktiv floor, resten skapar nya floors
               pages.forEach((p, i) => {

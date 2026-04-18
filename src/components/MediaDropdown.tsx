@@ -14,12 +14,15 @@ type MediaDropdownProps = {
   onMultiPageImport?: (
     pages: { imageName: string; pageNumber: number }[],
   ) => void;
+  /** Begränsa fillistan till dessa filnamn (+ uppladdade). Om undefined visas alla. */
+  allowedFiles?: string[];
 };
 
 export default function MediaDropdown({
   defaultValue,
   onChange,
   onMultiPageImport,
+  allowedFiles,
 }: MediaDropdownProps) {
   const [files, setFiles] = useState<string[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
@@ -230,9 +233,19 @@ export default function MediaDropdown({
     }
   };
 
-  const filteredFiles = files.filter((f) =>
-    f.toLowerCase().includes(search.toLowerCase()),
-  );
+  // Filtrera på söktext + begränsa till projektets filer om allowedFiles anges
+  const filteredFiles = files.filter((f) => {
+    if (allowedFiles) {
+      // Visa filen om den matchar allowedFiles (eller dess .pdf-variant)
+      const base = f.replace(/\.(png|jpe?g)$/i, "").toLowerCase();
+      const match = allowedFiles.some((a) => {
+        const aBase = a.replace(/\.(png|jpe?g|pdf)$/i, "").toLowerCase();
+        return f === a || base === aBase;
+      });
+      if (!match) return false;
+    }
+    return f.toLowerCase().includes(search.toLowerCase());
+  });
 
   return (
     <div className="w-full">
