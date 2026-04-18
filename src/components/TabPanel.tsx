@@ -679,10 +679,26 @@ function SettingsPanel() {
   };
 
   // Hjälpfunktion: kolla om ett interface redan används av en annan funktion
+  // Kollar BÅDE UI-state OCH live nmcli-status
   const ifaceUsedBy = (
     iface: string,
     exclude: "scan" | "hotspot" | "connect",
   ): string | null => {
+    // Kolla live-status: om interfacet har en aktiv anslutning (station eller AP)
+    const device = networkDevices.find((d) => d.device === iface);
+    if (device && device.connection && device.state === "connected") {
+      // Kolla om det är hotspot (AP-mode)
+      if (
+        device.connection === "rf-survey-fallback" ||
+        device.connection === "rf-survey-hotspot"
+      ) {
+        if (exclude !== "hotspot") return `Hotspot (${device.connection})`;
+      } else {
+        // Station-mode — ansluten till WiFi
+        if (exclude !== "connect") return `Connected (${device.connection})`;
+      }
+    }
+    // Kolla UI-state
     if (exclude !== "scan" && draft.wifiInterface === iface) return "Scan";
     if (exclude !== "hotspot" && hotspotIface === iface && hotspotActive)
       return "Hotspot";
