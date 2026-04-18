@@ -979,26 +979,6 @@ function SettingsPanel() {
               </AccordionContent>
             </AccordionItem>
 
-            <AccordionItem value="credentials" className="border-gray-200">
-              <AccordionTrigger className="text-sm font-semibold text-gray-700 py-2 hover:no-underline">
-                Credentials
-              </AccordionTrigger>
-              <AccordionContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="flex flex-col gap-1">
-                    <Label className="text-xs font-semibold">
-                      sudo Password&nbsp;
-                      <PopoverHelper text="Enter the sudo password: required on macOS or Linux." />
-                    </Label>
-                    <PasswordInput
-                      value={draft.sudoerPassword}
-                      onChange={(e) => updateDraft({ sudoerPassword: e })}
-                    />
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
             <AccordionItem value="known-networks" className="border-gray-200">
               <AccordionTrigger className="text-sm font-semibold text-gray-700 py-2 hover:no-underline">
                 Known Networks
@@ -1119,7 +1099,7 @@ function SettingsPanel() {
                       variant="outline"
                       size="sm"
                       onClick={() => syncKnownNetworks(knownNetworks)}
-                      disabled={syncingKnown || !sudoerPassword}
+                      disabled={syncingKnown}
                     >
                       {syncingKnown ? (
                         <Loader2 className="w-3 h-3 mr-1 animate-spin" />

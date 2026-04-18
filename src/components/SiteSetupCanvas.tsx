@@ -4,6 +4,7 @@ import ScaleCalibration from "./ScaleCalibration";
 import WallEditor from "./WallEditor";
 import { Button } from "@/components/ui/button";
 import { Ruler, Layers, Check, RotateCw } from "lucide-react";
+import * as SliderPrimitive from "@radix-ui/react-slider";
 
 type SetupTool = "scale" | "walls" | "rotate";
 
@@ -32,6 +33,12 @@ export default function SiteSetupCanvas() {
     done: boolean;
   }[] = [
     {
+      id: "rotate",
+      label: "Rotate",
+      icon: <RotateCw className="w-4 h-4" />,
+      done: hasRotation,
+    },
+    {
       id: "scale",
       label: "Scale",
       icon: <Ruler className="w-4 h-4" />,
@@ -42,12 +49,6 @@ export default function SiteSetupCanvas() {
       label: "Walls",
       icon: <Layers className="w-4 h-4" />,
       done: hasWalls,
-    },
-    {
-      id: "rotate",
-      label: "Rotate",
-      icon: <RotateCw className="w-4 h-4" />,
-      done: hasRotation,
     },
   ];
 
@@ -78,15 +79,10 @@ export default function SiteSetupCanvas() {
   );
 }
 
-/** Rotera planritningen i 90°-steg */
+/** Rotera planritningen med slider (0°–360°) */
 function RotateFloorPlan() {
   const { settings, updateSettings } = useSettings();
   const currentRotation = settings.rotation ?? 0;
-
-  const rotateStep = () => {
-    const next = ((currentRotation + 90) % 360) as 0 | 90 | 180 | 270;
-    updateSettings({ rotation: next });
-  };
 
   const setRotation = (deg: number) => {
     updateSettings({ rotation: deg });
@@ -94,26 +90,31 @@ function RotateFloorPlan() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" onClick={rotateStep}>
-          <RotateCw className="w-4 h-4 mr-1" />
-          Rotate 90° CW
-        </Button>
-        <span className="text-sm text-gray-500">
-          Current: {currentRotation}°
+      <div className="flex items-center gap-3">
+        <SliderPrimitive.Root
+          className="relative flex items-center h-3 select-none touch-none w-64"
+          min={0}
+          max={360}
+          step={1}
+          value={[currentRotation]}
+          onValueChange={(val) => setRotation(val[0])}
+        >
+          <SliderPrimitive.Track className="relative grow rounded-full h-2 bg-gray-200">
+            <SliderPrimitive.Range className="absolute bg-blue-500 rounded-full h-full" />
+          </SliderPrimitive.Track>
+          <SliderPrimitive.Thumb
+            className="block w-5 h-5 bg-white border border-gray-300 rounded-full shadow hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            aria-label="Floor plan rotation in degrees"
+          />
+        </SliderPrimitive.Root>
+        <span className="text-sm text-gray-600 tabular-nums w-10 text-right">
+          {currentRotation}°
         </span>
-      </div>
-      <div className="flex gap-1">
-        {[0, 90, 180, 270].map((deg) => (
-          <Button
-            key={deg}
-            variant={currentRotation === deg ? "default" : "outline"}
-            size="sm"
-            onClick={() => setRotation(deg)}
-          >
-            {deg}°
+        {currentRotation !== 0 && (
+          <Button variant="outline" size="sm" onClick={() => setRotation(0)}>
+            Reset
           </Button>
-        ))}
+        )}
       </div>
       <div className="relative max-h-[calc(100vh-280px)] overflow-hidden flex items-center justify-center bg-gray-50 rounded border border-gray-200">
         <img

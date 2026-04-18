@@ -89,24 +89,15 @@ export class LinuxWifiActions implements WifiActions {
       reason = "Please set iperf3 server address";
     }
 
-    // Linux requires a sudo password
-    // but Docker doesn't
-    if (!reason && !isDocker()) {
-      if (!settings.sudoerPassword || settings.sudoerPassword == "") {
-        // don't require sudo password on a Docker container
-        reason = "Please set sudo password. It is required on Linux.";
-      }
-
-      // check that the sudo password is actually correct
-      // execAsync() throws if there is an error
-      else {
-        try {
-          await execAsync(
-            `echo '${settings.sudoerPassword.replace(/'/g, "'\\\\''")}'  | sudo -S ls`,
-          );
-        } catch {
-          reason = "Please enter a valid sudo password.";
-        }
+    // Sudo-lösenord är valfritt — sudoers NOPASSWD hanterar det vid behov.
+    // Om lösenord anges, verifiera att det fungerar.
+    if (!reason && !isDocker() && settings.sudoerPassword) {
+      try {
+        await execAsync(
+          `echo '${settings.sudoerPassword.replace(/'/g, "'\\\\''")}'  | sudo -S ls`,
+        );
+      } catch {
+        reason = "Please enter a valid sudo password.";
       }
     }
     // fill in the reason and return it
@@ -274,11 +265,14 @@ async function inferWifiDeviceIdOnLinux(
 }
 
 async function iwDevLink(interfaceId: string, pw: string): Promise<string> {
-  // const command = `echo "${pw}" | sudo -S iw dev ${interfaceId} link`;
-
   let command = `iw dev ${interfaceId} link`;
   if (!isDocker()) {
-    command = `echo '${pw.replace(/'/g, "'\\\\''")}'  | sudo -S ` + command;
+    // Om lösenord finns, använd sudo -S med pipe. Annars kör sudo utan lösenord (NOPASSWD).
+    if (pw) {
+      command = `echo '${pw.replace(/'/g, "'\\\\''")}'  | sudo -S ` + command;
+    } else {
+      command = `sudo ` + command;
+    }
   }
 
   const { stdout } = await execAsync(command);
@@ -287,8 +281,12 @@ async function iwDevLink(interfaceId: string, pw: string): Promise<string> {
 
 async function iwDevInfo(interfaceId: string, pw: string): Promise<string> {
   let command = `iw dev ${interfaceId} info`;
-  if (!isDocker() && pw) {
-    command = `echo '${pw.replace(/'/g, "'\\''")}'  | sudo -S ` + command;
+  if (!isDocker()) {
+    if (pw) {
+      command = `echo '${pw.replace(/'/g, "'\\''")}'  | sudo -S ` + command;
+    } else {
+      command = `sudo ` + command;
+    }
   }
   const { stdout } = await execAsync(command);
   return stdout;
