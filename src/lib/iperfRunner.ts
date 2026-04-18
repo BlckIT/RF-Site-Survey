@@ -299,11 +299,15 @@ export async function runSurveyTests(
 
         // ── Dual-band: hämta RSSI för det andra bandet via scan ──
         if (newWifiData) {
-          bandMeasurements = await collectDualBandMeasurements(
-            newWifiData,
-            newIperfData,
-            settings,
-          );
+          try {
+            bandMeasurements = await collectDualBandMeasurements(
+              newWifiData,
+              newIperfData,
+              settings,
+            );
+          } catch (dbErr) {
+            logger.warn(`Dual-band collection failed: ${dbErr}`);
+          }
           // SSE-meddelande med dual-band resultat
           if (bandMeasurements && bandMeasurements.length > 1) {
             const bandInfo = bandMeasurements
@@ -373,7 +377,18 @@ async function collectDualBandMeasurements(
 
   // Sök efter samma SSID på det andra bandet via nmcli scan-resultat
   try {
-    const wlanInterface = settings.wifiInterface || "";
+    // Hämta interface-namn — om tomt, auto-detektera via iw
+    let wlanInterface = settings.wifiInterface || "";
+    if (!wlanInterface) {
+      const { stdout: ifOut } = await execAsync(
+        "iw dev | awk '$1==\"Interface\"{print $2}' | head -n1",
+      );
+      wlanInterface = ifOut.trim();
+    }
+    if (!wlanInterface) {
+      logger.warn("Dual-band: no WiFi interface found, skipping");
+      return measurements;
+    }
     const { stdout } = await execAsync(
       `nmcli -t -f IN-USE,BSSID,SSID,MODE,CHAN,RATE,SIGNAL,BARS,SECURITY dev wifi list ifname ${wlanInterface}`,
     );
