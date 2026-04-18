@@ -28,7 +28,7 @@ export function HeatmapSlider({ value, onChange }: HeatmapSliderProps) {
           <Slider.Range className="absolute bg-blue-500 rounded-full h-full" />
         </Slider.Track>
         <Slider.Thumb
-          className="block w-5 h-5 bg-white border border-gray-300 rounded-full shadow hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="block w-5 h-5 bg-white border border-gray-200 rounded-full shadow hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
           aria-label="Radius of each heat spot"
         />
       </Slider.Root>

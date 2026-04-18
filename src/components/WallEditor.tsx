@@ -1183,7 +1183,7 @@ export default function WallEditor(): ReactNode {
         </Label>
         <div className="flex items-center gap-2 mt-1">
           <div
-            className="w-6 h-6 rounded border border-gray-300"
+            className="w-6 h-6 rounded border border-gray-200"
             style={{ backgroundColor: MATERIAL_PRESETS[activeMaterial].color }}
           />
           <select
@@ -1211,7 +1211,7 @@ export default function WallEditor(): ReactNode {
             return (
               <div key={mat} className="flex items-center gap-2">
                 <div
-                  className="w-4 h-4 rounded border border-gray-300"
+                  className="w-4 h-4 rounded border border-gray-200"
                   style={{ backgroundColor: preset.color }}
                 />
                 <span className="text-gray-700">
@@ -1257,19 +1257,24 @@ export default function WallEditor(): ReactNode {
                   Custom Attenuation (dB):{" "}
                   {(selectedWall.customAttenuationDb ?? 5).toFixed(0)}
                 </Label>
-                <input
-                  type="range"
-                  min="0"
-                  max="30"
-                  step="1"
-                  value={selectedWall.customAttenuationDb ?? 5}
-                  onChange={(e) =>
-                    updateSelectedWallCustomAttenuationDb(
-                      parseFloat(e.target.value),
-                    )
+                <SliderPrimitive.Root
+                  className="relative flex items-center h-3 select-none touch-none w-full"
+                  min={0}
+                  max={30}
+                  step={1}
+                  value={[selectedWall.customAttenuationDb ?? 5]}
+                  onValueChange={(val) =>
+                    updateSelectedWallCustomAttenuationDb(val[0])
                   }
-                  className="w-full"
-                />
+                >
+                  <SliderPrimitive.Track className="relative grow rounded-full h-1.5 bg-gray-200">
+                    <SliderPrimitive.Range className="absolute bg-blue-500 rounded-full h-full" />
+                  </SliderPrimitive.Track>
+                  <SliderPrimitive.Thumb
+                    className="block w-4 h-4 bg-white border border-gray-200 rounded-full shadow hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    aria-label="Custom attenuation"
+                  />
+                </SliderPrimitive.Root>
               </div>
             )}
 
@@ -1344,7 +1349,7 @@ export default function WallEditor(): ReactNode {
             <SliderPrimitive.Range className="absolute bg-blue-500 rounded-full h-full" />
           </SliderPrimitive.Track>
           <SliderPrimitive.Thumb
-            className="block w-4 h-4 bg-white border border-gray-300 rounded-full shadow hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="block w-4 h-4 bg-white border border-gray-200 rounded-full shadow hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             aria-label="Floor plan rotation"
           />
         </SliderPrimitive.Root>
@@ -1398,7 +1403,7 @@ export default function WallEditor(): ReactNode {
             if (!popoverWall) return null;
             return (
               <div
-                className="absolute z-20 bg-white border border-gray-300 rounded-md shadow-lg p-2 min-w-[140px]"
+                className="absolute z-20 bg-white border border-gray-200 rounded-md shadow-lg p-2 min-w-[140px]"
                 style={{
                   left: `${materialPopover.x + 8}px`,
                   top: `${materialPopover.y - 4}px`,
@@ -1430,7 +1435,7 @@ export default function WallEditor(): ReactNode {
                         }}
                       >
                         <span
-                          className="w-3 h-3 rounded-sm border border-gray-300 inline-block"
+                          className="w-3 h-3 rounded-sm border border-gray-200 inline-block"
                           style={{ backgroundColor: preset.color }}
                         />
                         {preset.label} ({preset.attenuationDb} dB)

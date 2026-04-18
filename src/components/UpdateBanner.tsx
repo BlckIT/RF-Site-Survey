@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { X, Download, Loader2, CheckCircle, AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface UpdateInfo {
   updateAvailable: boolean;
@@ -168,28 +169,28 @@ export default function UpdateBanner() {
       <div className="flex items-center gap-2 flex-shrink-0 ml-2">
         {phase === "idle" && (
           <>
-            <button
-              onClick={runUpdate}
-              className="px-3 py-1 rounded bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition-colors"
-            >
+            <Button size="sm" onClick={runUpdate}>
               Update now
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={dismiss}
-              className="p-1 rounded hover:bg-amber-200 transition-colors"
               aria-label="Dismiss"
+              className="h-7 w-7 p-0"
             >
               <X className="h-4 w-4" />
-            </button>
+            </Button>
           </>
         )}
         {phase === "error" && (
-          <button
+          <Button
+            variant="destructive"
+            size="sm"
             onClick={() => setPhase("idle")}
-            className="px-3 py-1 rounded bg-red-600 text-white text-xs font-medium hover:bg-red-700 transition-colors"
           >
             Dismiss
-          </button>
+          </Button>
         )}
       </div>
     </div>

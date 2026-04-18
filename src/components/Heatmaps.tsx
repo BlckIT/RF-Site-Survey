@@ -17,6 +17,7 @@ import { getColorAt, objectToRGBAString } from "@/lib/utils-gradient";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { HeatmapSlider } from "./Slider";
 
 import { IperfTestProperty } from "@/lib/types";
@@ -723,17 +724,15 @@ export function Heatmaps({ showWalls = true }: { showWalls?: boolean } = {}) {
           </h3>
           <div className="flex gap-2">
             {(["2.4", "5", "combined"] as const).map((band) => (
-              <button
+              <Button
                 key={band}
+                variant={bandFilter === band ? "default" : "outline"}
+                size="sm"
                 onClick={() => setBandFilter(band)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-sm border transition-colors ${
-                  bandFilter === band
-                    ? "bg-gray-900 text-white border-gray-900"
-                    : "bg-white text-gray-600 border-gray-300 hover:bg-gray-100"
-                }`}
+                className="text-xs"
               >
                 {band === "combined" ? "Combined" : `${band} GHz`}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -741,7 +740,7 @@ export function Heatmaps({ showWalls = true }: { showWalls?: boolean } = {}) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {selectedMetrics.map((metric) => (
-          <div key={metric} className="bg-gray-50 p-4 rounded-lg">
+          <div key={metric} className="bg-gray-50 p-4 rounded-md">
             <h3 className="text-sm font-semibold text-gray-700 mb-3">
               {metricTitles[metric]}
             </h3>

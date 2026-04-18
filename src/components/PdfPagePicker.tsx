@@ -82,9 +82,9 @@ export default function PdfPagePicker({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[85vh] flex flex-col">
+      <div className="bg-white rounded-md shadow-xl max-w-3xl w-full mx-4 max-h-[85vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3 border-b">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
           <div>
             <h2 className="text-base font-semibold">Select pages to import</h2>
             <p className="text-xs text-gray-500 mt-0.5">
@@ -161,7 +161,7 @@ export default function PdfPagePicker({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-5 py-3 border-t bg-gray-50 rounded-b-lg">
+        <div className="flex items-center justify-between px-5 py-3 border-t border-gray-200 bg-gray-50 rounded-b-md">
           <span className="text-sm text-gray-600">
             {selected.size} page{selected.size !== 1 ? "s" : ""} selected
           </span>

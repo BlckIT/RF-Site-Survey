@@ -24,7 +24,7 @@ export default function FloorPlanSelector() {
         Floor plan&nbsp;
         <PopoverHelper text="Choose a file to be used as a background image, or upload another PNG or JPEG file." />
       </Label>
-      <div className="min-w-[280px] max-w-[400px] flex-1">
+      <div className="w-full max-w-sm flex-1">
         <MediaDropdown
           defaultValue={settings.floorplanImageName}
           onChange={(val) => handleNewImageFile(val)}

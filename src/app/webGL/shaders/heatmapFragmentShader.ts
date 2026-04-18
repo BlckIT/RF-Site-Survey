@@ -126,13 +126,18 @@ const generateHeatmapFragmentShader = (
         weight = 1.0 / max(distSqPx, 1.0);
       }
 
-      // Väggdämpning minskar vikten — mätpunkter bakom väggar bidrar mindre
+      // Väggdämpning: minskar vikten OCH dämpar signalen
+      // Vikten minskas så att mätpunkter bakom väggar bidrar mindre
+      // Signalen dämpas så att väggar syns visuellt i heatmappen
       float wallDb = calcWallAttenuationDb(pixel, point);
       float wallFactor = pow(10.0, -wallDb / 20.0); // dB → linjär faktor
       weight *= wallFactor;
 
-      // Använd value direkt (redan dBm, inkluderar verkliga väggar vid mätning)
-      weightedSum += weight * value;
+      // Dämpa signalvärdet med väggförlust (synlig effekt i heatmappen)
+      float attenuatedValue = value - wallDb;
+
+      // Använd dämpat värde
+      weightedSum += weight * attenuatedValue;
       weightTotal += weight;
       pointCount += 1.0;
     }
@@ -147,8 +152,11 @@ const generateHeatmapFragmentShader = (
     float normalized = clamp((signal + 100.0) / 60.0, 0.0, 1.0);
     vec3 color = texture2D(u_lut, vec2(normalized, 0.5)).rgb;
 
-    // Confidence baserad på antal bidragande punkter (3+ = full confidence)
-    float confidence = clamp(pointCount / 3.0, 0.0, 1.0);
+    // Confidence: 1+ punkt = full confidence, avtar med avstånd till närmaste punkt
+    // Använd weightTotal normaliserat mot en referensvikt vid 1m avstånd
+    float refDist = calibrated ? 1.0 : 100.0; // 1 meter eller 100 pixlar
+    float refWeight = 1.0 / max(refDist * refDist, 1.0);
+    float confidence = clamp(weightTotal / refWeight * 0.5, 0.0, 1.0);
     float alpha = mix(u_minOpacity, u_maxOpacity, normalized) * confidence;
     gl_FragColor = vec4(color, alpha);
   }

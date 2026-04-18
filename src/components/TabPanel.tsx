@@ -892,7 +892,7 @@ function SettingsPanel() {
                   </div>
 
                   {/* Auto-activate fallback */}
-                  <div className="border-t border-gray-100 pt-3">
+                  <div className="border-t border-gray-200 pt-3">
                     <div className="flex items-center gap-3">
                       <Switch
                         checked={hotspotAutoActivate}
@@ -1075,12 +1075,14 @@ function SettingsPanel() {
                             <span className="text-xs text-gray-400">
                               pri:{net.priority}
                             </span>
-                            <button
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() => toggleKnownAutoConnect(idx)}
-                              className={`text-xs px-1.5 py-0.5 rounded ${net.autoConnect ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}
+                              className={`text-xs px-1.5 py-0.5 h-auto ${net.autoConnect ? "bg-green-100 text-green-700 hover:bg-green-200" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}
                             >
                               {net.autoConnect ? "Auto" : "Manual"}
-                            </button>
+                            </Button>
                           </div>
                           <div className="flex items-center gap-1 shrink-0">
                             <Button
@@ -1131,7 +1133,7 @@ function SettingsPanel() {
                       No known networks saved.
                     </p>
                   )}
-                  <div className="border border-dashed border-gray-300 rounded-sm p-3 space-y-2">
+                  <div className="border border-dashed border-gray-200 rounded-sm p-3 space-y-2">
                     <p className="text-xs font-semibold text-gray-600">
                       Add Network
                     </p>
@@ -1925,7 +1927,7 @@ function SystemUpdateSection() {
 
   return (
     <section className="space-y-4">
-      <h3 className="text-lg font-semibold">System Update</h3>
+      <h3 className="text-sm font-semibold text-gray-700">System Update</h3>
 
       <div className="flex items-center gap-3">
         <span className="text-sm text-gray-600">
@@ -1956,7 +1958,7 @@ function SystemUpdateSection() {
       )}
 
       {info?.updateAvailable && (
-        <div className="border border-amber-200 bg-amber-50 rounded-lg p-4 space-y-3">
+        <div className="border border-amber-200 bg-amber-50 rounded-md p-4 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-amber-900">
               {info.behindCount} new commit{info.behindCount !== 1 ? "s" : ""}{" "}

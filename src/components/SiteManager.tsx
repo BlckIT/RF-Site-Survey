@@ -171,7 +171,7 @@ export default function SiteManager() {
               className={`px-3 py-1.5 text-sm rounded-t-md border-b-0 h-auto ${
                 idx === settings.site.activeFloorIndex
                   ? "bg-white font-semibold border-gray-400 text-black"
-                  : "bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-50"
+                  : "bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-50"
               }`}
               title={`Switch to ${floor.name}. Double-click to rename.`}
             >
@@ -217,7 +217,7 @@ export default function SiteManager() {
           Floor Plan Image&nbsp;
           <PopoverHelper text="Choose or upload a floor plan image for the active floor." />
         </Label>
-        <div className="min-w-[280px] max-w-[400px]">
+        <div className="w-full max-w-sm">
           <MediaDropdown
             defaultValue={activeFloor?.floorplanImageName || ""}
             onChange={(val) =>

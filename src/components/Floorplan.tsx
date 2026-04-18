@@ -494,8 +494,8 @@ export default function ClickableFloorplan({
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-2xl font-semibold text-gray-800">
+    <div className="bg-white p-4 rounded-md shadow-md">
+      <h2 className="text-lg font-semibold text-gray-800">
         Interactive Floorplan
       </h2>
       <div className="p-2 rounded-md text-sm">
@@ -525,7 +525,7 @@ export default function ClickableFloorplan({
             width={settings.dimensions.width}
             height={settings.dimensions.height}
             onClick={handleCanvasClick}
-            className="border border-gray-300 rounded-lg cursor-pointer w-full h-auto max-h-[calc(100vh-200px)] object-contain block"
+            className="border border-gray-200 rounded-md cursor-pointer w-full h-auto max-h-[calc(100vh-200px)] object-contain block"
           />
 
           {overlay}

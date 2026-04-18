@@ -77,7 +77,7 @@ export default function NewToast({ onClose, toastIsReady }: NewToastProps) {
   return (
     <Toast.Provider swipeDirection="right">
       <Toast.Root
-        className="fixed bottom-[10px] right-[5px] w-96 bg-gray-200 text-gray-800 p-4 rounded shadow-md flex justify-between items-center"
+        className="fixed bottom-[10px] right-[5px] w-96 bg-gray-100 text-gray-800 p-4 rounded-md shadow-lg flex justify-between items-center border border-gray-200"
         duration={Infinity} // Keeps open until manually closed
       >
         <div>

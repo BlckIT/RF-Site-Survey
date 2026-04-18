@@ -120,7 +120,7 @@ const EditableApMapping = ({
           {apMapping.map((ap, index) => (
             <li
               key={index}
-              className="flex gap-2 items-center bg-gray-100 p-2 rounded-md"
+              className="flex gap-2 items-center bg-gray-50 p-2 rounded-md"
             >
               <span className="font-medium">{ap.apName}:</span>
               <span className="text-gray-600">

@@ -165,7 +165,7 @@ const PopupDetails: React.FC<PopupDetailsProps> = ({
 
   return (
     <div className="bg-white border border-gray-200 rounded-md shadow-lg text-xs overflow-hidden">
-      <div className="flex justify-between items-center bg-gray-100 px-2 py-1">
+      <div className="flex justify-between items-center bg-gray-50 px-2 py-1">
         <h3 className="font-semibold text-sm">Measurement Details</h3>
         <Button
           variant="ghost"
@@ -191,7 +191,7 @@ const PopupDetails: React.FC<PopupDetailsProps> = ({
           ))}
         </TableBody>
       </Table>
-      <div className="flex justify-between items-center px-2 py-2 bg-gray-100">
+      <div className="flex justify-between items-center px-2 py-2 bg-gray-50">
         <div className="flex items-center space-x-2">
           <Switch checked={isEnabled} onCheckedChange={handleToggle} />
           <span>Enabled</span>
