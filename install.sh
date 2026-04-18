@@ -68,14 +68,13 @@ echo -e "\n${BOLD}[3/8] Setting up application...${NC}"
 if [ -d "$INSTALL_DIR/.git" ]; then
   echo -e "${CYAN}Updating existing installation...${NC}"
   cd "$INSTALL_DIR"
-  # Bevara lokala data
-  git stash --include-untracked 2>/dev/null || true
-  git pull origin "$BRANCH"
-  git stash pop 2>/dev/null || true
+  # Pull som service-användaren för att undvika permission-problem
+  sudo -u "$SERVICE_USER" git pull origin "$BRANCH" || true
 else
   if [ "$INSTALL_DIR" != "$SCRIPT_DIR" ] || [ ! -f "$INSTALL_DIR/package.json" ]; then
     echo -e "${CYAN}Cloning repository to $INSTALL_DIR...${NC}"
     git clone -b "$BRANCH" "$REPO_URL" "$INSTALL_DIR"
+    chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
   fi
   cd "$INSTALL_DIR"
 fi
@@ -88,8 +87,10 @@ echo -e "${GREEN}Application at $INSTALL_DIR${NC}"
 
 # --- 4. Install dependencies + build ---
 echo -e "\n${BOLD}[4/8] Installing dependencies and building...${NC}"
-# Kör npm som service-användaren (inte root) för att undvika permission-problem
-sudo -u "$SERVICE_USER" bash -c "cd $INSTALL_DIR && npm install && npm run build"
+# Fixa ägare på hela installationen (kan ha blivit root vid tidigare sudo-körning)
+chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
+# Kör npm som service-användaren med deras fulla miljö (nvm etc)
+su - "$SERVICE_USER" -c "cd $INSTALL_DIR && npm install && npm run build"
 echo -e "${GREEN}Build complete.${NC}"
 
 # --- 5. Sudoers ---
@@ -106,11 +107,10 @@ fi
 
 # --- 6. pm2 service ---
 echo -e "\n${BOLD}[6/8] Setting up pm2 service...${NC}"
-# Stoppa och ta bort eventuell gammal process
-sudo -u "$SERVICE_USER" bash -c "pm2 delete $APP_NAME 2>/dev/null || true"
-# Starta med ecosystem config
-sudo -u "$SERVICE_USER" bash -c "cd $INSTALL_DIR && pm2 start ecosystem.config.cjs"
-sudo -u "$SERVICE_USER" bash -c "pm2 save"
+# Stoppa och ta bort eventuell gammal process, kör som service-användaren med deras miljö
+su - "$SERVICE_USER" -c "pm2 delete $APP_NAME 2>/dev/null || true"
+su - "$SERVICE_USER" -c "cd $INSTALL_DIR && pm2 start ecosystem.config.cjs"
+su - "$SERVICE_USER" -c "pm2 save"
 # Auto-start vid boot
 env PATH="$PATH" pm2 startup systemd -u "$SERVICE_USER" --hp "/home/$SERVICE_USER" 2>/dev/null || true
 echo -e "${GREEN}pm2 service configured.${NC}"
