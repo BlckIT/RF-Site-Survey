@@ -3,36 +3,845 @@
     "name": "Planritning nybyggnad",
     "floors": [
       {
-        "name": "Floor 1",
+        "name": "Plan 1",
         "floorplanImageName": "Planritning_nybyggnad.png",
         "floorplanImagePath": "/media/Planritning_nybyggnad.png",
         "dimensions": {
           "width": 1241,
           "height": 1755
         },
-        "walls": [],
-        "surveyPoints": [],
-        "pixelsPerMeter": 10,
-        "nextPointNum": 1
+        "walls": [
+          {
+            "id": "wall-1",
+            "x1": 150,
+            "y1": 172,
+            "x2": 1000,
+            "y2": 172,
+            "material": "concrete"
+          },
+          {
+            "id": "wall-2",
+            "x1": 150,
+            "y1": 618,
+            "x2": 1000,
+            "y2": 618,
+            "material": "concrete"
+          },
+          {
+            "id": "wall-3",
+            "x1": 150,
+            "y1": 172,
+            "x2": 150,
+            "y2": 618,
+            "material": "concrete"
+          },
+          {
+            "id": "wall-4",
+            "x1": 1000,
+            "y1": 172,
+            "x2": 1000,
+            "y2": 618,
+            "material": "concrete"
+          },
+          {
+            "id": "wall-5",
+            "x1": 460,
+            "y1": 172,
+            "x2": 460,
+            "y2": 405,
+            "material": "drywall"
+          },
+          {
+            "id": "wall-6",
+            "x1": 150,
+            "y1": 405,
+            "x2": 310,
+            "y2": 405,
+            "material": "drywall"
+          },
+          {
+            "id": "wall-7",
+            "x1": 310,
+            "y1": 405,
+            "x2": 640,
+            "y2": 405,
+            "material": "drywall"
+          },
+          {
+            "id": "wall-8",
+            "x1": 640,
+            "y1": 405,
+            "x2": 1000,
+            "y2": 405,
+            "material": "drywall"
+          },
+          {
+            "id": "wall-9",
+            "x1": 310,
+            "y1": 405,
+            "x2": 310,
+            "y2": 618,
+            "material": "concrete"
+          },
+          {
+            "id": "wall-10",
+            "x1": 640,
+            "y1": 405,
+            "x2": 640,
+            "y2": 618,
+            "material": "drywall"
+          },
+          {
+            "id": "wall-11",
+            "x1": 1000,
+            "y1": 172,
+            "x2": 1105,
+            "y2": 172,
+            "material": "concrete"
+          },
+          {
+            "id": "wall-12",
+            "x1": 1105,
+            "y1": 172,
+            "x2": 1105,
+            "y2": 380,
+            "material": "concrete"
+          },
+          {
+            "id": "wall-13",
+            "x1": 1000,
+            "y1": 380,
+            "x2": 1105,
+            "y2": 380,
+            "material": "concrete"
+          }
+        ],
+        "surveyPoints": [
+          {
+            "x": 305,
+            "y": 290,
+            "id": "plan-1",
+            "isEnabled": true,
+            "timestamp": 1713000000000,
+            "wifiData": {
+              "rssi": -25,
+              "signalStrength": 100,
+              "ssid": "HomeWiFi-5G",
+              "bssid": "AA:BB:CC:DD:EE:01",
+              "channel": 36,
+              "security": "WPA3",
+              "txRate": 933,
+              "phyMode": "802.11ac",
+              "channelWidth": 80,
+              "band": 5,
+              "currentSSID": true,
+              "strongestSSID": null,
+              "noiseFloor": -95,
+              "snr": 70,
+              "channelUtilization": 10
+            },
+            "iperfData": {
+              "tcpDownload": {
+                "bitsPerSecond": 495000000,
+                "retransmits": 0,
+                "jitterMs": null,
+                "lostPackets": null,
+                "packetsReceived": null,
+                "signalStrength": 100
+              },
+              "tcpUpload": {
+                "bitsPerSecond": 385000000,
+                "retransmits": 0,
+                "jitterMs": null,
+                "lostPackets": null,
+                "packetsReceived": null,
+                "signalStrength": 100
+              },
+              "udpDownload": {
+                "bitsPerSecond": 467500000,
+                "retransmits": 0,
+                "jitterMs": 0.1,
+                "lostPackets": 0,
+                "packetsReceived": 10000,
+                "signalStrength": 100
+              },
+              "udpUpload": {
+                "bitsPerSecond": 357500000,
+                "retransmits": 0,
+                "jitterMs": 0.1,
+                "lostPackets": 0,
+                "packetsReceived": 10000,
+                "signalStrength": 100
+              }
+            },
+            "bandMeasurements": {
+              "2.4": {
+                "rssi": -22,
+                "signalStrength": 100,
+                "ssid": "HomeWiFi",
+                "bssid": "AA:BB:CC:DD:EE:02",
+                "channel": 6,
+                "security": "WPA3",
+                "txRate": 300,
+                "phyMode": "802.11n",
+                "channelWidth": 40,
+                "band": 2.4,
+                "noiseFloor": -95,
+                "snr": 73
+              },
+              "5": {
+                "rssi": -25,
+                "signalStrength": 100,
+                "ssid": "HomeWiFi-5G",
+                "bssid": "AA:BB:CC:DD:EE:01",
+                "channel": 36,
+                "security": "WPA3",
+                "txRate": 933,
+                "phyMode": "802.11ac",
+                "channelWidth": 80,
+                "band": 5,
+                "noiseFloor": -95,
+                "snr": 70
+              }
+            }
+          },
+          {
+            "x": 220,
+            "y": 220,
+            "id": "plan-2",
+            "isEnabled": true,
+            "timestamp": 1713000060000,
+            "wifiData": {
+              "rssi": -35,
+              "signalStrength": 100,
+              "ssid": "HomeWiFi-5G",
+              "bssid": "AA:BB:CC:DD:EE:01",
+              "channel": 36,
+              "security": "WPA3",
+              "txRate": 933,
+              "phyMode": "802.11ac",
+              "channelWidth": 80,
+              "band": 5,
+              "currentSSID": true,
+              "strongestSSID": null,
+              "noiseFloor": -95,
+              "snr": 60,
+              "channelUtilization": 10
+            },
+            "iperfData": {
+              "tcpDownload": {
+                "bitsPerSecond": 495000000,
+                "retransmits": 0,
+                "jitterMs": null,
+                "lostPackets": null,
+                "packetsReceived": null,
+                "signalStrength": 100
+              },
+              "tcpUpload": {
+                "bitsPerSecond": 385000000,
+                "retransmits": 0,
+                "jitterMs": null,
+                "lostPackets": null,
+                "packetsReceived": null,
+                "signalStrength": 100
+              },
+              "udpDownload": {
+                "bitsPerSecond": 467500000,
+                "retransmits": 0,
+                "jitterMs": 0.1,
+                "lostPackets": 0,
+                "packetsReceived": 10000,
+                "signalStrength": 100
+              },
+              "udpUpload": {
+                "bitsPerSecond": 357500000,
+                "retransmits": 0,
+                "jitterMs": 0.1,
+                "lostPackets": 0,
+                "packetsReceived": 10000,
+                "signalStrength": 100
+              }
+            },
+            "bandMeasurements": {
+              "2.4": {
+                "rssi": -32,
+                "signalStrength": 100,
+                "ssid": "HomeWiFi",
+                "bssid": "AA:BB:CC:DD:EE:02",
+                "channel": 6,
+                "security": "WPA3",
+                "txRate": 300,
+                "phyMode": "802.11n",
+                "channelWidth": 40,
+                "band": 2.4,
+                "noiseFloor": -95,
+                "snr": 63
+              },
+              "5": {
+                "rssi": -35,
+                "signalStrength": 100,
+                "ssid": "HomeWiFi-5G",
+                "bssid": "AA:BB:CC:DD:EE:01",
+                "channel": 36,
+                "security": "WPA3",
+                "txRate": 933,
+                "phyMode": "802.11ac",
+                "channelWidth": 80,
+                "band": 5,
+                "noiseFloor": -95,
+                "snr": 60
+              }
+            }
+          },
+          {
+            "x": 580,
+            "y": 280,
+            "id": "plan-3",
+            "isEnabled": true,
+            "timestamp": 1713000120000,
+            "wifiData": {
+              "rssi": -46,
+              "signalStrength": 90,
+              "ssid": "HomeWiFi-5G",
+              "bssid": "AA:BB:CC:DD:EE:01",
+              "channel": 36,
+              "security": "WPA3",
+              "txRate": 839,
+              "phyMode": "802.11ac",
+              "channelWidth": 80,
+              "band": 5,
+              "currentSSID": true,
+              "strongestSSID": null,
+              "noiseFloor": -95,
+              "snr": 49,
+              "channelUtilization": 13
+            },
+            "iperfData": {
+              "tcpDownload": {
+                "bitsPerSecond": 445500000,
+                "retransmits": 1,
+                "jitterMs": null,
+                "lostPackets": null,
+                "packetsReceived": null,
+                "signalStrength": 90
+              },
+              "tcpUpload": {
+                "bitsPerSecond": 346500000,
+                "retransmits": 1,
+                "jitterMs": null,
+                "lostPackets": null,
+                "packetsReceived": null,
+                "signalStrength": 90
+              },
+              "udpDownload": {
+                "bitsPerSecond": 420750000,
+                "retransmits": 0,
+                "jitterMs": 0.4,
+                "lostPackets": 4,
+                "packetsReceived": 10000,
+                "signalStrength": 90
+              },
+              "udpUpload": {
+                "bitsPerSecond": 321750000,
+                "retransmits": 0,
+                "jitterMs": 0.5,
+                "lostPackets": 0,
+                "packetsReceived": 10000,
+                "signalStrength": 90
+              }
+            },
+            "bandMeasurements": {
+              "2.4": {
+                "rssi": -42,
+                "signalStrength": 97,
+                "ssid": "HomeWiFi",
+                "bssid": "AA:BB:CC:DD:EE:02",
+                "channel": 6,
+                "security": "WPA3",
+                "txRate": 291,
+                "phyMode": "802.11n",
+                "channelWidth": 40,
+                "band": 2.4,
+                "noiseFloor": -95,
+                "snr": 53
+              },
+              "5": {
+                "rssi": -46,
+                "signalStrength": 90,
+                "ssid": "HomeWiFi-5G",
+                "bssid": "AA:BB:CC:DD:EE:01",
+                "channel": 36,
+                "security": "WPA3",
+                "txRate": 839,
+                "phyMode": "802.11ac",
+                "channelWidth": 80,
+                "band": 5,
+                "noiseFloor": -95,
+                "snr": 49
+              }
+            }
+          },
+          {
+            "x": 870,
+            "y": 300,
+            "id": "plan-4",
+            "isEnabled": true,
+            "timestamp": 1713000180000,
+            "wifiData": {
+              "rssi": -52,
+              "signalStrength": 80,
+              "ssid": "HomeWiFi-5G",
+              "bssid": "AA:BB:CC:DD:EE:01",
+              "channel": 36,
+              "security": "WPA3",
+              "txRate": 746,
+              "phyMode": "802.11ac",
+              "channelWidth": 80,
+              "band": 5,
+              "currentSSID": true,
+              "strongestSSID": null,
+              "noiseFloor": -95,
+              "snr": 43,
+              "channelUtilization": 16
+            },
+            "iperfData": {
+              "tcpDownload": {
+                "bitsPerSecond": 396000000,
+                "retransmits": 2,
+                "jitterMs": null,
+                "lostPackets": null,
+                "packetsReceived": null,
+                "signalStrength": 80
+              },
+              "tcpUpload": {
+                "bitsPerSecond": 308000000,
+                "retransmits": 2,
+                "jitterMs": null,
+                "lostPackets": null,
+                "packetsReceived": null,
+                "signalStrength": 80
+              },
+              "udpDownload": {
+                "bitsPerSecond": 374000000,
+                "retransmits": 0,
+                "jitterMs": 0.7,
+                "lostPackets": 9,
+                "packetsReceived": 10000,
+                "signalStrength": 80
+              },
+              "udpUpload": {
+                "bitsPerSecond": 286000000,
+                "retransmits": 0,
+                "jitterMs": 0.8,
+                "lostPackets": 0,
+                "packetsReceived": 10000,
+                "signalStrength": 80
+              }
+            },
+            "bandMeasurements": {
+              "2.4": {
+                "rssi": -48,
+                "signalStrength": 87,
+                "ssid": "HomeWiFi",
+                "bssid": "AA:BB:CC:DD:EE:02",
+                "channel": 6,
+                "security": "WPA3",
+                "txRate": 261,
+                "phyMode": "802.11n",
+                "channelWidth": 40,
+                "band": 2.4,
+                "noiseFloor": -95,
+                "snr": 47
+              },
+              "5": {
+                "rssi": -52,
+                "signalStrength": 80,
+                "ssid": "HomeWiFi-5G",
+                "bssid": "AA:BB:CC:DD:EE:01",
+                "channel": 36,
+                "security": "WPA3",
+                "txRate": 746,
+                "phyMode": "802.11ac",
+                "channelWidth": 80,
+                "band": 5,
+                "noiseFloor": -95,
+                "snr": 43
+              }
+            }
+          },
+          {
+            "x": 230,
+            "y": 530,
+            "id": "plan-5",
+            "isEnabled": true,
+            "timestamp": 1713000240000,
+            "wifiData": {
+              "rssi": -45,
+              "signalStrength": 92,
+              "ssid": "HomeWiFi-5G",
+              "bssid": "AA:BB:CC:DD:EE:01",
+              "channel": 36,
+              "security": "WPA3",
+              "txRate": 858,
+              "phyMode": "802.11ac",
+              "channelWidth": 80,
+              "band": 5,
+              "currentSSID": true,
+              "strongestSSID": null,
+              "noiseFloor": -95,
+              "snr": 50,
+              "channelUtilization": 12
+            },
+            "iperfData": {
+              "tcpDownload": {
+                "bitsPerSecond": 455400000,
+                "retransmits": 1,
+                "jitterMs": null,
+                "lostPackets": null,
+                "packetsReceived": null,
+                "signalStrength": 92
+              },
+              "tcpUpload": {
+                "bitsPerSecond": 354200000,
+                "retransmits": 1,
+                "jitterMs": null,
+                "lostPackets": null,
+                "packetsReceived": null,
+                "signalStrength": 92
+              },
+              "udpDownload": {
+                "bitsPerSecond": 430100000,
+                "retransmits": 0,
+                "jitterMs": 0.3,
+                "lostPackets": 3,
+                "packetsReceived": 10000,
+                "signalStrength": 92
+              },
+              "udpUpload": {
+                "bitsPerSecond": 328900000,
+                "retransmits": 0,
+                "jitterMs": 0.4,
+                "lostPackets": 0,
+                "packetsReceived": 10000,
+                "signalStrength": 92
+              }
+            },
+            "bandMeasurements": {
+              "2.4": {
+                "rssi": -41,
+                "signalStrength": 98,
+                "ssid": "HomeWiFi",
+                "bssid": "AA:BB:CC:DD:EE:02",
+                "channel": 6,
+                "security": "WPA3",
+                "txRate": 294,
+                "phyMode": "802.11n",
+                "channelWidth": 40,
+                "band": 2.4,
+                "noiseFloor": -95,
+                "snr": 54
+              },
+              "5": {
+                "rssi": -45,
+                "signalStrength": 92,
+                "ssid": "HomeWiFi-5G",
+                "bssid": "AA:BB:CC:DD:EE:01",
+                "channel": 36,
+                "security": "WPA3",
+                "txRate": 858,
+                "phyMode": "802.11ac",
+                "channelWidth": 80,
+                "band": 5,
+                "noiseFloor": -95,
+                "snr": 50
+              }
+            }
+          },
+          {
+            "x": 480,
+            "y": 530,
+            "id": "plan-6",
+            "isEnabled": true,
+            "timestamp": 1713000300000,
+            "wifiData": {
+              "rssi": -47,
+              "signalStrength": 88,
+              "ssid": "HomeWiFi-5G",
+              "bssid": "AA:BB:CC:DD:EE:01",
+              "channel": 36,
+              "security": "WPA3",
+              "txRate": 821,
+              "phyMode": "802.11ac",
+              "channelWidth": 80,
+              "band": 5,
+              "currentSSID": true,
+              "strongestSSID": null,
+              "noiseFloor": -95,
+              "snr": 48,
+              "channelUtilization": 13
+            },
+            "iperfData": {
+              "tcpDownload": {
+                "bitsPerSecond": 435600000,
+                "retransmits": 1,
+                "jitterMs": null,
+                "lostPackets": null,
+                "packetsReceived": null,
+                "signalStrength": 88
+              },
+              "tcpUpload": {
+                "bitsPerSecond": 338800000,
+                "retransmits": 1,
+                "jitterMs": null,
+                "lostPackets": null,
+                "packetsReceived": null,
+                "signalStrength": 88
+              },
+              "udpDownload": {
+                "bitsPerSecond": 411400000,
+                "retransmits": 0,
+                "jitterMs": 0.5,
+                "lostPackets": 6,
+                "packetsReceived": 10000,
+                "signalStrength": 88
+              },
+              "udpUpload": {
+                "bitsPerSecond": 314600000,
+                "retransmits": 0,
+                "jitterMs": 0.6,
+                "lostPackets": 0,
+                "packetsReceived": 10000,
+                "signalStrength": 88
+              }
+            },
+            "bandMeasurements": {
+              "2.4": {
+                "rssi": -43,
+                "signalStrength": 95,
+                "ssid": "HomeWiFi",
+                "bssid": "AA:BB:CC:DD:EE:02",
+                "channel": 6,
+                "security": "WPA3",
+                "txRate": 285,
+                "phyMode": "802.11n",
+                "channelWidth": 40,
+                "band": 2.4,
+                "noiseFloor": -95,
+                "snr": 52
+              },
+              "5": {
+                "rssi": -47,
+                "signalStrength": 88,
+                "ssid": "HomeWiFi-5G",
+                "bssid": "AA:BB:CC:DD:EE:01",
+                "channel": 36,
+                "security": "WPA3",
+                "txRate": 821,
+                "phyMode": "802.11ac",
+                "channelWidth": 80,
+                "band": 5,
+                "noiseFloor": -95,
+                "snr": 48
+              }
+            }
+          },
+          {
+            "x": 800,
+            "y": 530,
+            "id": "plan-7",
+            "isEnabled": true,
+            "timestamp": 1713000360000,
+            "wifiData": {
+              "rssi": -58,
+              "signalStrength": 70,
+              "ssid": "HomeWiFi-5G",
+              "bssid": "AA:BB:CC:DD:EE:01",
+              "channel": 36,
+              "security": "WPA3",
+              "txRate": 653,
+              "phyMode": "802.11ac",
+              "channelWidth": 80,
+              "band": 5,
+              "currentSSID": true,
+              "strongestSSID": null,
+              "noiseFloor": -95,
+              "snr": 37,
+              "channelUtilization": 19
+            },
+            "iperfData": {
+              "tcpDownload": {
+                "bitsPerSecond": 346500000,
+                "retransmits": 4,
+                "jitterMs": null,
+                "lostPackets": null,
+                "packetsReceived": null,
+                "signalStrength": 70
+              },
+              "tcpUpload": {
+                "bitsPerSecond": 269500000,
+                "retransmits": 4,
+                "jitterMs": null,
+                "lostPackets": null,
+                "packetsReceived": null,
+                "signalStrength": 70
+              },
+              "udpDownload": {
+                "bitsPerSecond": 327250000,
+                "retransmits": 0,
+                "jitterMs": 1.0,
+                "lostPackets": 15,
+                "packetsReceived": 10000,
+                "signalStrength": 70
+              },
+              "udpUpload": {
+                "bitsPerSecond": 250250000,
+                "retransmits": 0,
+                "jitterMs": 1.2,
+                "lostPackets": 0,
+                "packetsReceived": 10000,
+                "signalStrength": 70
+              }
+            },
+            "bandMeasurements": {
+              "2.4": {
+                "rssi": -52,
+                "signalStrength": 80,
+                "ssid": "HomeWiFi",
+                "bssid": "AA:BB:CC:DD:EE:02",
+                "channel": 6,
+                "security": "WPA3",
+                "txRate": 240,
+                "phyMode": "802.11n",
+                "channelWidth": 40,
+                "band": 2.4,
+                "noiseFloor": -95,
+                "snr": 43
+              },
+              "5": {
+                "rssi": -58,
+                "signalStrength": 70,
+                "ssid": "HomeWiFi-5G",
+                "bssid": "AA:BB:CC:DD:EE:01",
+                "channel": 36,
+                "security": "WPA3",
+                "txRate": 653,
+                "phyMode": "802.11ac",
+                "channelWidth": 80,
+                "band": 5,
+                "noiseFloor": -95,
+                "snr": 37
+              }
+            }
+          },
+          {
+            "x": 940,
+            "y": 580,
+            "id": "plan-8",
+            "isEnabled": true,
+            "timestamp": 1713000420000,
+            "wifiData": {
+              "rssi": -60,
+              "signalStrength": 67,
+              "ssid": "HomeWiFi-5G",
+              "bssid": "AA:BB:CC:DD:EE:01",
+              "channel": 36,
+              "security": "WPA3",
+              "txRate": 625,
+              "phyMode": "802.11ac",
+              "channelWidth": 80,
+              "band": 5,
+              "currentSSID": true,
+              "strongestSSID": null,
+              "noiseFloor": -95,
+              "snr": 35,
+              "channelUtilization": 19
+            },
+            "iperfData": {
+              "tcpDownload": {
+                "bitsPerSecond": 331650000,
+                "retransmits": 4,
+                "jitterMs": null,
+                "lostPackets": null,
+                "packetsReceived": null,
+                "signalStrength": 67
+              },
+              "tcpUpload": {
+                "bitsPerSecond": 257949999,
+                "retransmits": 4,
+                "jitterMs": null,
+                "lostPackets": null,
+                "packetsReceived": null,
+                "signalStrength": 67
+              },
+              "udpDownload": {
+                "bitsPerSecond": 313225000,
+                "retransmits": 0,
+                "jitterMs": 1.1,
+                "lostPackets": 16,
+                "packetsReceived": 10000,
+                "signalStrength": 67
+              },
+              "udpUpload": {
+                "bitsPerSecond": 239525000,
+                "retransmits": 0,
+                "jitterMs": 1.3,
+                "lostPackets": 0,
+                "packetsReceived": 10000,
+                "signalStrength": 67
+              }
+            },
+            "bandMeasurements": {
+              "2.4": {
+                "rssi": -54,
+                "signalStrength": 77,
+                "ssid": "HomeWiFi",
+                "bssid": "AA:BB:CC:DD:EE:02",
+                "channel": 6,
+                "security": "WPA3",
+                "txRate": 231,
+                "phyMode": "802.11n",
+                "channelWidth": 40,
+                "band": 2.4,
+                "noiseFloor": -95,
+                "snr": 41
+              },
+              "5": {
+                "rssi": -60,
+                "signalStrength": 67,
+                "ssid": "HomeWiFi-5G",
+                "bssid": "AA:BB:CC:DD:EE:01",
+                "channel": 36,
+                "security": "WPA3",
+                "txRate": 625,
+                "phyMode": "802.11ac",
+                "channelWidth": 80,
+                "band": 5,
+                "noiseFloor": -95,
+                "snr": 35
+              }
+            }
+          }
+        ],
+        "pixelsPerMeter": 62,
+        "nextPointNum": 9,
+        "rotation": 0
       }
     ],
     "activeFloorIndex": 0
   },
   "iperfServerAdrs": "localhost",
-  "testDuration": 1,
-  "apMapping": [],
+  "testDuration": 10,
+  "apMapping": {},
   "radiusDivider": null,
   "maxOpacity": 0.7,
   "minOpacity": 0.2,
-  "blur": 0.99,
+  "blur": 0.4,
   "gradient": {
-    "0": "rgba(255, 0, 0, 0.6)",
-    "0.45": "rgba(255, 255, 0, 0.6)",
-    "0.5": "rgba(0, 0, 255, 0.6)",
-    "0.6": "rgba(0, 255, 255, 0.6)",
-    "0.75": "rgba(0, 255, 0, 0.6)",
-    "0.9": "rgba(0, 255, 0, 0.6)",
-    "1": "rgba(0, 255, 0, 0.6)"
+    "0": "rgb(0, 0, 255)",
+    "25": "rgb(0, 200, 255)",
+    "50": "rgb(0, 255, 0)",
+    "75": "rgb(200, 255, 0)",
+    "100": "rgb(255, 0, 0)"
   },
   "iperfCommands": {
     "tcpDownload": "iperf3 -c {server} {port} -t {duration} -R -J",
@@ -42,5 +851,832 @@
   },
   "wifiInterface": "",
   "targetSSID": "",
-  "snapRadius": 8
+  "snapRadius": 8,
+  "knownWifiNetworks": [],
+  "dualBand": {
+    "enabled": true,
+    "mode": "sequential"
+  },
+  "surveyPoints": [
+    {
+      "x": 305,
+      "y": 290,
+      "id": "plan-1",
+      "isEnabled": true,
+      "timestamp": 1713000000000,
+      "wifiData": {
+        "rssi": -25,
+        "signalStrength": 100,
+        "ssid": "HomeWiFi-5G",
+        "bssid": "AA:BB:CC:DD:EE:01",
+        "channel": 36,
+        "security": "WPA3",
+        "txRate": 933,
+        "phyMode": "802.11ac",
+        "channelWidth": 80,
+        "band": 5,
+        "currentSSID": true,
+        "strongestSSID": null,
+        "noiseFloor": -95,
+        "snr": 70,
+        "channelUtilization": 10
+      },
+      "iperfData": {
+        "tcpDownload": {
+          "bitsPerSecond": 495000000,
+          "retransmits": 0,
+          "jitterMs": null,
+          "lostPackets": null,
+          "packetsReceived": null,
+          "signalStrength": 100
+        },
+        "tcpUpload": {
+          "bitsPerSecond": 385000000,
+          "retransmits": 0,
+          "jitterMs": null,
+          "lostPackets": null,
+          "packetsReceived": null,
+          "signalStrength": 100
+        },
+        "udpDownload": {
+          "bitsPerSecond": 467500000,
+          "retransmits": 0,
+          "jitterMs": 0.1,
+          "lostPackets": 0,
+          "packetsReceived": 10000,
+          "signalStrength": 100
+        },
+        "udpUpload": {
+          "bitsPerSecond": 357500000,
+          "retransmits": 0,
+          "jitterMs": 0.1,
+          "lostPackets": 0,
+          "packetsReceived": 10000,
+          "signalStrength": 100
+        }
+      },
+      "bandMeasurements": {
+        "2.4": {
+          "rssi": -22,
+          "signalStrength": 100,
+          "ssid": "HomeWiFi",
+          "bssid": "AA:BB:CC:DD:EE:02",
+          "channel": 6,
+          "security": "WPA3",
+          "txRate": 300,
+          "phyMode": "802.11n",
+          "channelWidth": 40,
+          "band": 2.4,
+          "noiseFloor": -95,
+          "snr": 73
+        },
+        "5": {
+          "rssi": -25,
+          "signalStrength": 100,
+          "ssid": "HomeWiFi-5G",
+          "bssid": "AA:BB:CC:DD:EE:01",
+          "channel": 36,
+          "security": "WPA3",
+          "txRate": 933,
+          "phyMode": "802.11ac",
+          "channelWidth": 80,
+          "band": 5,
+          "noiseFloor": -95,
+          "snr": 70
+        }
+      }
+    },
+    {
+      "x": 220,
+      "y": 220,
+      "id": "plan-2",
+      "isEnabled": true,
+      "timestamp": 1713000060000,
+      "wifiData": {
+        "rssi": -35,
+        "signalStrength": 100,
+        "ssid": "HomeWiFi-5G",
+        "bssid": "AA:BB:CC:DD:EE:01",
+        "channel": 36,
+        "security": "WPA3",
+        "txRate": 933,
+        "phyMode": "802.11ac",
+        "channelWidth": 80,
+        "band": 5,
+        "currentSSID": true,
+        "strongestSSID": null,
+        "noiseFloor": -95,
+        "snr": 60,
+        "channelUtilization": 10
+      },
+      "iperfData": {
+        "tcpDownload": {
+          "bitsPerSecond": 495000000,
+          "retransmits": 0,
+          "jitterMs": null,
+          "lostPackets": null,
+          "packetsReceived": null,
+          "signalStrength": 100
+        },
+        "tcpUpload": {
+          "bitsPerSecond": 385000000,
+          "retransmits": 0,
+          "jitterMs": null,
+          "lostPackets": null,
+          "packetsReceived": null,
+          "signalStrength": 100
+        },
+        "udpDownload": {
+          "bitsPerSecond": 467500000,
+          "retransmits": 0,
+          "jitterMs": 0.1,
+          "lostPackets": 0,
+          "packetsReceived": 10000,
+          "signalStrength": 100
+        },
+        "udpUpload": {
+          "bitsPerSecond": 357500000,
+          "retransmits": 0,
+          "jitterMs": 0.1,
+          "lostPackets": 0,
+          "packetsReceived": 10000,
+          "signalStrength": 100
+        }
+      },
+      "bandMeasurements": {
+        "2.4": {
+          "rssi": -32,
+          "signalStrength": 100,
+          "ssid": "HomeWiFi",
+          "bssid": "AA:BB:CC:DD:EE:02",
+          "channel": 6,
+          "security": "WPA3",
+          "txRate": 300,
+          "phyMode": "802.11n",
+          "channelWidth": 40,
+          "band": 2.4,
+          "noiseFloor": -95,
+          "snr": 63
+        },
+        "5": {
+          "rssi": -35,
+          "signalStrength": 100,
+          "ssid": "HomeWiFi-5G",
+          "bssid": "AA:BB:CC:DD:EE:01",
+          "channel": 36,
+          "security": "WPA3",
+          "txRate": 933,
+          "phyMode": "802.11ac",
+          "channelWidth": 80,
+          "band": 5,
+          "noiseFloor": -95,
+          "snr": 60
+        }
+      }
+    },
+    {
+      "x": 580,
+      "y": 280,
+      "id": "plan-3",
+      "isEnabled": true,
+      "timestamp": 1713000120000,
+      "wifiData": {
+        "rssi": -46,
+        "signalStrength": 90,
+        "ssid": "HomeWiFi-5G",
+        "bssid": "AA:BB:CC:DD:EE:01",
+        "channel": 36,
+        "security": "WPA3",
+        "txRate": 839,
+        "phyMode": "802.11ac",
+        "channelWidth": 80,
+        "band": 5,
+        "currentSSID": true,
+        "strongestSSID": null,
+        "noiseFloor": -95,
+        "snr": 49,
+        "channelUtilization": 13
+      },
+      "iperfData": {
+        "tcpDownload": {
+          "bitsPerSecond": 445500000,
+          "retransmits": 1,
+          "jitterMs": null,
+          "lostPackets": null,
+          "packetsReceived": null,
+          "signalStrength": 90
+        },
+        "tcpUpload": {
+          "bitsPerSecond": 346500000,
+          "retransmits": 1,
+          "jitterMs": null,
+          "lostPackets": null,
+          "packetsReceived": null,
+          "signalStrength": 90
+        },
+        "udpDownload": {
+          "bitsPerSecond": 420750000,
+          "retransmits": 0,
+          "jitterMs": 0.4,
+          "lostPackets": 4,
+          "packetsReceived": 10000,
+          "signalStrength": 90
+        },
+        "udpUpload": {
+          "bitsPerSecond": 321750000,
+          "retransmits": 0,
+          "jitterMs": 0.5,
+          "lostPackets": 0,
+          "packetsReceived": 10000,
+          "signalStrength": 90
+        }
+      },
+      "bandMeasurements": {
+        "2.4": {
+          "rssi": -42,
+          "signalStrength": 97,
+          "ssid": "HomeWiFi",
+          "bssid": "AA:BB:CC:DD:EE:02",
+          "channel": 6,
+          "security": "WPA3",
+          "txRate": 291,
+          "phyMode": "802.11n",
+          "channelWidth": 40,
+          "band": 2.4,
+          "noiseFloor": -95,
+          "snr": 53
+        },
+        "5": {
+          "rssi": -46,
+          "signalStrength": 90,
+          "ssid": "HomeWiFi-5G",
+          "bssid": "AA:BB:CC:DD:EE:01",
+          "channel": 36,
+          "security": "WPA3",
+          "txRate": 839,
+          "phyMode": "802.11ac",
+          "channelWidth": 80,
+          "band": 5,
+          "noiseFloor": -95,
+          "snr": 49
+        }
+      }
+    },
+    {
+      "x": 870,
+      "y": 300,
+      "id": "plan-4",
+      "isEnabled": true,
+      "timestamp": 1713000180000,
+      "wifiData": {
+        "rssi": -52,
+        "signalStrength": 80,
+        "ssid": "HomeWiFi-5G",
+        "bssid": "AA:BB:CC:DD:EE:01",
+        "channel": 36,
+        "security": "WPA3",
+        "txRate": 746,
+        "phyMode": "802.11ac",
+        "channelWidth": 80,
+        "band": 5,
+        "currentSSID": true,
+        "strongestSSID": null,
+        "noiseFloor": -95,
+        "snr": 43,
+        "channelUtilization": 16
+      },
+      "iperfData": {
+        "tcpDownload": {
+          "bitsPerSecond": 396000000,
+          "retransmits": 2,
+          "jitterMs": null,
+          "lostPackets": null,
+          "packetsReceived": null,
+          "signalStrength": 80
+        },
+        "tcpUpload": {
+          "bitsPerSecond": 308000000,
+          "retransmits": 2,
+          "jitterMs": null,
+          "lostPackets": null,
+          "packetsReceived": null,
+          "signalStrength": 80
+        },
+        "udpDownload": {
+          "bitsPerSecond": 374000000,
+          "retransmits": 0,
+          "jitterMs": 0.7,
+          "lostPackets": 9,
+          "packetsReceived": 10000,
+          "signalStrength": 80
+        },
+        "udpUpload": {
+          "bitsPerSecond": 286000000,
+          "retransmits": 0,
+          "jitterMs": 0.8,
+          "lostPackets": 0,
+          "packetsReceived": 10000,
+          "signalStrength": 80
+        }
+      },
+      "bandMeasurements": {
+        "2.4": {
+          "rssi": -48,
+          "signalStrength": 87,
+          "ssid": "HomeWiFi",
+          "bssid": "AA:BB:CC:DD:EE:02",
+          "channel": 6,
+          "security": "WPA3",
+          "txRate": 261,
+          "phyMode": "802.11n",
+          "channelWidth": 40,
+          "band": 2.4,
+          "noiseFloor": -95,
+          "snr": 47
+        },
+        "5": {
+          "rssi": -52,
+          "signalStrength": 80,
+          "ssid": "HomeWiFi-5G",
+          "bssid": "AA:BB:CC:DD:EE:01",
+          "channel": 36,
+          "security": "WPA3",
+          "txRate": 746,
+          "phyMode": "802.11ac",
+          "channelWidth": 80,
+          "band": 5,
+          "noiseFloor": -95,
+          "snr": 43
+        }
+      }
+    },
+    {
+      "x": 230,
+      "y": 530,
+      "id": "plan-5",
+      "isEnabled": true,
+      "timestamp": 1713000240000,
+      "wifiData": {
+        "rssi": -45,
+        "signalStrength": 92,
+        "ssid": "HomeWiFi-5G",
+        "bssid": "AA:BB:CC:DD:EE:01",
+        "channel": 36,
+        "security": "WPA3",
+        "txRate": 858,
+        "phyMode": "802.11ac",
+        "channelWidth": 80,
+        "band": 5,
+        "currentSSID": true,
+        "strongestSSID": null,
+        "noiseFloor": -95,
+        "snr": 50,
+        "channelUtilization": 12
+      },
+      "iperfData": {
+        "tcpDownload": {
+          "bitsPerSecond": 455400000,
+          "retransmits": 1,
+          "jitterMs": null,
+          "lostPackets": null,
+          "packetsReceived": null,
+          "signalStrength": 92
+        },
+        "tcpUpload": {
+          "bitsPerSecond": 354200000,
+          "retransmits": 1,
+          "jitterMs": null,
+          "lostPackets": null,
+          "packetsReceived": null,
+          "signalStrength": 92
+        },
+        "udpDownload": {
+          "bitsPerSecond": 430100000,
+          "retransmits": 0,
+          "jitterMs": 0.3,
+          "lostPackets": 3,
+          "packetsReceived": 10000,
+          "signalStrength": 92
+        },
+        "udpUpload": {
+          "bitsPerSecond": 328900000,
+          "retransmits": 0,
+          "jitterMs": 0.4,
+          "lostPackets": 0,
+          "packetsReceived": 10000,
+          "signalStrength": 92
+        }
+      },
+      "bandMeasurements": {
+        "2.4": {
+          "rssi": -41,
+          "signalStrength": 98,
+          "ssid": "HomeWiFi",
+          "bssid": "AA:BB:CC:DD:EE:02",
+          "channel": 6,
+          "security": "WPA3",
+          "txRate": 294,
+          "phyMode": "802.11n",
+          "channelWidth": 40,
+          "band": 2.4,
+          "noiseFloor": -95,
+          "snr": 54
+        },
+        "5": {
+          "rssi": -45,
+          "signalStrength": 92,
+          "ssid": "HomeWiFi-5G",
+          "bssid": "AA:BB:CC:DD:EE:01",
+          "channel": 36,
+          "security": "WPA3",
+          "txRate": 858,
+          "phyMode": "802.11ac",
+          "channelWidth": 80,
+          "band": 5,
+          "noiseFloor": -95,
+          "snr": 50
+        }
+      }
+    },
+    {
+      "x": 480,
+      "y": 530,
+      "id": "plan-6",
+      "isEnabled": true,
+      "timestamp": 1713000300000,
+      "wifiData": {
+        "rssi": -47,
+        "signalStrength": 88,
+        "ssid": "HomeWiFi-5G",
+        "bssid": "AA:BB:CC:DD:EE:01",
+        "channel": 36,
+        "security": "WPA3",
+        "txRate": 821,
+        "phyMode": "802.11ac",
+        "channelWidth": 80,
+        "band": 5,
+        "currentSSID": true,
+        "strongestSSID": null,
+        "noiseFloor": -95,
+        "snr": 48,
+        "channelUtilization": 13
+      },
+      "iperfData": {
+        "tcpDownload": {
+          "bitsPerSecond": 435600000,
+          "retransmits": 1,
+          "jitterMs": null,
+          "lostPackets": null,
+          "packetsReceived": null,
+          "signalStrength": 88
+        },
+        "tcpUpload": {
+          "bitsPerSecond": 338800000,
+          "retransmits": 1,
+          "jitterMs": null,
+          "lostPackets": null,
+          "packetsReceived": null,
+          "signalStrength": 88
+        },
+        "udpDownload": {
+          "bitsPerSecond": 411400000,
+          "retransmits": 0,
+          "jitterMs": 0.5,
+          "lostPackets": 6,
+          "packetsReceived": 10000,
+          "signalStrength": 88
+        },
+        "udpUpload": {
+          "bitsPerSecond": 314600000,
+          "retransmits": 0,
+          "jitterMs": 0.6,
+          "lostPackets": 0,
+          "packetsReceived": 10000,
+          "signalStrength": 88
+        }
+      },
+      "bandMeasurements": {
+        "2.4": {
+          "rssi": -43,
+          "signalStrength": 95,
+          "ssid": "HomeWiFi",
+          "bssid": "AA:BB:CC:DD:EE:02",
+          "channel": 6,
+          "security": "WPA3",
+          "txRate": 285,
+          "phyMode": "802.11n",
+          "channelWidth": 40,
+          "band": 2.4,
+          "noiseFloor": -95,
+          "snr": 52
+        },
+        "5": {
+          "rssi": -47,
+          "signalStrength": 88,
+          "ssid": "HomeWiFi-5G",
+          "bssid": "AA:BB:CC:DD:EE:01",
+          "channel": 36,
+          "security": "WPA3",
+          "txRate": 821,
+          "phyMode": "802.11ac",
+          "channelWidth": 80,
+          "band": 5,
+          "noiseFloor": -95,
+          "snr": 48
+        }
+      }
+    },
+    {
+      "x": 800,
+      "y": 530,
+      "id": "plan-7",
+      "isEnabled": true,
+      "timestamp": 1713000360000,
+      "wifiData": {
+        "rssi": -58,
+        "signalStrength": 70,
+        "ssid": "HomeWiFi-5G",
+        "bssid": "AA:BB:CC:DD:EE:01",
+        "channel": 36,
+        "security": "WPA3",
+        "txRate": 653,
+        "phyMode": "802.11ac",
+        "channelWidth": 80,
+        "band": 5,
+        "currentSSID": true,
+        "strongestSSID": null,
+        "noiseFloor": -95,
+        "snr": 37,
+        "channelUtilization": 19
+      },
+      "iperfData": {
+        "tcpDownload": {
+          "bitsPerSecond": 346500000,
+          "retransmits": 4,
+          "jitterMs": null,
+          "lostPackets": null,
+          "packetsReceived": null,
+          "signalStrength": 70
+        },
+        "tcpUpload": {
+          "bitsPerSecond": 269500000,
+          "retransmits": 4,
+          "jitterMs": null,
+          "lostPackets": null,
+          "packetsReceived": null,
+          "signalStrength": 70
+        },
+        "udpDownload": {
+          "bitsPerSecond": 327250000,
+          "retransmits": 0,
+          "jitterMs": 1.0,
+          "lostPackets": 15,
+          "packetsReceived": 10000,
+          "signalStrength": 70
+        },
+        "udpUpload": {
+          "bitsPerSecond": 250250000,
+          "retransmits": 0,
+          "jitterMs": 1.2,
+          "lostPackets": 0,
+          "packetsReceived": 10000,
+          "signalStrength": 70
+        }
+      },
+      "bandMeasurements": {
+        "2.4": {
+          "rssi": -52,
+          "signalStrength": 80,
+          "ssid": "HomeWiFi",
+          "bssid": "AA:BB:CC:DD:EE:02",
+          "channel": 6,
+          "security": "WPA3",
+          "txRate": 240,
+          "phyMode": "802.11n",
+          "channelWidth": 40,
+          "band": 2.4,
+          "noiseFloor": -95,
+          "snr": 43
+        },
+        "5": {
+          "rssi": -58,
+          "signalStrength": 70,
+          "ssid": "HomeWiFi-5G",
+          "bssid": "AA:BB:CC:DD:EE:01",
+          "channel": 36,
+          "security": "WPA3",
+          "txRate": 653,
+          "phyMode": "802.11ac",
+          "channelWidth": 80,
+          "band": 5,
+          "noiseFloor": -95,
+          "snr": 37
+        }
+      }
+    },
+    {
+      "x": 940,
+      "y": 580,
+      "id": "plan-8",
+      "isEnabled": true,
+      "timestamp": 1713000420000,
+      "wifiData": {
+        "rssi": -60,
+        "signalStrength": 67,
+        "ssid": "HomeWiFi-5G",
+        "bssid": "AA:BB:CC:DD:EE:01",
+        "channel": 36,
+        "security": "WPA3",
+        "txRate": 625,
+        "phyMode": "802.11ac",
+        "channelWidth": 80,
+        "band": 5,
+        "currentSSID": true,
+        "strongestSSID": null,
+        "noiseFloor": -95,
+        "snr": 35,
+        "channelUtilization": 19
+      },
+      "iperfData": {
+        "tcpDownload": {
+          "bitsPerSecond": 331650000,
+          "retransmits": 4,
+          "jitterMs": null,
+          "lostPackets": null,
+          "packetsReceived": null,
+          "signalStrength": 67
+        },
+        "tcpUpload": {
+          "bitsPerSecond": 257949999,
+          "retransmits": 4,
+          "jitterMs": null,
+          "lostPackets": null,
+          "packetsReceived": null,
+          "signalStrength": 67
+        },
+        "udpDownload": {
+          "bitsPerSecond": 313225000,
+          "retransmits": 0,
+          "jitterMs": 1.1,
+          "lostPackets": 16,
+          "packetsReceived": 10000,
+          "signalStrength": 67
+        },
+        "udpUpload": {
+          "bitsPerSecond": 239525000,
+          "retransmits": 0,
+          "jitterMs": 1.3,
+          "lostPackets": 0,
+          "packetsReceived": 10000,
+          "signalStrength": 67
+        }
+      },
+      "bandMeasurements": {
+        "2.4": {
+          "rssi": -54,
+          "signalStrength": 77,
+          "ssid": "HomeWiFi",
+          "bssid": "AA:BB:CC:DD:EE:02",
+          "channel": 6,
+          "security": "WPA3",
+          "txRate": 231,
+          "phyMode": "802.11n",
+          "channelWidth": 40,
+          "band": 2.4,
+          "noiseFloor": -95,
+          "snr": 41
+        },
+        "5": {
+          "rssi": -60,
+          "signalStrength": 67,
+          "ssid": "HomeWiFi-5G",
+          "bssid": "AA:BB:CC:DD:EE:01",
+          "channel": 36,
+          "security": "WPA3",
+          "txRate": 625,
+          "phyMode": "802.11ac",
+          "channelWidth": 80,
+          "band": 5,
+          "noiseFloor": -95,
+          "snr": 35
+        }
+      }
+    }
+  ],
+  "floorplanImageName": "Planritning_nybyggnad.png",
+  "floorplanImagePath": "/media/Planritning_nybyggnad.png",
+  "nextPointNum": 9,
+  "dimensions": {
+    "width": 1241,
+    "height": 1755
+  },
+  "walls": [
+    {
+      "id": "wall-1",
+      "x1": 150,
+      "y1": 172,
+      "x2": 1000,
+      "y2": 172,
+      "material": "concrete"
+    },
+    {
+      "id": "wall-2",
+      "x1": 150,
+      "y1": 618,
+      "x2": 1000,
+      "y2": 618,
+      "material": "concrete"
+    },
+    {
+      "id": "wall-3",
+      "x1": 150,
+      "y1": 172,
+      "x2": 150,
+      "y2": 618,
+      "material": "concrete"
+    },
+    {
+      "id": "wall-4",
+      "x1": 1000,
+      "y1": 172,
+      "x2": 1000,
+      "y2": 618,
+      "material": "concrete"
+    },
+    {
+      "id": "wall-5",
+      "x1": 460,
+      "y1": 172,
+      "x2": 460,
+      "y2": 405,
+      "material": "drywall"
+    },
+    {
+      "id": "wall-6",
+      "x1": 150,
+      "y1": 405,
+      "x2": 310,
+      "y2": 405,
+      "material": "drywall"
+    },
+    {
+      "id": "wall-7",
+      "x1": 310,
+      "y1": 405,
+      "x2": 640,
+      "y2": 405,
+      "material": "drywall"
+    },
+    {
+      "id": "wall-8",
+      "x1": 640,
+      "y1": 405,
+      "x2": 1000,
+      "y2": 405,
+      "material": "drywall"
+    },
+    {
+      "id": "wall-9",
+      "x1": 310,
+      "y1": 405,
+      "x2": 310,
+      "y2": 618,
+      "material": "concrete"
+    },
+    {
+      "id": "wall-10",
+      "x1": 640,
+      "y1": 405,
+      "x2": 640,
+      "y2": 618,
+      "material": "drywall"
+    },
+    {
+      "id": "wall-11",
+      "x1": 1000,
+      "y1": 172,
+      "x2": 1105,
+      "y2": 172,
+      "material": "concrete"
+    },
+    {
+      "id": "wall-12",
+      "x1": 1105,
+      "y1": 172,
+      "x2": 1105,
+      "y2": 380,
+      "material": "concrete"
+    },
+    {
+      "id": "wall-13",
+      "x1": 1000,
+      "y1": 380,
+      "x2": 1105,
+      "y2": 380,
+      "material": "concrete"
+    }
+  ],
+  "pixelsPerMeter": 62,
+  "rotation": 0,
+  "lastModified": 1713000600000
 }
