@@ -137,7 +137,31 @@ export async function POST() {
     });
 
     // 3. npm run build (NODE_ENV=production implicit via next build)
-    const build = await shell("npm run build", 120000);
+    // next build skriver ESLint-varningar till stderr — fånga utan att kasta
+    let build: { stdout: string; stderr: string };
+    try {
+      build = await shell("npm run build", 180000);
+    } catch (buildErr: unknown) {
+      // Om exit code 0 men stderr har varningar → execFileAsync kastar ändå ibland
+      // Kolla om det faktiskt är ett build-fel eller bara varningar
+      const errObj = buildErr as {
+        stdout?: string;
+        stderr?: string;
+        code?: number;
+      };
+      if (
+        errObj.stdout &&
+        errObj.stdout.includes("Finalizing page optimization")
+      ) {
+        // Build lyckades trots stderr-varningar
+        build = {
+          stdout: errObj.stdout || "",
+          stderr: errObj.stderr || "",
+        };
+      } else {
+        throw buildErr;
+      }
+    }
 
     // 4. Hämta ny commit-hash
     const { stdout: newCommitRaw } = await git([
