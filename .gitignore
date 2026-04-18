@@ -36,9 +36,12 @@ yarn-error.log*
 next-env.d.ts
 
 /data/*.json
+!/data/settings.json
 /data/surveys/*.json
+!/data/surveys/DemoOffice.png.json
 /data/surveys-*/
 public/media/
+!public/media/DemoOffice.png
 
 .vscode
 
