@@ -259,11 +259,6 @@ export async function runSurveyTests(
         }
         checkForCancel();
 
-        // Send the final update - type is "done"
-        displayStates.type = "done";
-        displayStates.header = "Measurement complete";
-        sendSSEMessage(getUpdatedMessage());
-
         if (
           wifiDataBefore.SSIDs[0] &&
           wifiDataAfter.SSIDs?.[0] &&
@@ -310,13 +305,18 @@ export async function runSurveyTests(
           } catch (dbErr) {
             logger.warn(`Dual-band collection failed: ${dbErr}`);
           }
-          // SSE-meddelande med dual-band resultat
+          // Bygg bandInfo-sträng för toast
           if (bandMeasurements && bandMeasurements.length > 0) {
             displayStates.bandInfo = bandMeasurements
               .map((bm) => `${bm.band} GHz: ${bm.signal} dBm`)
               .join(" | ");
           }
         }
+
+        // Skicka "done" EFTER all data (inkl. dual-band) är insamlad
+        displayStates.type = "done";
+        displayStates.header = "Measurement complete";
+        sendSSEMessage(getUpdatedMessage());
       } catch (error: any) {
         logger.error(`Attempt ${attempts} failed:`, error);
         if (error.message == "cancelled") {

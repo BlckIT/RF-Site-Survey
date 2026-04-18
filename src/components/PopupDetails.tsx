@@ -76,7 +76,10 @@ const PopupDetails: React.FC<PopupDetailsProps> = ({
         ]
       : []),
     { label: "Channel", value: point.wifiData?.channel },
-    { label: "Band", value: `${point.wifiData?.band} GHz` },
+    // Band visas i dual-band-sektionen nedan om bandMeasurements finns, annars fallback
+    ...(!point.bandMeasurements || point.bandMeasurements.length === 0
+      ? [{ label: "Band", value: `${point.wifiData?.band} GHz` }]
+      : []),
     { label: "BSSID", value: formatMacAddress(point.wifiData?.bssid || "") },
     {
       label: "AP Name",
@@ -107,22 +110,26 @@ const PopupDetails: React.FC<PopupDetailsProps> = ({
     );
   }
 
-  // Dual-band mätdata — visa signal (och throughput om tillgängligt) per band
+  // Dual-band sektion — tydlig per-band visning
   if (point.bandMeasurements && point.bandMeasurements.length > 0) {
+    const connectedBand: "2.4" | "5" = point.wifiData.band < 5 ? "2.4" : "5";
+    rows.push({ label: "── Per Band ──", value: "" });
     for (const bm of point.bandMeasurements) {
+      const isConnected = bm.band === connectedBand;
+      const tag = isConnected ? " (connected)" : "";
       rows.push({
-        label: `${bm.band} GHz Signal`,
-        value: `${bm.signal} dBm`,
+        label: `${bm.band} GHz`,
+        value: `${bm.signal} dBm${tag}`,
       });
       if (bm.tcpDown != null && bm.tcpUp != null) {
         rows.push({
-          label: `${bm.band} GHz TCP`,
+          label: `  TCP`,
           value: `${bm.tcpDown.toFixed(1)} / ${bm.tcpUp.toFixed(1)} Mbps`,
         });
       }
       if (bm.udpDown != null && bm.udpUp != null) {
         rows.push({
-          label: `${bm.band} GHz UDP`,
+          label: `  UDP`,
           value: `${bm.udpDown.toFixed(1)} / ${bm.udpUp.toFixed(1)} Mbps`,
         });
       }
