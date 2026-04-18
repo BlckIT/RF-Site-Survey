@@ -9,6 +9,7 @@ import { useSettings } from "./GlobalSettings";
 import { Wall, WallMaterial, MATERIAL_PRESETS } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import * as SliderPrimitive from "@radix-ui/react-slider";
 
 const WALL_HIT_RADIUS = 10; // px radius for detecting wall clicks (for splitting)
 const SHARED_ENDPOINT_EPSILON = 0.5; // px epsilon for detecting shared endpoints
@@ -142,18 +143,37 @@ export default function WallEditor(): ReactNode {
   }, [imageLoaded, settings.dimensions]);
 
   // Apply shift-snap to a point relative to a reference point
+  // Snap-axlarna följer rotationen så att "horisontellt/vertikalt" matchar den roterade vyn
   const applySnap = useCallback(
     (pos: { x: number; y: number }, ref: { x: number; y: number }) => {
       if (!shiftHeld) return pos;
-      const dx = Math.abs(pos.x - ref.x);
-      const dy = Math.abs(pos.y - ref.y);
-      if (dx <= dy) {
-        return { x: ref.x, y: pos.y };
+      if (rotation === 0) {
+        const dx = Math.abs(pos.x - ref.x);
+        const dy = Math.abs(pos.y - ref.y);
+        if (dx <= dy) {
+          return { x: ref.x, y: pos.y };
+        } else {
+          return { x: pos.x, y: ref.y };
+        }
+      }
+      // Rotera referensaxlarna med rotationsvinkeln
+      const rad = (rotation * Math.PI) / 180;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+      const dx = pos.x - ref.x;
+      const dy = pos.y - ref.y;
+      // Projicera på roterade axlar
+      const along = dx * cos + dy * sin;
+      const perp = -dx * sin + dy * cos;
+      if (Math.abs(along) >= Math.abs(perp)) {
+        // Snap till roterad horisontell axel
+        return { x: ref.x + along * cos, y: ref.y + along * sin };
       } else {
-        return { x: pos.x, y: ref.y };
+        // Snap till roterad vertikal axel
+        return { x: ref.x - perp * sin, y: ref.y + perp * cos };
       }
     },
-    [shiftHeld],
+    [shiftHeld, rotation],
   );
 
   // Collect all existing wall endpoints
@@ -434,12 +454,31 @@ export default function WallEditor(): ReactNode {
     }
   }, [imageLoaded, drawCanvas]);
 
+  const rotation = settings.rotation ?? 0;
+
   const getCanvasCoords = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = e.currentTarget;
     const rect = canvas.getBoundingClientRect();
+    // Skärmkoordinater relativt canvasens bounding box
+    const screenX = e.clientX - rect.left;
+    const screenY = e.clientY - rect.top;
+    // Kompensera för CSS-rotation: transformera tillbaka till oroterat koordinatsystem
+    if (rotation !== 0) {
+      const cx = rect.width / 2;
+      const cy = rect.height / 2;
+      const rad = (-rotation * Math.PI) / 180;
+      const cos = Math.cos(rad);
+      const sin = Math.sin(rad);
+      const dx = screenX - cx;
+      const dy = screenY - cy;
+      return {
+        x: (cos * dx - sin * dy + cx) / scale,
+        y: (sin * dx + cos * dy + cy) / scale,
+      };
+    }
     return {
-      x: (e.clientX - rect.left) / scale,
-      y: (e.clientY - rect.top) / scale,
+      x: screenX / scale,
+      y: screenY / scale,
     };
   };
 
@@ -970,12 +1009,54 @@ export default function WallEditor(): ReactNode {
         </Button>
       )}
 
+      {/* Rotation slider — finjustering för att räta upp planritningen */}
+      <div className="flex items-center gap-3 mb-3">
+        <span className="text-xs font-semibold text-gray-600 shrink-0">
+          Rotate
+        </span>
+        <SliderPrimitive.Root
+          className="relative flex items-center h-3 select-none touch-none w-48"
+          min={-15}
+          max={15}
+          step={0.5}
+          value={[rotation]}
+          onValueChange={(val) => updateSettings({ rotation: val[0] })}
+        >
+          <SliderPrimitive.Track className="relative grow rounded-full h-1.5 bg-gray-200">
+            <SliderPrimitive.Range className="absolute bg-blue-500 rounded-full h-full" />
+          </SliderPrimitive.Track>
+          <SliderPrimitive.Thumb
+            className="block w-4 h-4 bg-white border border-gray-300 rounded-full shadow hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            aria-label="Floor plan rotation"
+          />
+        </SliderPrimitive.Root>
+        <span className="text-xs text-gray-500 tabular-nums w-12 text-right">
+          {rotation.toFixed(1)}°
+        </span>
+        {rotation !== 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-6 text-xs px-2"
+            onClick={() => updateSettings({ rotation: 0 })}
+          >
+            Reset
+          </Button>
+        )}
+      </div>
+
       <div
         className="relative max-h-[calc(100vh-200px)] overflow-hidden flex items-center justify-center"
         ref={containerRef}
         tabIndex={0}
       >
-        <div className="relative">
+        <div
+          className="relative"
+          style={{
+            transform: rotation !== 0 ? `rotate(${rotation}deg)` : undefined,
+            transformOrigin: "center",
+          }}
+        >
           <canvas
             ref={canvasRef}
             width={settings.dimensions.width}
