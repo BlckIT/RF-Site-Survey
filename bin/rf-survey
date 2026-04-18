@@ -22,7 +22,7 @@ done
 APP_DIR="$(cd -P "$(dirname "$SOURCE")/.." && pwd)"
 
 APP_NAME="rf-site-survey"
-ECOSYSTEM="$APP_DIR/ecosystem.config.js"
+ECOSYSTEM="$APP_DIR/ecosystem.config.cjs"
 
 # Kontrollera att pm2 finns installerat
 check_pm2() {
@@ -36,7 +36,7 @@ check_pm2() {
 # Kontrollera att ecosystem-filen finns
 check_ecosystem() {
   if [ ! -f "$ECOSYSTEM" ]; then
-    echo -e "${RED}Error: ecosystem.config.js not found at $ECOSYSTEM${NC}"
+    echo -e "${RED}Error: ecosystem.config.cjs not found at $ECOSYSTEM${NC}"
     exit 1
   fi
 }
