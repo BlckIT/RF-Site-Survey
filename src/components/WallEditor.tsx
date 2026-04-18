@@ -453,26 +453,40 @@ export default function WallEditor(): ReactNode {
   const getCanvasCoords = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = e.currentTarget;
     const rect = canvas.getBoundingClientRect();
-    // Skärmkoordinater relativt canvasens bounding box
-    const screenX = e.clientX - rect.left;
-    const screenY = e.clientY - rect.top;
-    // Kompensera för CSS-rotation: transformera tillbaka till oroterat koordinatsystem
-    if (rotation !== 0) {
-      const cx = rect.width / 2;
-      const cy = rect.height / 2;
-      const rad = (-rotation * Math.PI) / 180;
-      const cos = Math.cos(rad);
-      const sin = Math.sin(rad);
-      const dx = screenX - cx;
-      const dy = screenY - cy;
+
+    if (rotation === 0) {
       return {
-        x: (cos * dx - sin * dy + cx) / scale,
-        y: (sin * dx + cos * dy + cy) / scale,
+        x: (e.clientX - rect.left) / scale,
+        y: (e.clientY - rect.top) / scale,
       };
     }
+
+    // När canvasen är CSS-roterad returnerar getBoundingClientRect() den
+    // axis-aligned bounding boxen av det roterade elementet.
+    // Vi behöver beräkna klickpositionen relativt canvasens oroterade centrum.
+    const rad = (-rotation * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+
+    // Canvasens visuella mitt (rect-mitt = roterad mitt)
+    const rcx = rect.left + rect.width / 2;
+    const rcy = rect.top + rect.height / 2;
+
+    // Klickposition relativt visuell mitt
+    const dx = e.clientX - rcx;
+    const dy = e.clientY - rcy;
+
+    // Rotera tillbaka till canvasens lokala koordinatsystem
+    const localX = cos * dx - sin * dy;
+    const localY = sin * dx + cos * dy;
+
+    // Canvasens oroterade dimensioner i skärmpixlar
+    const canvasScreenW = settings.dimensions.width * scale;
+    const canvasScreenH = settings.dimensions.height * scale;
+
     return {
-      x: screenX / scale,
-      y: screenY / scale,
+      x: (localX + canvasScreenW / 2) / scale,
+      y: (localY + canvasScreenH / 2) / scale,
     };
   };
 
@@ -981,27 +995,20 @@ export default function WallEditor(): ReactNode {
         </div>
       )}
 
-      {isDrawing && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="mb-2 mr-2"
-          onClick={commitChain}
-        >
-          Finish chain
-        </Button>
-      )}
+      {/* Knappar med fast höjd så layouten inte hoppar när de dyker upp */}
+      <div className="h-9 mb-2 flex items-center gap-2">
+        {isDrawing && (
+          <Button variant="outline" size="sm" onClick={commitChain}>
+            Finish chain
+          </Button>
+        )}
 
-      {settings.walls.length > 0 && (
-        <Button
-          variant="destructive"
-          size="sm"
-          className="mb-2"
-          onClick={clearAllWalls}
-        >
-          Remove all walls
-        </Button>
-      )}
+        {settings.walls.length > 0 && (
+          <Button variant="destructive" size="sm" onClick={clearAllWalls}>
+            Remove all walls
+          </Button>
+        )}
+      </div>
 
       {/* Rotation slider — finjustering för att räta upp planritningen */}
       <div className="flex items-center gap-3 mb-3">
