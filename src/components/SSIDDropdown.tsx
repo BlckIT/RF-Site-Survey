@@ -93,7 +93,7 @@ export default function SSIDDropdown({
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="w-full flex items-center gap-2 border border-gray-200 rounded-sm p-1.5 text-sm text-left bg-white hover:bg-gray-50 focus:outline-none focus:ring focus:ring-blue-300 focus:border-blue-400 min-h-[34px] min-w-[250px]"
+        className="w-full flex items-center gap-2 border border-gray-200 rounded-sm p-1.5 text-sm text-left bg-white hover:bg-gray-50 focus:outline-none focus:ring focus:ring-blue-300 focus:border-blue-400 min-h-[34px]"
       >
         {value && selected ? (
           <>
