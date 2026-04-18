@@ -110,20 +110,30 @@ export async function POST() {
     const branch = "dev";
 
     // Hjälpfunktion: kör shell-kommando med korrekt PATH (nvm-kompatibelt)
-    const shell = (cmd: string, timeout = 120000) =>
-      execFileAsync("/bin/bash", ["-lc", cmd], {
+    const shell = (
+      cmd: string,
+      timeout = 120000,
+      env?: Record<string, string>,
+    ) => {
+      const mergedEnv = { ...process.env, ...env };
+      // Rensa NODE_ENV om det inte explicit sätts — Next.js build kräver production
+      if (!env?.NODE_ENV) delete mergedEnv.NODE_ENV;
+      return execFileAsync("/bin/bash", ["-lc", cmd], {
         cwd: PROJECT_ROOT,
         timeout,
-        env: { ...process.env, NODE_ENV: "development" },
+        env: mergedEnv,
       });
+    };
 
     // 1. git pull
     const pull = await git(["pull", remote, branch], 30000);
 
-    // 2. npm install (login shell laddar nvm)
-    const install = await shell("npm install", 120000);
+    // 2. npm install (behöver devDependencies)
+    const install = await shell("npm install", 120000, {
+      NODE_ENV: "development",
+    });
 
-    // 3. npm run build
+    // 3. npm run build (NODE_ENV=production implicit via next build)
     const build = await shell("npm run build", 120000);
 
     // 4. Hämta ny commit-hash
