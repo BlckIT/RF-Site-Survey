@@ -9,7 +9,12 @@ import {
   useCallback,
   ReactNode,
 } from "react";
-import { readSettingsFromFile, writeSettingsToFile } from "../lib/fileHandler";
+import {
+  readSettingsFromFile,
+  writeSettingsToFile,
+  readGlobalSettings,
+  writeGlobalSettings,
+} from "../lib/fileHandler";
 import { useSyncPolling } from "../hooks/useSyncPolling";
 import {
   hasLocalStorageData,
@@ -274,6 +279,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         migrationDone.current = true;
       }
 
+      // Läs globala settings från data/settings.json (har prioritet)
+      const savedGlobals = await readGlobalSettings();
+
       // Load settings for current site
       const fileToLoad = currentSiteName || defaultFloorPlan;
       const rawData = await readSettingsFromFile(fileToLoad);
@@ -284,21 +292,43 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
         if (rawData.site) {
           // New format — has site property
+          // Prioritet: defaults < projekt-fil < globala settings (data/settings.json)
           const globals = {
             ...extractGlobals(defaults),
             ...extractGlobals(rawData as HeatmapSettings),
+            ...savedGlobals,
           };
           globals.sudoerPassword = "";
           mergedSettings = buildSettings(rawData.site, globals);
         } else {
-          // Old format — migrate
+          // Old format — migrate, sedan applicera globala settings
           mergedSettings = migrateOldFormat(rawData, fileToLoad);
+          if (Object.keys(savedGlobals).length > 0) {
+            const globals = {
+              ...extractGlobals(mergedSettings),
+              ...savedGlobals,
+            };
+            (globals as any).sudoerPassword = "";
+            mergedSettings = buildSettings(mergedSettings.site, globals);
+          }
         }
         setSettings(mergedSettings);
       } else {
+        // Nytt projekt — använd globala settings om de finns
         const defaults = getDefaults(fileToLoad);
-        writeSettingsToFile(defaults);
-        setSettings(defaults);
+        if (Object.keys(savedGlobals).length > 0) {
+          const globals = {
+            ...extractGlobals(defaults),
+            ...savedGlobals,
+          };
+          (globals as any).sudoerPassword = "";
+          const merged = buildSettings(defaults.site, globals);
+          writeSettingsToFile(merged);
+          setSettings(merged);
+        } else {
+          writeSettingsToFile(defaults);
+          setSettings(defaults);
+        }
       }
     }
     loadSettings();
@@ -314,6 +344,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     const rawData = await readSettingsFromFile(fileToLoad);
     if (!rawData) return;
 
+    // Läs globala settings från data/settings.json (har prioritet)
+    const savedGlobals = await readGlobalSettings();
+
     const defaults = getDefaults(fileToLoad);
     let mergedSettings: HeatmapSettings;
 
@@ -321,11 +354,20 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       const globals = {
         ...extractGlobals(defaults),
         ...extractGlobals(rawData as HeatmapSettings),
+        ...savedGlobals,
       };
       globals.sudoerPassword = "";
       mergedSettings = buildSettings(rawData.site, globals);
     } else {
       mergedSettings = migrateOldFormat(rawData, fileToLoad);
+      if (Object.keys(savedGlobals).length > 0) {
+        const globals = {
+          ...extractGlobals(mergedSettings),
+          ...savedGlobals,
+        };
+        (globals as any).sudoerPassword = "";
+        mergedSettings = buildSettings(mergedSettings.site, globals);
+      }
     }
 
     setSettings(mergedSettings);
@@ -341,6 +383,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     (updated: HeatmapSettings) => {
       setSettings(updated);
       writeSettingsToFile(updated);
+      // Spara globala settings separat till data/settings.json
+      writeGlobalSettings(extractGlobals(updated));
       notifyLocalSave();
     },
     [notifyLocalSave],
@@ -410,6 +454,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         });
 
         writeSettingsToFile(updatedSettings);
+        // Spara globala settings separat till data/settings.json
+        writeGlobalSettings(extractGlobals(updatedSettings));
         notifyLocalSave();
         return updatedSettings;
       });

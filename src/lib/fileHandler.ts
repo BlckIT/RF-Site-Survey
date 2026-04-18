@@ -97,6 +97,37 @@ export async function writeSettingsToFile(
 }
 
 /**
+ * Läs globala settings från /api/global-settings.
+ * Returnerar tomt objekt om filen inte finns.
+ */
+export async function readGlobalSettings(): Promise<Record<string, unknown>> {
+  try {
+    const response = await fetch("/api/global-settings");
+    if (!response.ok) return {};
+    return await response.json();
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Spara globala settings till /api/global-settings.
+ */
+export async function writeGlobalSettings(
+  globals: Record<string, unknown>,
+): Promise<void> {
+  try {
+    await fetch("/api/global-settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(globals),
+    });
+  } catch (error) {
+    console.error("[wifi-heatmapper] Failed to save global settings:", error);
+  }
+}
+
+/**
  * List all available survey/site files
  */
 export async function listSurveys(): Promise<string[]> {
