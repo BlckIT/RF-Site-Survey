@@ -149,7 +149,7 @@ const DEFAULT_GLOBALS = {
   snapRadius: 8,
   knownWifiNetworks: [] as KnownWifi[],
   dualBand: {
-    enabled: false,
+    enabled: true,
     mode: "sequential",
   } as DualBandConfig,
 };

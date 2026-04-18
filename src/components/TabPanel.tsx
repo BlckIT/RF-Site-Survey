@@ -817,7 +817,11 @@ function SettingsPanel() {
                         {wifiInterfaces.map((iface) => {
                           const usedBy = ifaceUsedBy(iface, "hotspot");
                           return (
-                            <option key={iface} value={iface}>
+                            <option
+                              key={iface}
+                              value={iface}
+                              disabled={!!usedBy}
+                            >
                               {iface}
                               {usedBy ? ` (used by ${usedBy})` : ""}
                             </option>
@@ -929,7 +933,11 @@ function SettingsPanel() {
                         {wifiInterfaces.map((iface) => {
                           const usedBy = ifaceUsedBy(iface, "connect");
                           return (
-                            <option key={iface} value={iface}>
+                            <option
+                              key={iface}
+                              value={iface}
+                              disabled={!!usedBy}
+                            >
                               {iface}
                               {usedBy ? ` (used by ${usedBy})` : ""}
                             </option>
@@ -1279,7 +1287,7 @@ function SettingsPanel() {
                 {wifiInterfaces.map((iface) => {
                   const usedBy = ifaceUsedBy(iface, "scan");
                   return (
-                    <option key={iface} value={iface}>
+                    <option key={iface} value={iface} disabled={!!usedBy}>
                       {iface}
                       {usedBy ? ` (used by ${usedBy})` : ""}
                     </option>
