@@ -24,6 +24,7 @@ const generateHeatmapFragmentShader = (
 
   uniform float u_radius;
   uniform float u_pathLossExponent;
+  uniform float u_pixelsPerMeter;
   uniform float u_opacity;
   uniform float u_minOpacity;
   uniform float u_maxOpacity;
@@ -101,7 +102,14 @@ const generateHeatmapFragmentShader = (
 
       if (distSq > u_radius * u_radius) continue;
 
-      float weight = 1.0 / pow(distSq, u_pathLossExponent * 0.5);
+      // Konvertera pixelavstånd till meter om kalibrerad (u_pixelsPerMeter > 10)
+      // Fallback till pixelbaserad beräkning om okalibrerad (0 eller default 10)
+      bool calibrated = u_pixelsPerMeter > 10.0;
+      float effectiveDistSq = calibrated
+        ? distSq / (u_pixelsPerMeter * u_pixelsPerMeter)
+        : distSq;
+
+      float weight = 1.0 / pow(effectiveDistSq, u_pathLossExponent * 0.5);
 
       // Wall attenuation in dB
       float wallDb = calcWallAttenuationDb(pixel, point);

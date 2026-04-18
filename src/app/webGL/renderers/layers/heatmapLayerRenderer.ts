@@ -28,6 +28,9 @@ export const createHeatmapLayerRenderer = (
   const attribs = getAttribLocations(gl, program);
   const uniforms = getUniformLocations(gl, program);
 
+  // pixelsPerMeter uniform för meterbaserad propagationsmodell
+  const u_pixelsPerMeter = gl.getUniformLocation(program, "u_pixelsPerMeter");
+
   // Vägg-uniforms
   const u_wallCount = gl.getUniformLocation(program, "u_wallCount");
   const u_walls =
@@ -60,10 +63,18 @@ export const createHeatmapLayerRenderer = (
     influenceRadius: number;
     minOpacity: number;
     maxOpacity: number;
+    pixelsPerMeter?: number;
   }) => {
     if (!points.length) return;
 
-    const { width, height, influenceRadius, minOpacity, maxOpacity } = options;
+    const {
+      width,
+      height,
+      influenceRadius,
+      minOpacity,
+      maxOpacity,
+      pixelsPerMeter = 0,
+    } = options;
 
     gl.useProgram(program);
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -72,6 +83,7 @@ export const createHeatmapLayerRenderer = (
 
     gl.uniform1f(uniforms.u_radius, influenceRadius);
     gl.uniform1f(uniforms.u_pathLossExponent, 2.5);
+    gl.uniform1f(u_pixelsPerMeter, pixelsPerMeter);
     gl.uniform1f(uniforms.u_minOpacity, minOpacity);
     gl.uniform1f(uniforms.u_maxOpacity, maxOpacity);
     gl.uniform2f(uniforms.u_resolution, width, height);

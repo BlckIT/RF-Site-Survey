@@ -164,9 +164,17 @@ export function Heatmaps({ showWalls = true }: { showWalls?: boolean } = {}) {
   const r2 = calculateRadiusByBoundingBox;
   // const r3 = calculateOptimalRadius; // bad for small numbers of points
 
-  const displayedRadius = settings.radiusDivider // if settings value is non-null
-    ? settings.radiusDivider // use it
-    : Math.round(r2(filteredPoints));
+  // Beräkna default-radie baserat på skala om kalibrerad, annars bounding box
+  const isCalibrated =
+    settings.pixelsPerMeter > 0 && settings.pixelsPerMeter !== 10;
+  const DEFAULT_RADIUS_METERS = 8; // Rimlig inomhus-WiFi-radie
+  const scaleBasedRadius = isCalibrated
+    ? Math.round(DEFAULT_RADIUS_METERS * settings.pixelsPerMeter)
+    : null;
+
+  const displayedRadius = settings.radiusDivider // om manuellt satt
+    ? settings.radiusDivider
+    : scaleBasedRadius || Math.round(r2(filteredPoints)); // skala > bounding box
 
   const handleRadiusChange = (r: number) => {
     let savedVal: number | null = null;
@@ -482,6 +490,7 @@ export function Heatmaps({ showWalls = true }: { showWalls?: boolean } = {}) {
           width: settings.dimensions.width,
           height: settings.dimensions.height,
           blur: settings.blur ?? 0,
+          pixelsPerMeter: settings.pixelsPerMeter,
         });
 
         ctx.drawImage(glCanvas, 0, 20);
@@ -811,9 +820,18 @@ export function useHeatmapOverlay(): string | null {
 
   const points = settings.surveyPoints;
   const r2 = calculateRadiusByBoundingBox;
+
+  // Beräkna radie baserat på skala om kalibrerad
+  const isCalibrated =
+    settings.pixelsPerMeter > 0 && settings.pixelsPerMeter !== 10;
+  const DEFAULT_RADIUS_METERS = 8;
+  const scaleBasedRadius = isCalibrated
+    ? Math.round(DEFAULT_RADIUS_METERS * settings.pixelsPerMeter)
+    : null;
+
   const displayedRadius = settings.radiusDivider
     ? settings.radiusDivider
-    : Math.round(r2(points));
+    : scaleBasedRadius || Math.round(r2(points));
 
   useEffect(() => {
     if (
@@ -860,6 +878,7 @@ export function useHeatmapOverlay(): string | null {
         width: settings.dimensions.width,
         height: settings.dimensions.height,
         blur: settings.blur ?? 0,
+        pixelsPerMeter: settings.pixelsPerMeter,
       });
 
       if (!cancelled) {

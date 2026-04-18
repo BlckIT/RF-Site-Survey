@@ -88,7 +88,7 @@ export default function SSIDDropdown({
   const selected = networks.find((n) => n.ssid === value);
 
   return (
-    <div className="relative" ref={containerRef}>
+    <div className="relative w-full" ref={containerRef}>
       {/* Trigger-knapp som ser ut som ett input-fält */}
       <button
         type="button"
