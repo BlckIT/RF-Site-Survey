@@ -159,6 +159,7 @@ export interface PartialHeatmapSettings {
   iperfCommands: IperfCommands;
   wifiInterface: string;
   targetSSID: string;
+  dualBand?: DualBandConfig;
   // sameSSID: SsidStrategy;
 }
 
@@ -182,6 +183,7 @@ export type SurveyPoint = {
 export interface SurveyResults {
   wifiData: WifiResults;
   iperfData: IperfResults;
+  bandMeasurements?: BandMeasurement[];
 }
 
 /**

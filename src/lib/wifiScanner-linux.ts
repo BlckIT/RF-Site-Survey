@@ -4,7 +4,7 @@ import {
   WifiScanResults,
   WifiActions,
 } from "./types";
-import { execAsync } from "./server-utils";
+import { execAsync, delay } from "./server-utils";
 import {
   channelToBand,
   getDefaultWifiResults,
@@ -162,8 +162,15 @@ export class LinuxWifiActions implements WifiActions {
     };
 
     try {
-      // Get the Wifi information from system_profiler
-      const result = await execAsync(`nmcli -t dev wifi list`);
+      // Tvinga rescan innan listning för färska resultat
+      const wlanInterface = await inferWifiDeviceIdOnLinux(
+        _settings.wifiInterface,
+      );
+      await forceRescan(wlanInterface, _settings.sudoerPassword);
+
+      const result = await execAsync(
+        `nmcli -t -f IN-USE,BSSID,SSID,MODE,CHAN,RATE,SIGNAL,BARS,SECURITY dev wifi list ifname ${wlanInterface}`,
+      );
 
       response.SSIDs = getCandidateSSIDs(result.stdout);
       logger.debug(`Local SSIDs: ${response.SSIDs.length}`);
@@ -200,6 +207,10 @@ export class LinuxWifiActions implements WifiActions {
   /**
    * getWifi - return the WifiResults for the currently-associated SSID
    *   or for a specific target SSID (passive scanning)
+   *
+   * Tvingar en aktiv rescan via nmcli innan avläsning för att undvika
+   * "sticky" cachade värden från kerneln.
+   *
    * @param settings
    * @returns
    */
@@ -213,8 +224,11 @@ export class LinuxWifiActions implements WifiActions {
         settings.wifiInterface,
       );
 
-      // If targetSSID is set, use passive scanning via nmcli
+      // Tvinga en aktiv rescan så att vi får färska RSSI-värden
+      await forceRescan(wlanInterface, settings.sudoerPassword);
+
       if (settings.targetSSID) {
+        // Hämta färska scan-resultat via nmcli för target SSID
         logger.debug(
           `Target SSID set: "${settings.targetSSID}", using scan results`,
         );
@@ -228,7 +242,10 @@ export class LinuxWifiActions implements WifiActions {
           response.reason = `Target SSID "${settings.targetSSID}" not found in scan results`;
         }
       } else {
-        // Default: read connected network info
+        // Hämta färsk RSSI från nmcli scan-resultat för anslutna nätverket
+        const freshScan = await getFreshScanForConnected(wlanInterface);
+
+        // Hämta extra metadata (tx_rate, channel_width) från iw dev link
         const [linkOutput, infoOutput] = await Promise.all([
           iwDevLink(wlanInterface, settings.sudoerPassword),
           iwDevInfo(wlanInterface, settings.sudoerPassword),
@@ -237,6 +254,16 @@ export class LinuxWifiActions implements WifiActions {
         logger.trace("IW output:", linkOutput);
         logger.trace("IW info:", infoOutput);
         const parsed = parseIwOutput(linkOutput, infoOutput);
+
+        // Skriv över RSSI/signalStrength med färska nmcli-värden om tillgängliga
+        if (freshScan) {
+          logger.debug(
+            `Overriding iw RSSI (${parsed.rssi}) with nmcli RSSI (${freshScan.rssi})`,
+          );
+          parsed.rssi = freshScan.rssi;
+          parsed.signalStrength = freshScan.signalStrength;
+        }
+
         logger.trace("Final WiFi data:", parsed);
         response.SSIDs.push(parsed);
       }
@@ -249,6 +276,55 @@ export class LinuxWifiActions implements WifiActions {
 /**
  * END OF LinuxOSWifiActions - the remainder is a set of helper functions
  */
+
+/**
+ * forceRescan() — tvinga en aktiv WiFi-scan via nmcli så att
+ * kernel-cachen uppdateras med färska RSSI-värden.
+ */
+async function forceRescan(wlanInterface: string, pw: string): Promise<void> {
+  const escapedPw = pw ? pw.replace(/'/g, "'\\''") : "";
+  const cmd = pw
+    ? `echo '${escapedPw}' | sudo -S nmcli dev wifi rescan ifname ${wlanInterface}`
+    : `sudo nmcli dev wifi rescan ifname ${wlanInterface}`;
+  try {
+    logger.debug(`Forcing WiFi rescan on ${wlanInterface}`);
+    await execAsync(cmd);
+    // Vänta på att scan-resultaten uppdateras i kerneln
+    await delay(1500);
+    logger.debug("Rescan complete");
+  } catch {
+    // Rescan kan misslyckas om en scan redan pågår — ignorera
+    logger.debug("Rescan failed (likely already scanning), continuing");
+  }
+}
+
+/**
+ * getFreshScanForConnected() — hämta färsk RSSI för det anslutna nätverket
+ * via nmcli scan-resultat istället för cachade iw-värden.
+ */
+async function getFreshScanForConnected(
+  wlanInterface: string,
+): Promise<{ rssi: number; signalStrength: number } | null> {
+  try {
+    const { stdout } = await execAsync(
+      `nmcli -t -f IN-USE,BSSID,SSID,MODE,CHAN,RATE,SIGNAL,BARS,SECURITY dev wifi list ifname ${wlanInterface}`,
+    );
+    const candidates = getCandidateSSIDs(stdout);
+    // Hitta det anslutna nätverket (markerat med * i IN-USE)
+    const connected = candidates.find((c) => c.currentSSID);
+    if (connected) {
+      logger.debug(
+        `Fresh nmcli scan for connected SSID "${connected.ssid}": RSSI=${connected.rssi}, signal=${connected.signalStrength}%`,
+      );
+      return { rssi: connected.rssi, signalStrength: connected.signalStrength };
+    }
+    logger.debug("No connected SSID found in nmcli scan results");
+    return null;
+  } catch (err) {
+    logger.debug(`Failed to get fresh scan for connected: ${err}`);
+    return null;
+  }
+}
 
 async function inferWifiDeviceIdOnLinux(
   preferredInterface?: string,

@@ -5,13 +5,16 @@ import {
   IperfTestProperty,
   IperfCommands,
   WifiResults,
+  BandMeasurement,
 } from "./types";
 // import { scanWifi, blinkWifi } from "./wifiScanner";
 import { execAsync, delay } from "./server-utils";
 import { getCancelFlag, sendSSEMessage } from "./server-globals";
 import { percentageToRssi, toMbps, getDefaultIperfResults } from "./utils";
+import { channelToBand } from "./utils";
 import { SSEMessageType } from "@/app/api/events/route";
 import { createWifiActions } from "./wifiScanner";
+import { splitColonDelimited } from "./wifiScanner-linux";
 import { getLogger } from "./logger";
 import { defaultIperfCommands, buildIperfCommand } from "./iperfUtils";
 const logger = getLogger("iperfRunner");
@@ -91,6 +94,7 @@ export async function runSurveyTests(
 ): Promise<{
   iperfData: IperfResults | null;
   wifiData: WifiResults | null;
+  bandMeasurements?: BandMeasurement[];
   status: string;
 }> {
   // first check the settings and return cogent error if not good
@@ -293,8 +297,27 @@ export async function runSurveyTests(
       }
     }
 
+    // ── Dual-band: hämta RSSI för det andra bandet via scan ──
+    let bandMeasurements: BandMeasurement[] | undefined;
+    if (
+      settings.dualBand?.enabled &&
+      settings.dualBand.mode === "sequential" &&
+      newWifiData
+    ) {
+      bandMeasurements = await collectDualBandMeasurements(
+        newWifiData,
+        newIperfData,
+        settings,
+      );
+    }
+
     // return the values ("!" asserts that the values are non-null)
-    return { iperfData: newIperfData!, wifiData: newWifiData!, status: "" };
+    return {
+      iperfData: newIperfData!,
+      wifiData: newWifiData!,
+      bandMeasurements,
+      status: "",
+    };
   } catch (error) {
     logger.error("Error running measurement tests:", error);
     sendSSEMessage({
@@ -305,6 +328,86 @@ export async function runSurveyTests(
 
     throw error;
   }
+}
+
+/**
+ * collectDualBandMeasurements() — efter en normal mätning, skanna efter
+ * samma SSID på det andra frekvensbandet och returnera BandMeasurement[]
+ * för båda banden.
+ */
+async function collectDualBandMeasurements(
+  wifiData: WifiResults,
+  iperfData: IperfResults,
+  settings: PartialHeatmapSettings,
+): Promise<BandMeasurement[]> {
+  const measurements: BandMeasurement[] = [];
+  const currentBand: "2.4" | "5" = wifiData.band < 5 ? "2.4" : "5";
+  const otherBand: "2.4" | "5" = currentBand === "2.4" ? "5" : "2.4";
+
+  // Lägg till mätdata för det anslutna bandet (har iperf-data)
+  measurements.push({
+    band: currentBand,
+    signal: wifiData.rssi,
+    tcpDown: iperfData.tcpDownload.bitsPerSecond / 1e6,
+    tcpUp: iperfData.tcpUpload.bitsPerSecond / 1e6,
+    udpDown: iperfData.udpDownload.bitsPerSecond / 1e6,
+    udpUp: iperfData.udpUpload.bitsPerSecond / 1e6,
+  });
+
+  // Sök efter samma SSID på det andra bandet via nmcli scan-resultat
+  try {
+    const wlanInterface = settings.wifiInterface || "";
+    const { stdout } = await execAsync(
+      `nmcli -t -f IN-USE,BSSID,SSID,MODE,CHAN,RATE,SIGNAL,BARS,SECURITY dev wifi list ifname ${wlanInterface}`,
+    );
+    const lines = stdout.split("\n");
+
+    // Hitta alla AP:er med samma SSID på det andra bandet
+    let bestOtherSignal: number | null = null;
+    let bestOtherChannel = 0;
+
+    for (const line of lines) {
+      const cols = splitColonDelimited(line);
+      if (cols.length < 7) continue;
+      const ssid = cols[2];
+      const channel = parseInt(cols[4]);
+      const signalPct = parseInt(cols[6]);
+      if (!ssid || !channel || !signalPct) continue;
+
+      // Matcha SSID (case-insensitive)
+      if (ssid.toLowerCase() !== wifiData.ssid.toLowerCase()) continue;
+
+      // Kolla om kanalen tillhör det andra bandet
+      const band = channelToBand(channel);
+      const bandLabel: "2.4" | "5" = band < 5 ? "2.4" : "5";
+      if (bandLabel !== otherBand) continue;
+
+      // Behåll starkaste signalen
+      if (bestOtherSignal === null || signalPct > bestOtherSignal) {
+        bestOtherSignal = signalPct;
+        bestOtherChannel = channel;
+      }
+    }
+
+    if (bestOtherSignal !== null) {
+      measurements.push({
+        band: otherBand,
+        signal: percentageToRssi(bestOtherSignal),
+        // Inget iperf-data för det andra bandet i sequential mode
+      });
+      logger.debug(
+        `Dual-band: found ${otherBand} GHz for "${wifiData.ssid}" on ch ${bestOtherChannel}, signal=${bestOtherSignal}%`,
+      );
+    } else {
+      logger.debug(
+        `Dual-band: no ${otherBand} GHz AP found for "${wifiData.ssid}"`,
+      );
+    }
+  } catch (err) {
+    logger.warn(`Dual-band scan failed: ${err}`);
+  }
+
+  return measurements;
 }
 
 async function runSingleTest(
