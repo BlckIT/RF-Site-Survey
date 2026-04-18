@@ -128,7 +128,17 @@ export async function POST() {
       });
     };
 
-    // 1. git pull
+    // 1. git pull (force-checkout tracked demo-filer som kan krocka med lokala)
+    await git(
+      [
+        "checkout",
+        branch,
+        "--",
+        "data/surveys/DemoOffice.png.json",
+        "public/media/DemoOffice.png",
+      ],
+      10000,
+    ).catch(() => {});
     const pull = await git(["pull", remote, branch], 30000);
 
     // 2. npm install (behöver devDependencies)
