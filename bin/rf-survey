@@ -41,10 +41,21 @@ check_ecosystem() {
   fi
 }
 
+# Kontrollera att .next build finns
+check_build() {
+  if [ ! -d "$APP_DIR/.next" ]; then
+    echo -e "${YELLOW}No production build found. Building now...${NC}"
+    cd "$APP_DIR"
+    npm run build
+  fi
+}
+
 cmd_start() {
   check_pm2
   check_ecosystem
+  check_build
   echo -e "${CYAN}Starting $APP_NAME...${NC}"
+  pm2 delete "$APP_NAME" 2>/dev/null || true
   pm2 start "$ECOSYSTEM"
   echo -e "${GREEN}$APP_NAME started.${NC}"
 }
