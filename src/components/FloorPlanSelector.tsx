@@ -17,7 +17,10 @@ export default function FloorPlanSelector() {
 
   return (
     <div className="flex items-center gap-4 flex-wrap">
-      <Label htmlFor="Files" className="text-xs font-semibold whitespace-nowrap">
+      <Label
+        htmlFor="Files"
+        className="text-xs font-semibold whitespace-nowrap"
+      >
         Floor plan&nbsp;
         <PopoverHelper text="Choose a file to be used as a background image, or upload another PNG or JPEG file." />
       </Label>

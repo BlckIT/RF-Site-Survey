@@ -24,10 +24,30 @@ export default function SiteSetupCanvas() {
     );
   }
 
-  const tools: { id: SetupTool; label: string; icon: React.ReactNode; done: boolean }[] = [
-    { id: "scale", label: "Scale", icon: <Ruler className="w-4 h-4" />, done: hasCalibration },
-    { id: "walls", label: "Walls", icon: <Layers className="w-4 h-4" />, done: hasWalls },
-    { id: "preview", label: "Preview", icon: <Eye className="w-4 h-4" />, done: false },
+  const tools: {
+    id: SetupTool;
+    label: string;
+    icon: React.ReactNode;
+    done: boolean;
+  }[] = [
+    {
+      id: "scale",
+      label: "Scale",
+      icon: <Ruler className="w-4 h-4" />,
+      done: hasCalibration,
+    },
+    {
+      id: "walls",
+      label: "Walls",
+      icon: <Layers className="w-4 h-4" />,
+      done: hasWalls,
+    },
+    {
+      id: "preview",
+      label: "Preview",
+      icon: <Eye className="w-4 h-4" />,
+      done: false,
+    },
   ];
 
   return (
@@ -44,9 +64,7 @@ export default function SiteSetupCanvas() {
           >
             {tool.icon}
             {tool.label}
-            {tool.done && (
-              <Check className="w-3 h-3 text-green-500 ml-0.5" />
-            )}
+            {tool.done && <Check className="w-3 h-3 text-green-500 ml-0.5" />}
           </Button>
         ))}
       </div>

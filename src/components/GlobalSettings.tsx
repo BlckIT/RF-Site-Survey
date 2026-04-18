@@ -16,12 +16,23 @@ import {
   migrateLocalStorageToFiles,
 } from "../lib/localStorageMigration";
 import { toast } from "./ui/use-toast";
-import { HeatmapSettings, Floor, Site, SurveyPoint, SurveyPointActions, KnownWifi } from "../lib/types";
+import {
+  HeatmapSettings,
+  Floor,
+  Site,
+  SurveyPoint,
+  SurveyPointActions,
+  KnownWifi,
+} from "../lib/types";
 import { join } from "path";
 
 // ── Helpers ──
 
-function createEmptyFloor(name: string, imageName: string = "", imagePath: string = ""): Floor {
+function createEmptyFloor(
+  name: string,
+  imageName: string = "",
+  imagePath: string = "",
+): Floor {
   return {
     name,
     floorplanImageName: imageName,
@@ -51,7 +62,20 @@ function getActiveFloor(site: Site): Floor {
  * Build a HeatmapSettings object from a Site + global settings.
  * The floor-specific fields are computed from the active floor.
  */
-function buildSettings(site: Site, globals: Omit<HeatmapSettings, 'site' | 'surveyPoints' | 'floorplanImageName' | 'floorplanImagePath' | 'nextPointNum' | 'dimensions' | 'walls' | 'pixelsPerMeter'>): HeatmapSettings {
+function buildSettings(
+  site: Site,
+  globals: Omit<
+    HeatmapSettings,
+    | "site"
+    | "surveyPoints"
+    | "floorplanImageName"
+    | "floorplanImagePath"
+    | "nextPointNum"
+    | "dimensions"
+    | "walls"
+    | "pixelsPerMeter"
+  >,
+): HeatmapSettings {
   const floor = getActiveFloor(site);
   return {
     ...globals,
@@ -141,7 +165,8 @@ export const getDefaults = (floorPlan: string): HeatmapSettings => {
 function migrateOldFormat(data: any, fileName: string): HeatmapSettings {
   const floorName = "Floor 1";
   const imageName = data.floorplanImageName || fileName;
-  const imagePath = data.floorplanImagePath || (imageName ? join("/media", imageName) : "");
+  const imagePath =
+    data.floorplanImagePath || (imageName ? join("/media", imageName) : "");
 
   const floor: Floor = {
     name: floorName,
@@ -174,7 +199,8 @@ function migrateOldFormat(data: any, fileName: string): HeatmapSettings {
     wifiInterface: data.wifiInterface ?? DEFAULT_GLOBALS.wifiInterface,
     targetSSID: data.targetSSID ?? DEFAULT_GLOBALS.targetSSID,
     snapRadius: data.snapRadius ?? DEFAULT_GLOBALS.snapRadius,
-    knownWifiNetworks: data.knownWifiNetworks ?? DEFAULT_GLOBALS.knownWifiNetworks,
+    knownWifiNetworks:
+      data.knownWifiNetworks ?? DEFAULT_GLOBALS.knownWifiNetworks,
   };
 
   return buildSettings(site, globals);
@@ -200,7 +226,9 @@ interface SettingsContextType {
   updateActiveFloor: (partial: Partial<Floor>) => void;
 }
 
-const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
+const SettingsContext = createContext<SettingsContextType | undefined>(
+  undefined,
+);
 
 export function useSettings() {
   const context = useContext(SettingsContext);
@@ -244,7 +272,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
         if (rawData.site) {
           // New format — has site property
-          const globals = { ...extractGlobals(defaults), ...extractGlobals(rawData as HeatmapSettings) };
+          const globals = {
+            ...extractGlobals(defaults),
+            ...extractGlobals(rawData as HeatmapSettings),
+          };
           globals.sudoerPassword = "";
           mergedSettings = buildSettings(rawData.site, globals);
         } else {
@@ -272,71 +303,93 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // ── updateSettings — backward-compatible partial update ──
-  const updateSettings = useCallback((newSettings: Partial<HeatmapSettings>) => {
-    setSettings((prev) => {
-      // Separate floor-specific fields from global fields
-      const floorFields: (keyof Floor)[] = [
-        'surveyPoints', 'floorplanImageName', 'floorplanImagePath',
-        'nextPointNum', 'dimensions', 'walls', 'pixelsPerMeter',
-      ];
+  const updateSettings = useCallback(
+    (newSettings: Partial<HeatmapSettings>) => {
+      setSettings((prev) => {
+        // Separate floor-specific fields from global fields
+        const floorFields: (keyof Floor)[] = [
+          "surveyPoints",
+          "floorplanImageName",
+          "floorplanImagePath",
+          "nextPointNum",
+          "dimensions",
+          "walls",
+          "pixelsPerMeter",
+        ];
 
-      const floorUpdates: Partial<Floor> = {};
-      const globalUpdates: Partial<HeatmapSettings> = {};
-      let siteUpdate: Site | undefined;
+        const floorUpdates: Partial<Floor> = {};
+        const globalUpdates: Partial<HeatmapSettings> = {};
+        let siteUpdate: Site | undefined;
 
-      for (const [key, value] of Object.entries(newSettings)) {
-        if (key === 'site') {
-          siteUpdate = value as Site;
-        } else if (floorFields.includes(key as keyof Floor)) {
-          (floorUpdates as any)[key] = value;
-          // Also map floorplanImageName -> name mapping
-          if (key === 'floorplanImageName') {
-            floorUpdates.floorplanImageName = value as string;
-            floorUpdates.floorplanImagePath = value ? join("/media", value as string) : "";
+        for (const [key, value] of Object.entries(newSettings)) {
+          if (key === "site") {
+            siteUpdate = value as Site;
+          } else if (floorFields.includes(key as keyof Floor)) {
+            (floorUpdates as any)[key] = value;
+            // Also map floorplanImageName -> name mapping
+            if (key === "floorplanImageName") {
+              floorUpdates.floorplanImageName = value as string;
+              floorUpdates.floorplanImagePath = value
+                ? join("/media", value as string)
+                : "";
+            }
+          } else {
+            (globalUpdates as any)[key] = value;
           }
-        } else {
-          (globalUpdates as any)[key] = value;
         }
-      }
 
-      // Build updated site
-      let updatedSite = siteUpdate || { ...prev.site };
-      if (!siteUpdate && Object.keys(floorUpdates).length > 0) {
-        const idx = Math.min(updatedSite.activeFloorIndex, updatedSite.floors.length - 1);
-        const safeIdx = Math.max(0, idx);
-        const updatedFloors = [...updatedSite.floors];
-        updatedFloors[safeIdx] = { ...updatedFloors[safeIdx], ...floorUpdates };
-        updatedSite = { ...updatedSite, floors: updatedFloors };
-      }
+        // Build updated site
+        let updatedSite = siteUpdate || { ...prev.site };
+        if (!siteUpdate && Object.keys(floorUpdates).length > 0) {
+          const idx = Math.min(
+            updatedSite.activeFloorIndex,
+            updatedSite.floors.length - 1,
+          );
+          const safeIdx = Math.max(0, idx);
+          const updatedFloors = [...updatedSite.floors];
+          updatedFloors[safeIdx] = {
+            ...updatedFloors[safeIdx],
+            ...floorUpdates,
+          };
+          updatedSite = { ...updatedSite, floors: updatedFloors };
+        }
 
-      // Only override globals that were explicitly passed in
-      const prevGlobals = extractGlobals(prev);
-      const overrides = Object.fromEntries(
-        Object.entries(globalUpdates).filter(([, v]) => v !== undefined)
-      );
-      const updatedSettings = buildSettings(updatedSite, {
-        ...prevGlobals,
-        ...overrides,
+        // Only override globals that were explicitly passed in
+        const prevGlobals = extractGlobals(prev);
+        const overrides = Object.fromEntries(
+          Object.entries(globalUpdates).filter(([, v]) => v !== undefined),
+        );
+        const updatedSettings = buildSettings(updatedSite, {
+          ...prevGlobals,
+          ...overrides,
+        });
+
+        writeSettingsToFile(updatedSettings);
+        return updatedSettings;
       });
-
-      writeSettingsToFile(updatedSettings);
-      return updatedSettings;
-    });
-  }, []);
+    },
+    [],
+  );
 
   // ── Site management ──
-  const createSite = useCallback((name: string) => {
-    const site = createEmptySite(name);
-    const newSettings = buildSettings(site, DEFAULT_GLOBALS);
-    saveSettings(newSettings);
-    setCurrentSiteName(name);
-  }, [saveSettings]);
+  const createSite = useCallback(
+    (name: string) => {
+      const site = createEmptySite(name);
+      const newSettings = buildSettings(site, DEFAULT_GLOBALS);
+      saveSettings(newSettings);
+      setCurrentSiteName(name);
+    },
+    [saveSettings],
+  );
 
   const deleteSite = useCallback(async (siteName: string) => {
     try {
-      await fetch(`/api/settings?name=${encodeURIComponent(siteName)}&action=delete`, {
-        method: "DELETE",
-      });
+      await fetch(
+        `/api/settings?name=${encodeURIComponent(siteName)}&action=delete`,
+        {
+          method: "DELETE",
+        },
+      );
     } catch (err) {
       console.error("Failed to delete site:", err);
     }

@@ -431,7 +431,10 @@ const SurveyPointsTable: React.FC<SurveyPointsTableProps> = ({
                   }`}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="text-center px-1 py-1 text-xs">
+                    <TableCell
+                      key={cell.id}
+                      className="text-center px-1 py-1 text-xs"
+                    >
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext(),

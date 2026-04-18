@@ -389,7 +389,9 @@ export function Heatmaps() {
         glCanvas.height = settings.dimensions.height;
 
         const wallsForRender = settings.walls || [];
-        console.log(`[Heatmap] Rendering with ${wallsForRender.length} walls, dims: ${settings.dimensions.width}x${settings.dimensions.height}, points: ${heatmapData.length}`);
+        console.log(
+          `[Heatmap] Rendering with ${wallsForRender.length} walls, dims: ${settings.dimensions.width}x${settings.dimensions.height}, points: ${heatmapData.length}`,
+        );
         if (wallsForRender.length > 0) {
           console.log(`[Heatmap] First wall:`, wallsForRender[0]);
         }

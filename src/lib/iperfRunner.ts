@@ -156,7 +156,8 @@ export async function runSurveyTests(
         return {
           iperfData: null,
           wifiData: null,
-          status: "No WiFi data available. Make sure you're connected to a network or select a Target SSID.",
+          status:
+            "No WiFi data available. Make sure you're connected to a network or select a Target SSID.",
         };
       }
     }
@@ -183,7 +184,8 @@ export async function runSurveyTests(
           return {
             iperfData: null,
             wifiData: null,
-            status: "No WiFi data available. Make sure you're connected to a network or select a Target SSID.",
+            status:
+              "No WiFi data available. Make sure you're connected to a network or select a Target SSID.",
           };
         }
         wifiStrengths.push(wifiDataBefore.SSIDs[0].signalStrength);

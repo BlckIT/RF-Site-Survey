@@ -83,9 +83,9 @@ export interface IperfCommands {
  * A single floor within a site
  */
 export interface Floor {
-  name: string;                    // e.g. "Floor 1", "Ground Floor"
-  floorplanImageName: string;      // filename in /media/
-  floorplanImagePath: string;      // /media/filename
+  name: string; // e.g. "Floor 1", "Ground Floor"
+  floorplanImageName: string; // filename in /media/
+  floorplanImagePath: string; // /media/filename
   dimensions: { width: number; height: number };
   walls: Wall[];
   surveyPoints: SurveyPoint[];
@@ -97,9 +97,9 @@ export interface Floor {
  * A site/project containing multiple floors
  */
 export interface Site {
-  name: string;                    // project name
+  name: string; // project name
   floors: Floor[];
-  activeFloorIndex: number;        // which floor is currently selected
+  activeFloorIndex: number; // which floor is currently selected
 }
 
 /**
@@ -217,11 +217,21 @@ export interface MaterialPreset {
 }
 
 export const MATERIAL_PRESETS: Record<WallMaterial, MaterialPreset> = {
-  drywall: { label: "Drywall", attenuationDb: 4, color: "#888888", thickness: 2 },
+  drywall: {
+    label: "Drywall",
+    attenuationDb: 4,
+    color: "#888888",
+    thickness: 2,
+  },
   wood: { label: "Wood", attenuationDb: 6, color: "#8B4513", thickness: 3 },
   glass: { label: "Glass", attenuationDb: 3, color: "#87CEEB", thickness: 2 },
   brick: { label: "Brick", attenuationDb: 10, color: "#B22222", thickness: 4 },
-  concrete: { label: "Concrete", attenuationDb: 15, color: "#555555", thickness: 5 },
+  concrete: {
+    label: "Concrete",
+    attenuationDb: 15,
+    color: "#555555",
+    thickness: 5,
+  },
   metal: { label: "Metal", attenuationDb: 25, color: "#2F4F4F", thickness: 5 },
   custom: { label: "Custom", attenuationDb: 5, color: "#FF00FF", thickness: 3 },
 };
@@ -253,8 +263,8 @@ export interface Wall {
  */
 export interface KnownWifi {
   ssid: string;
-  password?: string;   // tom = öppet nätverk
-  priority: number;    // högre = försök först
+  password?: string; // tom = öppet nätverk
+  priority: number; // högre = försök först
   autoConnect: boolean;
 }
 

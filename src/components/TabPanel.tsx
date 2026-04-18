@@ -12,9 +12,14 @@ import SiteSetupCanvas from "@/components/SiteSetupCanvas";
 import EditableApMapping from "@/components/ApMapping";
 import { PasswordInput } from "@/components/PasswordInput";
 import { Label } from "@/components/ui/label";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { PopoverHelper } from "@/components/PopoverHelpText";
-import { HeatmapSettings, WifiResults } from "@/lib/types";
+import { HeatmapSettings } from "@/lib/types";
 import { rgbaToHex, hexToRgba } from "@/lib/utils-gradient";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -25,7 +30,17 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Wifi, WifiOff, RefreshCw, Loader2, Trash2, ArrowUp, ArrowDown, Plus, AlertTriangle } from "lucide-react";
+import {
+  Wifi,
+  WifiOff,
+  RefreshCw,
+  Loader2,
+  Trash2,
+  ArrowUp,
+  ArrowDown,
+  Plus,
+  AlertTriangle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getDefaults } from "@/components/GlobalSettings";
@@ -64,7 +79,8 @@ const tabTriggerClass =
 const settingsTriggerClass =
   "flex items-center justify-center w-10 h-10 rounded-md border border-gray-400 bg-gray-200 text-gray-600 cursor-pointer transition-all duration-300 ease-in-out hover:bg-gray-100 hover:text-gray-800 data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:border-gray-500";
 
-const subTabClass = "px-3 py-1.5 text-xs font-medium rounded-sm transition-colors data-[state=active]:bg-gray-900 data-[state=active]:text-white data-[state=inactive]:text-gray-500 data-[state=inactive]:hover:text-gray-700";
+const subTabClass =
+  "px-3 py-1.5 text-xs font-medium rounded-sm transition-colors data-[state=active]:bg-gray-900 data-[state=active]:text-white data-[state=inactive]:text-gray-500 data-[state=inactive]:hover:text-gray-700";
 
 const sectionHeaderClass = "text-sm font-semibold text-gray-700 mb-2 mt-0";
 
@@ -102,7 +118,9 @@ function SettingsPanel() {
   const [wifiInterfaces, setWifiInterfaces] = useState<string[]>([]);
 
   // ── Buffrad draft-state för settings ──
-  const [draft, setDraft] = useState<DraftSettings>(() => pickDraftFields(settings));
+  const [draft, setDraft] = useState<DraftSettings>(() =>
+    pickDraftFields(settings),
+  );
   const isDirtyRef = useRef(false);
   const isDirty = !draftEquals(draft, pickDraftFields(settings));
   isDirtyRef.current = isDirty;
@@ -116,7 +134,7 @@ function SettingsPanel() {
 
   /** Uppdatera draft lokalt — ingen disk-save */
   const updateDraft = useCallback((partial: Partial<DraftSettings>) => {
-    setDraft(prev => ({ ...prev, ...partial }));
+    setDraft((prev) => ({ ...prev, ...partial }));
   }, []);
 
   /** Spara draft till disk */
@@ -141,7 +159,9 @@ function SettingsPanel() {
   const [scannedNetworks, setScannedNetworks] = useState<ScannedNetwork[]>([]);
   const [scanning, setScanning] = useState(false);
   const [connectDialogOpen, setConnectDialogOpen] = useState(false);
-  const [selectedNetwork, setSelectedNetwork] = useState<ScannedNetwork | null>(null);
+  const [selectedNetwork, setSelectedNetwork] = useState<ScannedNetwork | null>(
+    null,
+  );
   const [connectPassword, setConnectPassword] = useState("");
   const [connecting, setConnecting] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
@@ -202,7 +222,9 @@ function SettingsPanel() {
   const fetchHotspotStatus = useCallback(async () => {
     if (!hotspotIface) return;
     try {
-      const res = await fetch(`/api/network/hotspot?ifname=${encodeURIComponent(hotspotIface)}`);
+      const res = await fetch(
+        `/api/network/hotspot?ifname=${encodeURIComponent(hotspotIface)}`,
+      );
       const data = await res.json();
       setHotspotActive(data.active || false);
     } catch {
@@ -215,7 +237,9 @@ function SettingsPanel() {
     if (!connectIface) return;
     setScanning(true);
     try {
-      const res = await fetch(`/api/wifi-scan?iface=${encodeURIComponent(connectIface)}`);
+      const res = await fetch(
+        `/api/wifi-scan?iface=${encodeURIComponent(connectIface)}`,
+      );
       const data = await res.json();
       setScannedNetworks(data.ssids || []);
     } catch {
@@ -258,16 +282,26 @@ function SettingsPanel() {
       const res = await fetch("/api/network/hotspot-config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ssid: fallbackSsid, password: fallbackPassword, enabled: fallbackEnabled }),
+        body: JSON.stringify({
+          ssid: fallbackSsid,
+          password: fallbackPassword,
+          enabled: fallbackEnabled,
+        }),
       });
       const data = await res.json();
       if (data.success) {
         toast({ description: "Fallback hotspot config saved." });
       } else {
-        toast({ variant: "destructive", description: data.message || "Failed to save config." });
+        toast({
+          variant: "destructive",
+          description: data.message || "Failed to save config.",
+        });
       }
     } catch (err) {
-      toast({ variant: "destructive", description: `Error: ${err instanceof Error ? err.message : String(err)}` });
+      toast({
+        variant: "destructive",
+        description: `Error: ${err instanceof Error ? err.message : String(err)}`,
+      });
     } finally {
       setSavingFallback(false);
     }
@@ -286,10 +320,16 @@ function SettingsPanel() {
       if (data.success) {
         toast({ description: data.message });
       } else {
-        toast({ variant: "destructive", description: data.message || "Sync failed." });
+        toast({
+          variant: "destructive",
+          description: data.message || "Sync failed.",
+        });
       }
     } catch (err) {
-      toast({ variant: "destructive", description: `Error: ${err instanceof Error ? err.message : String(err)}` });
+      toast({
+        variant: "destructive",
+        description: `Error: ${err instanceof Error ? err.message : String(err)}`,
+      });
     } finally {
       setSyncingKnown(false);
     }
@@ -298,12 +338,15 @@ function SettingsPanel() {
   // Lägg till known network
   const addKnownNetwork = () => {
     if (!newKnownSsid.trim()) return;
-    const updated = [...knownNetworks, {
-      ssid: newKnownSsid.trim(),
-      password: newKnownPassword || undefined,
-      priority: newKnownPriority,
-      autoConnect: true,
-    }];
+    const updated = [
+      ...knownNetworks,
+      {
+        ssid: newKnownSsid.trim(),
+        password: newKnownPassword || undefined,
+        priority: newKnownPriority,
+        autoConnect: true,
+      },
+    ];
     setKnownNetworks(updated);
     setNewKnownSsid("");
     setNewKnownPassword("");
@@ -325,7 +368,9 @@ function SettingsPanel() {
     if (swapIdx < 0 || swapIdx >= updated.length) return;
     [updated[index], updated[swapIdx]] = [updated[swapIdx], updated[index]];
     // Uppdatera prioriteter baserat på position (högst först)
-    updated.forEach((net, i) => { net.priority = updated.length - i; });
+    updated.forEach((net, i) => {
+      net.priority = updated.length - i;
+    });
     setKnownNetworks(updated);
     syncKnownNetworks(updated);
   };
@@ -333,7 +378,10 @@ function SettingsPanel() {
   // Toggle autoConnect för known network
   const toggleKnownAutoConnect = (index: number) => {
     const updated = [...knownNetworks];
-    updated[index] = { ...updated[index], autoConnect: !updated[index].autoConnect };
+    updated[index] = {
+      ...updated[index],
+      autoConnect: !updated[index].autoConnect,
+    };
     setKnownNetworks(updated);
     syncKnownNetworks(updated);
   };
@@ -346,35 +394,58 @@ function SettingsPanel() {
       const res = await fetch("/api/network/connect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ssid: net.ssid, password: net.password || "", ifname: connectIface, hidden: false, sudoerPassword }),
+        body: JSON.stringify({
+          ssid: net.ssid,
+          password: net.password || "",
+          ifname: connectIface,
+          hidden: false,
+          sudoerPassword,
+        }),
       });
       const data = await res.json();
-      toast({ description: data.message, variant: data.success ? "default" : "destructive" });
+      toast({
+        description: data.message,
+        variant: data.success ? "default" : "destructive",
+      });
       if (data.success) {
         await fetchDeviceStatus();
         await scanNetworks();
       }
     } catch (err) {
-      toast({ variant: "destructive", description: `Error: ${err instanceof Error ? err.message : String(err)}` });
+      toast({
+        variant: "destructive",
+        description: `Error: ${err instanceof Error ? err.message : String(err)}`,
+      });
     } finally {
       setConnecting(false);
     }
   };
 
   /** Visa varningsdialog innan en riskfylld operation */
-  const showWarning = (title: string, description: string, onConfirm: () => void) => {
+  const showWarning = (
+    title: string,
+    description: string,
+    onConfirm: () => void,
+  ) => {
     setWarningDialog({ open: true, title, description, onConfirm });
   };
 
   /** Kolla om disconnect är riskfyllt (enda aktiva anslutningen) */
   const isOnlyConnection = (ifname: string): boolean => {
-    const connectedDevices = networkDevices.filter((d) => d.state.includes("connected") && d.connection);
-    return connectedDevices.length <= 1 && connectedDevices.some((d) => d.device === ifname);
+    const connectedDevices = networkDevices.filter(
+      (d) => d.state.includes("connected") && d.connection,
+    );
+    return (
+      connectedDevices.length <= 1 &&
+      connectedDevices.some((d) => d.device === ifname)
+    );
   };
 
   /** Kolla om hotspot är enda anslutningen */
   const isHotspotOnlyConnection = (): boolean => {
-    const connectedDevices = networkDevices.filter((d) => d.state.includes("connected") && d.connection);
+    const connectedDevices = networkDevices.filter(
+      (d) => d.state.includes("connected") && d.connection,
+    );
     return connectedDevices.length <= 1 && hotspotActive;
   };
 
@@ -398,14 +469,23 @@ function SettingsPanel() {
       const res = await fetch("/api/network/hotspot", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, ifname: hotspotIface, ssid: hotspotSsid, password: hotspotPassword, sudoerPassword }),
+        body: JSON.stringify({
+          action,
+          ifname: hotspotIface,
+          ssid: hotspotSsid,
+          password: hotspotPassword,
+          sudoerPassword,
+        }),
       });
       const data = await res.json();
       toast({ description: data.message });
       await fetchHotspotStatus();
       await fetchDeviceStatus();
     } catch (err) {
-      toast({ variant: "destructive", description: `Error: ${err instanceof Error ? err.message : String(err)}` });
+      toast({
+        variant: "destructive",
+        description: `Error: ${err instanceof Error ? err.message : String(err)}`,
+      });
     } finally {
       setHotspotLoading(false);
     }
@@ -416,7 +496,9 @@ function SettingsPanel() {
     const ssid = isHidden ? hiddenSsid : selectedNetwork?.ssid;
     if (!ssid || !connectIface) return;
     // Kolla om vi byter från ett befintligt nätverk
-    const currentDevice = networkDevices.find((d) => d.device === connectIface && d.state.includes("connected"));
+    const currentDevice = networkDevices.find(
+      (d) => d.device === connectIface && d.state.includes("connected"),
+    );
     if (currentDevice && currentDevice.connection) {
       showWarning(
         "Switch Network?",
@@ -436,10 +518,19 @@ function SettingsPanel() {
       const res = await fetch("/api/network/connect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ssid, password: connectPassword, ifname: connectIface, hidden: isHidden, sudoerPassword }),
+        body: JSON.stringify({
+          ssid,
+          password: connectPassword,
+          ifname: connectIface,
+          hidden: isHidden,
+          sudoerPassword,
+        }),
       });
       const data = await res.json();
-      toast({ description: data.message, variant: data.success ? "default" : "destructive" });
+      toast({
+        description: data.message,
+        variant: data.success ? "default" : "destructive",
+      });
       if (data.success) {
         setConnectDialogOpen(false);
         setConnectPassword("");
@@ -450,7 +541,10 @@ function SettingsPanel() {
         await scanNetworks();
       }
     } catch (err) {
-      toast({ variant: "destructive", description: `Error: ${err instanceof Error ? err.message : String(err)}` });
+      toast({
+        variant: "destructive",
+        description: `Error: ${err instanceof Error ? err.message : String(err)}`,
+      });
     } finally {
       setConnecting(false);
     }
@@ -482,7 +576,10 @@ function SettingsPanel() {
       await fetchDeviceStatus();
       await fetchHotspotStatus();
     } catch (err) {
-      toast({ variant: "destructive", description: `Error: ${err instanceof Error ? err.message : String(err)}` });
+      toast({
+        variant: "destructive",
+        description: `Error: ${err instanceof Error ? err.message : String(err)}`,
+      });
     } finally {
       setDisconnecting(false);
     }
@@ -492,7 +589,10 @@ function SettingsPanel() {
   const signalBars = (strength: number) => {
     const bars = Math.ceil(strength / 25);
     return (
-      <span className="inline-flex gap-0.5 items-end h-4" title={`${strength}%`}>
+      <span
+        className="inline-flex gap-0.5 items-end h-4"
+        title={`${strength}%`}
+      >
         {[1, 2, 3, 4].map((i) => (
           <span
             key={i}
@@ -510,7 +610,12 @@ function SettingsPanel() {
     fetchDeviceStatus();
     fetchKnownNetworks();
     fetchFallbackConfig();
-  }, [fetchInterfaces, fetchDeviceStatus, fetchKnownNetworks, fetchFallbackConfig]);
+  }, [
+    fetchInterfaces,
+    fetchDeviceStatus,
+    fetchKnownNetworks,
+    fetchFallbackConfig,
+  ]);
 
   useEffect(() => {
     fetchHotspotStatus();
@@ -519,8 +624,6 @@ function SettingsPanel() {
   useEffect(() => {
     if (connectIface) scanNetworks();
   }, [connectIface, scanNetworks]);
-
-
 
   const wifiDevices = networkDevices.filter((d) => d.type === "wifi");
 
@@ -533,20 +636,25 @@ function SettingsPanel() {
   };
 
   // Hjälpfunktion: kolla om ett interface redan används av en annan funktion
-  const ifaceUsedBy = (iface: string, exclude: "scan" | "hotspot" | "connect"): string | null => {
+  const ifaceUsedBy = (
+    iface: string,
+    exclude: "scan" | "hotspot" | "connect",
+  ): string | null => {
     if (exclude !== "scan" && draft.wifiInterface === iface) return "Scan";
-    if (exclude !== "hotspot" && hotspotIface === iface && hotspotActive) return "Hotspot";
+    if (exclude !== "hotspot" && hotspotIface === iface && hotspotActive)
+      return "Hotspot";
     if (exclude !== "connect" && connectIface === iface) return "WiFi Connect";
     return null;
   };
-
 
   return (
     <div className="max-w-3xl">
       {/* Sticky save-bar vid osparade ändringar */}
       {isDirty && (
         <div className="sticky top-0 z-10 flex items-center gap-2 bg-amber-50 border border-amber-300 rounded-md px-3 py-2 mb-3 shadow-sm">
-          <span className="text-sm text-amber-800 font-medium flex-1">Unsaved changes</span>
+          <span className="text-sm text-amber-800 font-medium flex-1">
+            Unsaved changes
+          </span>
           <Button variant="outline" size="sm" onClick={discardDraft}>
             Discard
           </Button>
@@ -557,32 +665,51 @@ function SettingsPanel() {
       )}
       <Tabs.Root defaultValue="network">
         <Tabs.List className="flex gap-1 mb-4">
-          <Tabs.Trigger value="network" className={subTabClass}>Network</Tabs.Trigger>
-          <Tabs.Trigger value="survey" className={subTabClass}>Survey</Tabs.Trigger>
-          <Tabs.Trigger value="display" className={subTabClass}>Display</Tabs.Trigger>
+          <Tabs.Trigger value="network" className={subTabClass}>
+            Network
+          </Tabs.Trigger>
+          <Tabs.Trigger value="survey" className={subTabClass}>
+            Survey
+          </Tabs.Trigger>
+          <Tabs.Trigger value="display" className={subTabClass}>
+            Display
+          </Tabs.Trigger>
         </Tabs.List>
 
         {/* ═══ NETWORK TAB ═══ */}
         <Tabs.Content value="network" className="space-y-4">
           {/* Devices */}
-          <Accordion type="multiple" defaultValue={["devices"]} className="w-full">
+          <Accordion
+            type="multiple"
+            defaultValue={["devices"]}
+            className="w-full"
+          >
             <AccordionItem value="devices" className="border-gray-200">
-              <AccordionTrigger className="text-sm font-semibold text-gray-700 py-2 hover:no-underline">Devices</AccordionTrigger>
+              <AccordionTrigger className="text-sm font-semibold text-gray-700 py-2 hover:no-underline">
+                Devices
+              </AccordionTrigger>
               <AccordionContent>
                 <div className="space-y-3">
                   {wifiDevices.length > 0 && (
                     <div className="space-y-1">
                       {wifiDevices.map((d) => (
-                        <div key={d.device} className="flex items-center justify-between text-sm border border-gray-200 rounded-sm px-3 py-2">
+                        <div
+                          key={d.device}
+                          className="flex items-center justify-between text-sm border border-gray-200 rounded-sm px-3 py-2"
+                        >
                           <div className="flex items-center gap-2">
                             {d.state.includes("connected") ? (
                               <Wifi className="w-3.5 h-3.5 text-green-600" />
                             ) : (
                               <WifiOff className="w-3.5 h-3.5 text-gray-400" />
                             )}
-                            <span className="font-mono text-xs">{d.device}</span>
+                            <span className="font-mono text-xs">
+                              {d.device}
+                            </span>
                             <span className="text-gray-500">
-                              {d.connection ? `\u2014 ${d.connection}` : "\u2014 disconnected"}
+                              {d.connection
+                                ? `\u2014 ${d.connection}`
+                                : "\u2014 disconnected"}
                             </span>
                           </div>
                           {d.state.includes("connected") && d.connection && (
@@ -601,9 +728,18 @@ function SettingsPanel() {
                     </div>
                   )}
                   {wifiDevices.length === 0 && (
-                    <p className="text-sm text-gray-500">No WiFi devices detected.</p>
+                    <p className="text-sm text-gray-500">
+                      No WiFi devices detected.
+                    </p>
                   )}
-                  <Button variant="outline" size="sm" onClick={() => { fetchDeviceStatus(); fetchInterfaces(); }}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      fetchDeviceStatus();
+                      fetchInterfaces();
+                    }}
+                  >
                     <RefreshCw className="w-3 h-3 mr-1" />
                     Refresh
                   </Button>
@@ -632,7 +768,8 @@ function SettingsPanel() {
                         const usedBy = ifaceUsedBy(iface, "hotspot");
                         return (
                           <option key={iface} value={iface}>
-                            {iface}{usedBy ? ` (used by ${usedBy})` : ""}
+                            {iface}
+                            {usedBy ? ` (used by ${usedBy})` : ""}
                           </option>
                         );
                       })}
@@ -664,14 +801,20 @@ function SettingsPanel() {
                       <Switch
                         checked={hotspotActive}
                         onCheckedChange={toggleHotspot}
-                        disabled={hotspotLoading || (!hotspotActive && (hotspotPassword.length < 8 || !hotspotSsid))}
+                        disabled={
+                          hotspotLoading ||
+                          (!hotspotActive &&
+                            (hotspotPassword.length < 8 || !hotspotSsid))
+                        }
                         aria-label="Toggle hotspot"
                       />
                       <span className="text-sm">
                         {hotspotLoading ? (
                           <Loader2 className="w-4 h-4 animate-spin inline" />
                         ) : hotspotActive ? (
-                          <span className="text-green-600 font-medium">Active</span>
+                          <span className="text-green-600 font-medium">
+                            Active
+                          </span>
                         ) : (
                           <span className="text-gray-500">Inactive</span>
                         )}
@@ -700,7 +843,8 @@ function SettingsPanel() {
                           const usedBy = ifaceUsedBy(iface, "connect");
                           return (
                             <option key={iface} value={iface}>
-                              {iface}{usedBy ? ` (used by ${usedBy})` : ""}
+                              {iface}
+                              {usedBy ? ` (used by ${usedBy})` : ""}
                             </option>
                           );
                         })}
@@ -708,8 +852,17 @@ function SettingsPanel() {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={scanNetworks} disabled={scanning || !connectIface}>
-                      {scanning ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-1" />}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={scanNetworks}
+                      disabled={scanning || !connectIface}
+                    >
+                      {scanning ? (
+                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-3 h-3 mr-1" />
+                      )}
                       Scan
                     </Button>
                     <Button
@@ -732,7 +885,9 @@ function SettingsPanel() {
                         <div
                           key={net.ssid}
                           className={`flex items-center justify-between text-sm border rounded-sm px-3 py-2 cursor-pointer hover:bg-gray-50 ${
-                            net.currentSSID ? "border-green-300 bg-green-50" : "border-gray-200"
+                            net.currentSSID
+                              ? "border-green-300 bg-green-50"
+                              : "border-gray-200"
                           }`}
                           onClick={() => {
                             if (!net.currentSSID) {
@@ -744,24 +899,42 @@ function SettingsPanel() {
                           }}
                         >
                           <div className="flex items-center gap-2">
-                            {net.currentSSID && <Wifi className="w-3 h-3 text-green-600" />}
-                            <span className={net.currentSSID ? "font-medium" : ""}>{net.ssid}</span>
+                            {net.currentSSID && (
+                              <Wifi className="w-3 h-3 text-green-600" />
+                            )}
+                            <span
+                              className={net.currentSSID ? "font-medium" : ""}
+                            >
+                              {net.ssid}
+                            </span>
                             {signalBars(net.signalStrength)}
-                            <span className="text-xs text-gray-400">ch{net.channel}</span>
-                            <span className="text-xs text-gray-400">{net.security}</span>
+                            <span className="text-xs text-gray-400">
+                              ch{net.channel}
+                            </span>
+                            <span className="text-xs text-gray-400">
+                              {net.security}
+                            </span>
                           </div>
                           {net.currentSSID ? (
-                            <span className="text-xs text-green-600 font-medium">Connected</span>
+                            <span className="text-xs text-green-600 font-medium">
+                              Connected
+                            </span>
                           ) : (
-                            <span className="text-xs text-blue-500">Connect</span>
+                            <span className="text-xs text-blue-500">
+                              Connect
+                            </span>
                           )}
                         </div>
                       ))}
                     </div>
                   )}
-                  {scannedNetworks.length === 0 && !scanning && connectIface && (
-                    <p className="text-sm text-gray-500">No networks found. Click Scan to search.</p>
-                  )}
+                  {scannedNetworks.length === 0 &&
+                    !scanning &&
+                    connectIface && (
+                      <p className="text-sm text-gray-500">
+                        No networks found. Click Scan to search.
+                      </p>
+                    )}
                 </div>
               </AccordionContent>
             </AccordionItem>
@@ -795,11 +968,18 @@ function SettingsPanel() {
                   {knownNetworks.length > 0 && (
                     <div className="space-y-1">
                       {knownNetworks.map((net, idx) => (
-                        <div key={`${net.ssid}-${idx}`} className="flex items-center justify-between text-sm border border-gray-200 rounded-sm px-3 py-2">
+                        <div
+                          key={`${net.ssid}-${idx}`}
+                          className="flex items-center justify-between text-sm border border-gray-200 rounded-sm px-3 py-2"
+                        >
                           <div className="flex items-center gap-2 flex-1 min-w-0">
                             <Wifi className="w-3.5 h-3.5 text-gray-500 shrink-0" />
-                            <span className="font-medium truncate">{net.ssid}</span>
-                            <span className="text-xs text-gray-400">pri:{net.priority}</span>
+                            <span className="font-medium truncate">
+                              {net.ssid}
+                            </span>
+                            <span className="text-xs text-gray-400">
+                              pri:{net.priority}
+                            </span>
                             <button
                               onClick={() => toggleKnownAutoConnect(idx)}
                               className={`text-xs px-1.5 py-0.5 rounded ${net.autoConnect ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}
@@ -852,10 +1032,14 @@ function SettingsPanel() {
                     </div>
                   )}
                   {knownNetworks.length === 0 && (
-                    <p className="text-sm text-gray-500">No known networks saved.</p>
+                    <p className="text-sm text-gray-500">
+                      No known networks saved.
+                    </p>
                   )}
                   <div className="border border-dashed border-gray-300 rounded-sm p-3 space-y-2">
-                    <p className="text-xs font-semibold text-gray-600">Add Network</p>
+                    <p className="text-xs font-semibold text-gray-600">
+                      Add Network
+                    </p>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                       <Input
                         type="text"
@@ -874,10 +1058,16 @@ function SettingsPanel() {
                           className={inputClass + " w-20"}
                           placeholder="Priority"
                           value={newKnownPriority}
-                          onChange={(e) => setNewKnownPriority(parseInt(e.target.value) || 0)}
+                          onChange={(e) =>
+                            setNewKnownPriority(parseInt(e.target.value) || 0)
+                          }
                           title="Priority (higher = connect first)"
                         />
-                        <Button size="sm" onClick={addKnownNetwork} disabled={!newKnownSsid.trim() || syncingKnown}>
+                        <Button
+                          size="sm"
+                          onClick={addKnownNetwork}
+                          disabled={!newKnownSsid.trim() || syncingKnown}
+                        >
                           <Plus className="w-3 h-3 mr-1" />
                           Add
                         </Button>
@@ -891,7 +1081,11 @@ function SettingsPanel() {
                       onClick={() => syncKnownNetworks(knownNetworks)}
                       disabled={syncingKnown || !sudoerPassword}
                     >
-                      {syncingKnown ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-1" />}
+                      {syncingKnown ? (
+                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-3 h-3 mr-1" />
+                      )}
                       Sync to NetworkManager
                     </Button>
                   )}
@@ -913,7 +1107,9 @@ function SettingsPanel() {
                     />
                     <span className="text-sm">
                       {fallbackEnabled ? (
-                        <span className="text-green-600 font-medium">Enabled</span>
+                        <span className="text-green-600 font-medium">
+                          Enabled
+                        </span>
                       ) : (
                         <span className="text-gray-500">Disabled</span>
                       )}
@@ -922,14 +1118,18 @@ function SettingsPanel() {
                   {fallbackEnabled && (
                     <div className="bg-blue-50 border border-blue-200 rounded-sm px-3 py-2">
                       <p className="text-xs text-blue-700">
-                        The device will always have a fallback hotspot (SSID: {fallbackSsid || "Buster"}) even if the app is not running.
-                        This requires the systemd service to be installed (see system/rf-survey-hotspot-setup.sh).
+                        The device will always have a fallback hotspot (SSID:{" "}
+                        {fallbackSsid || "Buster"}) even if the app is not
+                        running. This requires the systemd service to be
+                        installed (see system/rf-survey-hotspot-setup.sh).
                       </p>
                     </div>
                   )}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="flex flex-col gap-1">
-                      <Label className="text-xs font-semibold">Fallback SSID</Label>
+                      <Label className="text-xs font-semibold">
+                        Fallback SSID
+                      </Label>
                       <Input
                         type="text"
                         className={inputClass}
@@ -953,7 +1153,9 @@ function SettingsPanel() {
                     onClick={saveFallbackConfig}
                     disabled={savingFallback}
                   >
-                    {savingFallback ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : null}
+                    {savingFallback ? (
+                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                    ) : null}
                     Save Fallback Config
                   </Button>
                 </div>
@@ -962,90 +1164,103 @@ function SettingsPanel() {
           </Accordion>
         </Tabs.Content>
 
-      {/* WiFi Connect Dialog */}
-      <Dialog open={connectDialogOpen} onOpenChange={setConnectDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {isHidden ? "Connect to Hidden Network" : `Connect to "${selectedNetwork?.ssid}"`}
-            </DialogTitle>
-            <DialogDescription>
-              {isHidden
-                ? "Enter the SSID and password for the hidden network."
-                : `Enter the password to connect via ${connectIface}.`}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            {isHidden && (
+        {/* WiFi Connect Dialog */}
+        <Dialog open={connectDialogOpen} onOpenChange={setConnectDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                {isHidden
+                  ? "Connect to Hidden Network"
+                  : `Connect to "${selectedNetwork?.ssid}"`}
+              </DialogTitle>
+              <DialogDescription>
+                {isHidden
+                  ? "Enter the SSID and password for the hidden network."
+                  : `Enter the password to connect via ${connectIface}.`}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              {isHidden && (
+                <div className="flex flex-col gap-1">
+                  <Label className="text-xs font-semibold">SSID</Label>
+                  <Input
+                    type="text"
+                    className={inputClass}
+                    value={hiddenSsid}
+                    onChange={(e) => setHiddenSsid(e.target.value)}
+                    placeholder="Network name"
+                    autoFocus
+                  />
+                </div>
+              )}
               <div className="flex flex-col gap-1">
-                <Label className="text-xs font-semibold">SSID</Label>
-                <Input
-                  type="text"
-                  className={inputClass}
-                  value={hiddenSsid}
-                  onChange={(e) => setHiddenSsid(e.target.value)}
-                  placeholder="Network name"
-                  autoFocus
+                <Label className="text-xs font-semibold">Password</Label>
+                <PasswordInput
+                  value={connectPassword}
+                  onChange={(val) => setConnectPassword(val)}
                 />
               </div>
-            )}
-            <div className="flex flex-col gap-1">
-              <Label className="text-xs font-semibold">Password</Label>
-              <PasswordInput
-                value={connectPassword}
-                onChange={(val) => setConnectPassword(val)}
-              />
             </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConnectDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={connectToNetwork}
-              disabled={connecting || (isHidden ? !hiddenSsid : !selectedNetwork?.ssid)}
-            >
-              {connecting ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                  Connecting...
-                </>
-              ) : (
-                "Connect"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setConnectDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={connectToNetwork}
+                disabled={
+                  connecting ||
+                  (isHidden ? !hiddenSsid : !selectedNetwork?.ssid)
+                }
+              >
+                {connecting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                    Connecting...
+                  </>
+                ) : (
+                  "Connect"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-      {/* Varningsdialog för riskfyllda nätverksoperationer */}
-      <AlertDialog open={warningDialog.open} onOpenChange={(open) => setWarningDialog((prev) => ({ ...prev, open }))}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-amber-500" />
-              {warningDialog.title}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {warningDialog.description}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                warningDialog.onConfirm();
-                setWarningDialog((prev) => ({ ...prev, open: false }));
-              }}
-              className="bg-amber-600 hover:bg-amber-700"
-            >
-              Continue Anyway
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        {/* Varningsdialog för riskfyllda nätverksoperationer */}
+        <AlertDialog
+          open={warningDialog.open}
+          onOpenChange={(open) =>
+            setWarningDialog((prev) => ({ ...prev, open }))
+          }
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-amber-500" />
+                {warningDialog.title}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {warningDialog.description}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  warningDialog.onConfirm();
+                  setWarningDialog((prev) => ({ ...prev, open: false }));
+                }}
+                className="bg-amber-600 hover:bg-amber-700"
+              >
+                Continue Anyway
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
-      {/* ═══ SURVEY TAB ═══ */}
+        {/* ═══ SURVEY TAB ═══ */}
         <Tabs.Content value="survey" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="flex flex-col gap-1">
@@ -1063,7 +1278,8 @@ function SettingsPanel() {
                   const usedBy = ifaceUsedBy(iface, "scan");
                   return (
                     <option key={iface} value={iface}>
-                      {iface}{usedBy ? ` (used by ${usedBy})` : ""}
+                      {iface}
+                      {usedBy ? ` (used by ${usedBy})` : ""}
                     </option>
                   );
                 })}
@@ -1079,7 +1295,9 @@ function SettingsPanel() {
                 placeholder="Leave empty to use connected network"
                 className={inputClass}
                 value={draft.targetSSID || ""}
-                onChange={(e) => updateDraft({ targetSSID: e.target.value.trim() })}
+                onChange={(e) =>
+                  updateDraft({ targetSSID: e.target.value.trim() })
+                }
               />
             </div>
             <div className="flex flex-col gap-1">
@@ -1092,7 +1310,9 @@ function SettingsPanel() {
                 placeholder="192.168.1.10"
                 className={inputClass}
                 value={draft.iperfServerAdrs}
-                onChange={(e) => updateDraft({ iperfServerAdrs: e.target.value.trim() })}
+                onChange={(e) =>
+                  updateDraft({ iperfServerAdrs: e.target.value.trim() })
+                }
               />
             </div>
             <div className="flex flex-col gap-1">
@@ -1106,7 +1326,14 @@ function SettingsPanel() {
                 max={60}
                 className={inputClass}
                 value={draft.testDuration}
-                onChange={(e) => updateDraft({ testDuration: Math.max(1, Math.min(60, parseInt(e.target.value) || 1)) })}
+                onChange={(e) =>
+                  updateDraft({
+                    testDuration: Math.max(
+                      1,
+                      Math.min(60, parseInt(e.target.value) || 1),
+                    ),
+                  })
+                }
               />
             </div>
           </div>
@@ -1119,12 +1346,21 @@ function SettingsPanel() {
               <AccordionContent>
                 <div className="space-y-3">
                   <div className="flex flex-col gap-1">
-                    <Label className="text-xs font-semibold">TCP Download</Label>
+                    <Label className="text-xs font-semibold">
+                      TCP Download
+                    </Label>
                     <Input
                       type="text"
                       className={inputClass + " font-mono"}
                       value={draft.iperfCommands?.tcpDownload || ""}
-                      onChange={(e) => updateDraft({ iperfCommands: { ...draft.iperfCommands, tcpDownload: e.target.value } })}
+                      onChange={(e) =>
+                        updateDraft({
+                          iperfCommands: {
+                            ...draft.iperfCommands,
+                            tcpDownload: e.target.value,
+                          },
+                        })
+                      }
                     />
                   </div>
                   <div className="flex flex-col gap-1">
@@ -1133,7 +1369,14 @@ function SettingsPanel() {
                       type="text"
                       className={inputClass + " font-mono"}
                       value={draft.iperfCommands?.tcpUpload || ""}
-                      onChange={(e) => updateDraft({ iperfCommands: { ...draft.iperfCommands, tcpUpload: e.target.value } })}
+                      onChange={(e) =>
+                        updateDraft({
+                          iperfCommands: {
+                            ...draft.iperfCommands,
+                            tcpUpload: e.target.value,
+                          },
+                        })
+                      }
                     />
                   </div>
                   <div className="flex flex-col gap-1">
@@ -1145,7 +1388,14 @@ function SettingsPanel() {
                       type="text"
                       className={inputClass + " font-mono"}
                       value={draft.iperfCommands?.udpDownload || ""}
-                      onChange={(e) => updateDraft({ iperfCommands: { ...draft.iperfCommands, udpDownload: e.target.value } })}
+                      onChange={(e) =>
+                        updateDraft({
+                          iperfCommands: {
+                            ...draft.iperfCommands,
+                            udpDownload: e.target.value,
+                          },
+                        })
+                      }
                     />
                   </div>
                   <div className="flex flex-col gap-1">
@@ -1157,7 +1407,14 @@ function SettingsPanel() {
                       type="text"
                       className={inputClass + " font-mono"}
                       value={draft.iperfCommands?.udpUpload || ""}
-                      onChange={(e) => updateDraft({ iperfCommands: { ...draft.iperfCommands, udpUpload: e.target.value } })}
+                      onChange={(e) =>
+                        updateDraft({
+                          iperfCommands: {
+                            ...draft.iperfCommands,
+                            udpUpload: e.target.value,
+                          },
+                        })
+                      }
                     />
                   </div>
                 </div>
@@ -1182,176 +1439,202 @@ function SettingsPanel() {
           <section className="space-y-3">
             <h3 className={sectionHeaderClass}>Heatmap</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="flex flex-col gap-1">
-            <Label className="text-xs font-semibold">
-              Min Opacity&nbsp;
-              <PopoverHelper text="The minimum opacity of the heatmap points. Values range from 0 to 1." />
-            </Label>
-            <input
-              type="number"
-              min="0"
-              max="1"
-              step="0.1"
-              className={inputClass}
-              value={draft.minOpacity}
-              onChange={(e) => updateDraft({ minOpacity: parseFloat(e.target.value) })}
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label className="text-xs font-semibold">
-              Max Opacity&nbsp;
-              <PopoverHelper text="The maximum opacity of the heatmap points. Values range from 0 to 1." />
-            </Label>
-            <input
-              type="number"
-              min="0"
-              max="1"
-              step="0.1"
-              className={inputClass}
-              value={draft.maxOpacity}
-              onChange={(e) => updateDraft({ maxOpacity: parseFloat(e.target.value) })}
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label className="text-xs font-semibold">
-              Blur&nbsp;
-              <PopoverHelper text="The amount of blur applied to the heatmap. Values range from 0 to 1." />
-            </Label>
-            <input
-              type="number"
-              min="0"
-              max="1"
-              step="0.01"
-              className={inputClass}
-              value={draft.blur}
-              onChange={(e) => updateDraft({ blur: parseFloat(e.target.value) })}
-            />
-          </div>
-        </div>
-
-        {/* Gradient editor */}
-        <div className="pt-2">
-          <Label className="text-xs font-semibold">
-            Gradient&nbsp;
-            <PopoverHelper text="Define the color gradient for the heatmap. Each key represents a point in the gradient (0 to 1), and the value is the color." />
-          </Label>
-          <div className="mt-2">
-            <div className="flex items-center gap-2 mb-1 text-xs font-semibold text-gray-500">
-              <span className="w-20 text-center">Position</span>
-              <span className="w-10 text-center">Color</span>
-              <span className="w-20 text-center">Opacity</span>
-              <span className="w-8" />
+              <div className="flex flex-col gap-1">
+                <Label className="text-xs font-semibold">
+                  Min Opacity&nbsp;
+                  <PopoverHelper text="The minimum opacity of the heatmap points. Values range from 0 to 1." />
+                </Label>
+                <input
+                  type="number"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  className={inputClass}
+                  value={draft.minOpacity}
+                  onChange={(e) =>
+                    updateDraft({ minOpacity: parseFloat(e.target.value) })
+                  }
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label className="text-xs font-semibold">
+                  Max Opacity&nbsp;
+                  <PopoverHelper text="The maximum opacity of the heatmap points. Values range from 0 to 1." />
+                </Label>
+                <input
+                  type="number"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  className={inputClass}
+                  value={draft.maxOpacity}
+                  onChange={(e) =>
+                    updateDraft({ maxOpacity: parseFloat(e.target.value) })
+                  }
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label className="text-xs font-semibold">
+                  Blur&nbsp;
+                  <PopoverHelper text="The amount of blur applied to the heatmap. Values range from 0 to 1." />
+                </Label>
+                <input
+                  type="number"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  className={inputClass}
+                  value={draft.blur}
+                  onChange={(e) =>
+                    updateDraft({ blur: parseFloat(e.target.value) })
+                  }
+                />
+              </div>
             </div>
-            {sortedDraftGradientEntries().map(([key, value]) => {
-              const hexColor = rgbaToHex(value);
-              const alpha = parseFloat(value.split(",")[3]) || 1;
-              return (
-                <div key={key} className="flex items-center gap-2 mt-2">
-                  <Input
-                    type="text"
-                    value={key}
-                    onChange={(e) => {
-                      const newGradient = { ...draft.gradient };
-                      delete newGradient[parseInt(key)];
-                      newGradient[parseInt(e.target.value)] = value;
-                      updateDraft({ gradient: newGradient });
-                    }}
-                    className={inputClass + " w-20"}
-                  />
-                  <input
-                    type="color"
-                    value={hexColor}
-                    onChange={(e) => {
-                      const newColor = hexToRgba(e.target.value, alpha);
-                      const newGradient = { ...draft.gradient, [key]: newColor };
-                      updateDraft({ gradient: newGradient });
-                    }}
-                    className="w-10 h-8 border border-gray-200 rounded-sm cursor-pointer"
-                  />
-                  <input
-                    type="number"
-                    min="0"
-                    max="1"
-                    step="0.1"
-                    value={alpha}
-                    onChange={(e) => {
-                      const newAlpha = parseFloat(e.target.value);
-                      const newColor = hexToRgba(hexColor, newAlpha);
-                      const newGradient = { ...draft.gradient, [key]: newColor };
-                      updateDraft({ gradient: newGradient });
-                    }}
-                    className={inputClass + " w-20"}
-                  />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    type="button"
-                    onClick={() => {
-                      const newGradient = { ...draft.gradient };
-                      delete newGradient[parseFloat(key)];
-                      updateDraft({ gradient: newGradient });
-                    }}
-                    title="Remove color stop"
-                    className="text-gray-400 hover:text-red-500"
-                  >
-                    ✕
-                  </Button>
+
+            {/* Gradient editor */}
+            <div className="pt-2">
+              <Label className="text-xs font-semibold">
+                Gradient&nbsp;
+                <PopoverHelper text="Define the color gradient for the heatmap. Each key represents a point in the gradient (0 to 1), and the value is the color." />
+              </Label>
+              <div className="mt-2">
+                <div className="flex items-center gap-2 mb-1 text-xs font-semibold text-gray-500">
+                  <span className="w-20 text-center">Position</span>
+                  <span className="w-10 text-center">Color</span>
+                  <span className="w-20 text-center">Opacity</span>
+                  <span className="w-8" />
                 </div>
-              );
-            })}
-            <Button
-              variant="outline"
-              size="sm"
-              type="button"
-              onClick={() => {
-                const newGradient = { ...draft.gradient, [0.5]: "rgba(0, 0, 0, 1)" };
-                updateDraft({ gradient: newGradient });
-              }}
-              className="mt-3"
-            >
-              + Add Color Stop
-            </Button>
-          </div>
-        </div>
-      </section>
+                {sortedDraftGradientEntries().map(([key, value]) => {
+                  const hexColor = rgbaToHex(value);
+                  const alpha = parseFloat(value.split(",")[3]) || 1;
+                  return (
+                    <div key={key} className="flex items-center gap-2 mt-2">
+                      <Input
+                        type="text"
+                        value={key}
+                        onChange={(e) => {
+                          const newGradient = { ...draft.gradient };
+                          delete newGradient[parseInt(key)];
+                          newGradient[parseInt(e.target.value)] = value;
+                          updateDraft({ gradient: newGradient });
+                        }}
+                        className={inputClass + " w-20"}
+                      />
+                      <input
+                        type="color"
+                        value={hexColor}
+                        onChange={(e) => {
+                          const newColor = hexToRgba(e.target.value, alpha);
+                          const newGradient = {
+                            ...draft.gradient,
+                            [key]: newColor,
+                          };
+                          updateDraft({ gradient: newGradient });
+                        }}
+                        className="w-10 h-8 border border-gray-200 rounded-sm cursor-pointer"
+                      />
+                      <input
+                        type="number"
+                        min="0"
+                        max="1"
+                        step="0.1"
+                        value={alpha}
+                        onChange={(e) => {
+                          const newAlpha = parseFloat(e.target.value);
+                          const newColor = hexToRgba(hexColor, newAlpha);
+                          const newGradient = {
+                            ...draft.gradient,
+                            [key]: newColor,
+                          };
+                          updateDraft({ gradient: newGradient });
+                        }}
+                        className={inputClass + " w-20"}
+                      />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        type="button"
+                        onClick={() => {
+                          const newGradient = { ...draft.gradient };
+                          delete newGradient[parseFloat(key)];
+                          updateDraft({ gradient: newGradient });
+                        }}
+                        title="Remove color stop"
+                        className="text-gray-400 hover:text-red-500"
+                      >
+                        ✕
+                      </Button>
+                    </div>
+                  );
+                })}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  onClick={() => {
+                    const newGradient = {
+                      ...draft.gradient,
+                      [0.5]: "rgba(0, 0, 0, 1)",
+                    };
+                    updateDraft({ gradient: newGradient });
+                  }}
+                  className="mt-3"
+                >
+                  + Add Color Stop
+                </Button>
+              </div>
+            </div>
+          </section>
 
           <section className="space-y-3">
             <h3 className={sectionHeaderClass}>Wall Editor</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div className="flex flex-col gap-1">
-            <Label className="text-xs font-semibold">
-              Snap Radius (px)&nbsp;
-              <PopoverHelper text="How close (in pixels) the cursor needs to be to snap to an existing wall endpoint or to close a room." />
-            </Label>
-            <input
-              type="number"
-              min={2}
-              max={30}
-              value={draft.snapRadius}
-              onChange={(e) => updateDraft({ snapRadius: Math.max(2, Math.min(30, parseInt(e.target.value) || 8)) })}
-              className={inputClass}
-            />
-          </div>
-        </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1">
+                <Label className="text-xs font-semibold">
+                  Snap Radius (px)&nbsp;
+                  <PopoverHelper text="How close (in pixels) the cursor needs to be to snap to an existing wall endpoint or to close a room." />
+                </Label>
+                <input
+                  type="number"
+                  min={2}
+                  max={30}
+                  value={draft.snapRadius}
+                  onChange={(e) =>
+                    updateDraft({
+                      snapRadius: Math.max(
+                        2,
+                        Math.min(30, parseInt(e.target.value) || 8),
+                      ),
+                    })
+                  }
+                  className={inputClass}
+                />
+              </div>
+            </div>
           </section>
 
           <section className="pt-4 border-t border-gray-200 flex items-center gap-2">
-            <Button variant="destructive" size="sm" onClick={() => {
-              const defaults = getDefaults(settings.floorplanImageName);
-              updateDraft({
-                maxOpacity: defaults.maxOpacity,
-                minOpacity: defaults.minOpacity,
-                blur: defaults.blur,
-                gradient: defaults.gradient,
-                iperfCommands: defaults.iperfCommands,
-                iperfServerAdrs: defaults.iperfServerAdrs,
-                testDuration: defaults.testDuration,
-                wifiInterface: defaults.wifiInterface,
-                targetSSID: "",
-                snapRadius: defaults.snapRadius,
-                sudoerPassword: "",
-              });
-            }}>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => {
+                const defaults = getDefaults(settings.floorplanImageName);
+                updateDraft({
+                  maxOpacity: defaults.maxOpacity,
+                  minOpacity: defaults.minOpacity,
+                  blur: defaults.blur,
+                  gradient: defaults.gradient,
+                  iperfCommands: defaults.iperfCommands,
+                  iperfServerAdrs: defaults.iperfServerAdrs,
+                  testDuration: defaults.testDuration,
+                  wifiInterface: defaults.wifiInterface,
+                  targetSSID: "",
+                  snapRadius: defaults.snapRadius,
+                  sudoerPassword: "",
+                });
+              }}
+            >
               Reset Settings to Defaults
             </Button>
           </section>
@@ -1363,7 +1646,11 @@ function SettingsPanel() {
 
 export default function TabPanel() {
   const [activeTab, setActiveTab] = useState("site-setup");
-  const { settings, updateSettings, surveyPointActions } = useSettings();
+  const {
+    settings,
+    updateSettings: _updateSettings,
+    surveyPointActions,
+  } = useSettings();
 
   return (
     <div className="w-full p-2">

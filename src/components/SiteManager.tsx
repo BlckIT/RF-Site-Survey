@@ -244,7 +244,10 @@ export default function SiteManager() {
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowNewSiteDialog(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowNewSiteDialog(false)}
+            >
               Cancel
             </Button>
             <Button onClick={handleCreateSite} disabled={!newName.trim()}>
@@ -255,7 +258,10 @@ export default function SiteManager() {
       </Dialog>
 
       {/* ── Rename Site Dialog ── */}
-      <Dialog open={showRenameSiteDialog} onOpenChange={setShowRenameSiteDialog}>
+      <Dialog
+        open={showRenameSiteDialog}
+        onOpenChange={setShowRenameSiteDialog}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Rename Site</DialogTitle>
@@ -270,7 +276,10 @@ export default function SiteManager() {
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowRenameSiteDialog(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowRenameSiteDialog(false)}
+            >
               Cancel
             </Button>
             <Button onClick={handleRenameSite} disabled={!newName.trim()}>
@@ -306,7 +315,10 @@ export default function SiteManager() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddFloorDialog(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowAddFloorDialog(false)}
+            >
               Cancel
             </Button>
             <Button onClick={handleAddFloor} disabled={!newFloorName.trim()}>
@@ -317,7 +329,10 @@ export default function SiteManager() {
       </Dialog>
 
       {/* ── Rename Floor Dialog ── */}
-      <Dialog open={showRenameFloorDialog} onOpenChange={setShowRenameFloorDialog}>
+      <Dialog
+        open={showRenameFloorDialog}
+        onOpenChange={setShowRenameFloorDialog}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Rename Floor</DialogTitle>
@@ -332,7 +347,10 @@ export default function SiteManager() {
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowRenameFloorDialog(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowRenameFloorDialog(false)}
+            >
               Cancel
             </Button>
             <Button onClick={handleRenameFloor} disabled={!newName.trim()}>

@@ -4,7 +4,7 @@ import { execFile } from "child_process";
 
 /** Sanitize interface name */
 function sanitize(input: string): string {
-  return input.replace(/[^a-zA-Z0-9_.\-]/g, "");
+  return input.replace(/[^a-zA-Z0-9_.-]/g, "");
 }
 
 /** Run nmcli with sudo — password piped to stdin, no shell */
@@ -49,7 +49,10 @@ export async function POST(request: NextRequest) {
 
     if (!sudoerPassword) {
       return NextResponse.json(
-        { success: false, message: "Sudo password required. Set it under Settings." },
+        {
+          success: false,
+          message: "Sudo password required. Set it under Settings.",
+        },
         { status: 400 },
       );
     }

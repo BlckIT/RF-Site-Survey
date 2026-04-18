@@ -48,7 +48,11 @@ export default function WallEditor(): ReactNode {
   const snapRadius = settings.snapRadius ?? 8;
 
   // Snap target for visual feedback
-  const [snapTarget, setSnapTarget] = useState<{ x: number; y: number; type: 'close' | 'endpoint' } | null>(null);
+  const [snapTarget, setSnapTarget] = useState<{
+    x: number;
+    y: number;
+    type: "close" | "endpoint";
+  } | null>(null);
 
   const isDrawing = chainPoints.length > 0;
 
@@ -62,7 +66,10 @@ export default function WallEditor(): ReactNode {
         // Ensure dimensions match the actual image
         const imgW = img.naturalWidth;
         const imgH = img.naturalHeight;
-        if (imgW !== settings.dimensions.width || imgH !== settings.dimensions.height) {
+        if (
+          imgW !== settings.dimensions.width ||
+          imgH !== settings.dimensions.height
+        ) {
           updateSettings({ dimensions: { width: imgW, height: imgH } });
         }
         setImageLoaded(true);
@@ -139,10 +146,17 @@ export default function WallEditor(): ReactNode {
 
   // Find nearest snap target (existing endpoint or chain-close point)
   const findSnapTarget = useCallback(
-    (pos: { x: number; y: number }): { x: number; y: number; type: 'close' | 'endpoint' } | null => {
+    (pos: {
+      x: number;
+      y: number;
+    }): { x: number; y: number; type: "close" | "endpoint" } | null => {
       const threshold = snapRadius / scale;
       let bestDist = threshold;
-      let bestTarget: { x: number; y: number; type: 'close' | 'endpoint' } | null = null;
+      let bestTarget: {
+        x: number;
+        y: number;
+        type: "close" | "endpoint";
+      } | null = null;
 
       // Check chain-close (first point of current chain) — priority
       if (chainPoints.length >= 2) {
@@ -150,7 +164,7 @@ export default function WallEditor(): ReactNode {
         const dist = Math.hypot(pos.x - first.x, pos.y - first.y);
         if (dist < bestDist) {
           bestDist = dist;
-          bestTarget = { x: first.x, y: first.y, type: 'close' };
+          bestTarget = { x: first.x, y: first.y, type: "close" };
         }
       }
 
@@ -160,7 +174,7 @@ export default function WallEditor(): ReactNode {
         const dist = Math.hypot(pos.x - ep.x, pos.y - ep.y);
         if (dist < bestDist) {
           bestDist = dist;
-          bestTarget = { x: ep.x, y: ep.y, type: 'endpoint' };
+          bestTarget = { x: ep.x, y: ep.y, type: "endpoint" };
         }
       }
 
@@ -226,11 +240,12 @@ export default function WallEditor(): ReactNode {
     if (snapTarget && isDrawing) {
       ctx.beginPath();
       ctx.arc(snapTarget.x, snapTarget.y, 10, 0, Math.PI * 2);
-      ctx.fillStyle = snapTarget.type === 'close'
-        ? 'rgba(34, 197, 94, 0.35)'
-        : 'rgba(59, 130, 246, 0.35)';
+      ctx.fillStyle =
+        snapTarget.type === "close"
+          ? "rgba(34, 197, 94, 0.35)"
+          : "rgba(59, 130, 246, 0.35)";
       ctx.fill();
-      ctx.strokeStyle = snapTarget.type === 'close' ? '#22c55e' : '#3b82f6';
+      ctx.strokeStyle = snapTarget.type === "close" ? "#22c55e" : "#3b82f6";
       ctx.lineWidth = 2;
       ctx.stroke();
     }
@@ -292,7 +307,11 @@ export default function WallEditor(): ReactNode {
           lastPoint.y,
           effectivePos.x,
           effectivePos.y,
-          snapTarget ? (snapTarget.type === 'close' ? '#22c55e' : '#3b82f6') : '#f97316',
+          snapTarget
+            ? snapTarget.type === "close"
+              ? "#22c55e"
+              : "#3b82f6"
+            : "#f97316",
           2,
         );
       }
@@ -402,9 +421,10 @@ export default function WallEditor(): ReactNode {
         // Store the original endpoint position for shared-endpoint matching
         const wall = settings.walls.find((w) => w.id === hit.wallId);
         if (wall) {
-          dragOriginRef.current = hit.endpoint === 'start'
-            ? { x: wall.x1, y: wall.y1 }
-            : { x: wall.x2, y: wall.y2 };
+          dragOriginRef.current =
+            hit.endpoint === "start"
+              ? { x: wall.x1, y: wall.y1 }
+              : { x: wall.x2, y: wall.y2 };
         }
         setDragging(hit);
         setMousePos({ x, y });
@@ -440,7 +460,7 @@ export default function WallEditor(): ReactNode {
     // Check for endpoint/close snap first
     const snap = findSnapTarget(raw);
     if (snap) {
-      if (snap.type === 'close' && chainPoints.length >= 2) {
+      if (snap.type === "close" && chainPoints.length >= 2) {
         // Snap-to-close: add the closing point and auto-commit
         setChainPoints((prev) => {
           const updated = [...prev, { x: snap.x, y: snap.y }];
@@ -471,31 +491,34 @@ export default function WallEditor(): ReactNode {
     commitChain();
   };
 
-  const commitChainWith = useCallback((points: { x: number; y: number }[]) => {
-    if (points.length < 2) {
+  const commitChainWith = useCallback(
+    (points: { x: number; y: number }[]) => {
+      if (points.length < 2) {
+        setChainPoints([]);
+        setMousePos(null);
+        setSnapTarget(null);
+        return;
+      }
+
+      const newWalls: Wall[] = [];
+      for (let i = 0; i < points.length - 1; i++) {
+        newWalls.push({
+          id: `wall_${Date.now()}_${i}`,
+          x1: points[i].x,
+          y1: points[i].y,
+          x2: points[i + 1].x,
+          y2: points[i + 1].y,
+          material: activeMaterial,
+        });
+      }
+
+      updateSettings({ walls: [...settings.walls, ...newWalls] });
       setChainPoints([]);
       setMousePos(null);
       setSnapTarget(null);
-      return;
-    }
-
-    const newWalls: Wall[] = [];
-    for (let i = 0; i < points.length - 1; i++) {
-      newWalls.push({
-        id: `wall_${Date.now()}_${i}`,
-        x1: points[i].x,
-        y1: points[i].y,
-        x2: points[i + 1].x,
-        y2: points[i + 1].y,
-        material: activeMaterial,
-      });
-    }
-
-    updateSettings({ walls: [...settings.walls, ...newWalls] });
-    setChainPoints([]);
-    setMousePos(null);
-    setSnapTarget(null);
-  }, [activeMaterial, settings.walls, updateSettings]);
+    },
+    [activeMaterial, settings.walls, updateSettings],
+  );
 
   const commitChain = useCallback(() => {
     commitChainWith(chainPoints);
@@ -517,11 +540,17 @@ export default function WallEditor(): ReactNode {
 
       const updatedWalls = settings.walls.map((wall) => {
         const updated = { ...wall };
-        if (Math.hypot(wall.x1 - origPt.x, wall.y1 - origPt.y) < SHARED_ENDPOINT_EPSILON) {
+        if (
+          Math.hypot(wall.x1 - origPt.x, wall.y1 - origPt.y) <
+          SHARED_ENDPOINT_EPSILON
+        ) {
           updated.x1 = pos.x;
           updated.y1 = pos.y;
         }
-        if (Math.hypot(wall.x2 - origPt.x, wall.y2 - origPt.y) < SHARED_ENDPOINT_EPSILON) {
+        if (
+          Math.hypot(wall.x2 - origPt.x, wall.y2 - origPt.y) <
+          SHARED_ENDPOINT_EPSILON
+        ) {
           updated.x2 = pos.x;
           updated.y2 = pos.y;
         }
@@ -798,7 +827,11 @@ export default function WallEditor(): ReactNode {
         </Button>
       )}
 
-      <div className="relative max-h-[calc(100vh-200px)] overflow-hidden" ref={containerRef} tabIndex={0}>
+      <div
+        className="relative max-h-[calc(100vh-200px)] overflow-hidden"
+        ref={containerRef}
+        tabIndex={0}
+      >
         <canvas
           ref={canvasRef}
           width={settings.dimensions.width}

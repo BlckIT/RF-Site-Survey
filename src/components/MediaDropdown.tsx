@@ -93,8 +93,14 @@ export default function MediaDropdown({
 
         // Upload the converted PNG
         const formData = new FormData();
-        formData.append("file", new File([pngBlob], filename, { type: "image/png" }));
-        const uploadRes = await fetch("/api/media", { method: "POST", body: formData });
+        formData.append(
+          "file",
+          new File([pngBlob], filename, { type: "image/png" }),
+        );
+        const uploadRes = await fetch("/api/media", {
+          method: "POST",
+          body: formData,
+        });
         const data = await uploadRes.json();
 
         if (uploadRes.ok && data.name) {
@@ -131,7 +137,10 @@ export default function MediaDropdown({
       let originalPdfName: string | null = null;
 
       // Convert PDF to PNG client-side
-      if (file.name.toLowerCase().endsWith(".pdf") || file.type === "application/pdf") {
+      if (
+        file.name.toLowerCase().endsWith(".pdf") ||
+        file.type === "application/pdf"
+      ) {
         originalPdfName = file.name;
         const { blob, filename } = await pdfToImage(file);
         uploadFile = new File([blob], filename, { type: "image/png" });
@@ -181,7 +190,10 @@ export default function MediaDropdown({
     <div className="w-full">
       <DropdownMenu.Root onOpenChange={() => setSearch("")}>
         <DropdownMenu.Trigger asChild>
-          <Button variant="outline" className="w-full justify-between text-base">
+          <Button
+            variant="outline"
+            className="w-full justify-between text-base"
+          >
             <span className="truncate">{selected || "Select a file..."}</span>
             <span className="ml-auto">▾</span>
           </Button>

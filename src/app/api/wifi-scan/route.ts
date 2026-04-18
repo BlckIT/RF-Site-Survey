@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
 import { execAsync } from "@/lib/server-utils";
 import os from "os";
-import {
-  channelToBand,
-  percentageToRssi,
-  bySignalStrength,
-} from "@/lib/utils";
+import { channelToBand, percentageToRssi, bySignalStrength } from "@/lib/utils";
 import { splitColonDelimited } from "@/lib/wifiScanner-linux";
 import { WifiResults } from "@/lib/types";
 import { getDefaultWifiResults } from "@/lib/utils";
@@ -19,7 +15,8 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const iface = url.searchParams.get("iface") || "";
 
-    let cmd = "nmcli -t -f IN-USE,BSSID,SSID,MODE,CHAN,RATE,SIGNAL,BARS,SECURITY dev wifi list";
+    let cmd =
+      "nmcli -t -f IN-USE,BSSID,SSID,MODE,CHAN,RATE,SIGNAL,BARS,SECURITY dev wifi list";
     if (iface) {
       cmd += ` ifname ${iface}`;
     }

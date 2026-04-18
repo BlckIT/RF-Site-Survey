@@ -1,13 +1,9 @@
 import { NextResponse, NextRequest } from "next/server";
 import os from "os";
 import { execFile } from "child_process";
-import { promisify } from "util";
-
-const execFileAsync = promisify(execFile);
-
 /** Sanitize interface name — allow only alphanumeric, dash, underscore, dot */
 function sanitize(input: string): string {
-  return input.replace(/[^a-zA-Z0-9_.\-]/g, "");
+  return input.replace(/[^a-zA-Z0-9_.-]/g, "");
 }
 
 /**
@@ -57,7 +53,10 @@ export async function POST(request: NextRequest) {
 
     if (!sudoerPassword) {
       return NextResponse.json(
-        { success: false, message: "Sudo password required. Set it under Settings." },
+        {
+          success: false,
+          message: "Sudo password required. Set it under Settings.",
+        },
         { status: 400 },
       );
     }
@@ -74,12 +73,18 @@ export async function POST(request: NextRequest) {
     if (hidden) {
       // For hidden networks: create connection profile then activate
       const addArgs = [
-        "connection", "add",
-        "type", "wifi",
-        "ifname", safeIfname,
-        "con-name", ssid,
-        "ssid", ssid,
-        "wifi.hidden", "yes",
+        "connection",
+        "add",
+        "type",
+        "wifi",
+        "ifname",
+        safeIfname,
+        "con-name",
+        ssid,
+        "ssid",
+        ssid,
+        "wifi.hidden",
+        "yes",
       ];
       if (password) {
         addArgs.push("wifi-sec.key-mgmt", "wpa-psk", "wifi-sec.psk", password);
@@ -89,8 +94,12 @@ export async function POST(request: NextRequest) {
     } else {
       // For visible networks: direct connect
       const connectArgs = [
-        "device", "wifi", "connect", ssid,
-        "ifname", safeIfname,
+        "device",
+        "wifi",
+        "connect",
+        ssid,
+        "ifname",
+        safeIfname,
       ];
       if (password) {
         connectArgs.push("password", password);

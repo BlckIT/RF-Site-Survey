@@ -4,7 +4,7 @@ import { execFile } from "child_process";
 
 /** Sanitize interface name */
 function sanitize(input: string): string {
-  return input.replace(/[^a-zA-Z0-9_.\-]/g, "");
+  return input.replace(/[^a-zA-Z0-9_.-]/g, "");
 }
 
 /** Run nmcli with sudo — password piped to stdin, no shell */
@@ -81,7 +81,14 @@ export async function GET(request: NextRequest) {
         }>((resolve, reject) => {
           execFile(
             "nmcli",
-            ["-t", "-f", "802-11-wireless.ssid", "connection", "show", HOTSPOT_CON_NAME],
+            [
+              "-t",
+              "-f",
+              "802-11-wireless.ssid",
+              "connection",
+              "show",
+              HOTSPOT_CON_NAME,
+            ],
             (error, stdout, stderr) => {
               if (error) reject(error);
               else resolve({ stdout, stderr });
@@ -114,7 +121,10 @@ export async function POST(request: NextRequest) {
 
     if (!sudoerPassword) {
       return NextResponse.json(
-        { success: false, message: "Sudo password required. Set it under Settings." },
+        {
+          success: false,
+          message: "Sudo password required. Set it under Settings.",
+        },
         { status: 400 },
       );
     }
@@ -131,42 +141,68 @@ export async function POST(request: NextRequest) {
     if (action === "start") {
       if (!ssid || !password) {
         return NextResponse.json(
-          { success: false, message: "SSID and password are required to start." },
+          {
+            success: false,
+            message: "SSID and password are required to start.",
+          },
           { status: 400 },
         );
       }
       if (password.length < 8) {
         return NextResponse.json(
-          { success: false, message: "Password must be at least 8 characters." },
+          {
+            success: false,
+            message: "Password must be at least 8 characters.",
+          },
           { status: 400 },
         );
       }
 
       // Remove any existing hotspot connection profile
       try {
-        await sudoNmcli(sudoerPassword, ["connection", "delete", HOTSPOT_CON_NAME]);
+        await sudoNmcli(sudoerPassword, [
+          "connection",
+          "delete",
+          HOTSPOT_CON_NAME,
+        ]);
       } catch {
         // Profile may not exist
       }
 
       // Create persistent AP connection with stable WPA2
       await sudoNmcli(sudoerPassword, [
-        "connection", "add",
-        "type", "wifi",
-        "ifname", safeIfname,
-        "con-name", HOTSPOT_CON_NAME,
-        "ssid", ssid,
-        "802-11-wireless.mode", "ap",
-        "802-11-wireless.band", "bg",
-        "802-11-wireless.powersave", "2",
-        "wifi-sec.key-mgmt", "wpa-psk",
-        "wifi-sec.proto", "rsn",
-        "wifi-sec.pairwise", "ccmp",
-        "wifi-sec.group", "ccmp",
-        "wifi-sec.psk", password,
-        "ipv4.method", "shared",
-        "ipv6.method", "disabled",
-        "connection.autoconnect", "no",
+        "connection",
+        "add",
+        "type",
+        "wifi",
+        "ifname",
+        safeIfname,
+        "con-name",
+        HOTSPOT_CON_NAME,
+        "ssid",
+        ssid,
+        "802-11-wireless.mode",
+        "ap",
+        "802-11-wireless.band",
+        "bg",
+        "802-11-wireless.powersave",
+        "2",
+        "wifi-sec.key-mgmt",
+        "wpa-psk",
+        "wifi-sec.proto",
+        "rsn",
+        "wifi-sec.pairwise",
+        "ccmp",
+        "wifi-sec.group",
+        "ccmp",
+        "wifi-sec.psk",
+        password,
+        "ipv4.method",
+        "shared",
+        "ipv6.method",
+        "disabled",
+        "connection.autoconnect",
+        "no",
       ]);
 
       // Activate
@@ -180,12 +216,20 @@ export async function POST(request: NextRequest) {
 
     if (action === "stop") {
       try {
-        await sudoNmcli(sudoerPassword, ["connection", "down", HOTSPOT_CON_NAME]);
+        await sudoNmcli(sudoerPassword, [
+          "connection",
+          "down",
+          HOTSPOT_CON_NAME,
+        ]);
       } catch {
         // May already be down
       }
       try {
-        await sudoNmcli(sudoerPassword, ["connection", "delete", HOTSPOT_CON_NAME]);
+        await sudoNmcli(sudoerPassword, [
+          "connection",
+          "delete",
+          HOTSPOT_CON_NAME,
+        ]);
       } catch {
         // May already be deleted
       }

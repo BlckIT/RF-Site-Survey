@@ -1,4 +1,10 @@
-import React, { useRef, useState, useEffect, useCallback, ReactNode } from "react";
+import React, {
+  useRef,
+  useState,
+  useEffect,
+  useCallback,
+  ReactNode,
+} from "react";
 import { useSettings } from "./GlobalSettings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -72,9 +78,7 @@ export default function ScaleCalibration(): ReactNode {
 
   // Pixel distance between the two calibration points
   const pixelDistance =
-    point1 && point2
-      ? Math.hypot(point2.x - point1.x, point2.y - point1.y)
-      : 0;
+    point1 && point2 ? Math.hypot(point2.x - point1.x, point2.y - point1.y) : 0;
 
   const canApply =
     point1 && point2 && pixelDistance > 1 && parseFloat(distanceMeters) > 0;
@@ -241,9 +245,7 @@ export default function ScaleCalibration(): ReactNode {
       {/* Status and input */}
       <div className="flex items-end gap-3 flex-wrap">
         <div className="flex flex-col gap-1">
-          <Label className="text-xs font-semibold">
-            Point A&nbsp;
-          </Label>
+          <Label className="text-xs font-semibold">Point A&nbsp;</Label>
           <div className="text-xs text-gray-600 min-w-[80px]">
             {point1
               ? `(${point1.x.toFixed(0)}, ${point1.y.toFixed(0)})`
@@ -252,9 +254,7 @@ export default function ScaleCalibration(): ReactNode {
         </div>
 
         <div className="flex flex-col gap-1">
-          <Label className="text-xs font-semibold">
-            Point B&nbsp;
-          </Label>
+          <Label className="text-xs font-semibold">Point B&nbsp;</Label>
           <div className="text-xs text-gray-600 min-w-[80px]">
             {point2
               ? `(${point2.x.toFixed(0)}, ${point2.y.toFixed(0)})`
@@ -267,9 +267,7 @@ export default function ScaleCalibration(): ReactNode {
         {point1 && point2 && (
           <>
             <div className="flex flex-col gap-1">
-              <Label className="text-xs font-semibold">
-                Pixel distance
-              </Label>
+              <Label className="text-xs font-semibold">Pixel distance</Label>
               <div className="text-xs text-gray-600">
                 {pixelDistance.toFixed(1)} px
               </div>
@@ -292,11 +290,7 @@ export default function ScaleCalibration(): ReactNode {
               />
             </div>
 
-            <Button
-              size="sm"
-              disabled={!canApply}
-              onClick={applyCalibration}
-            >
+            <Button size="sm" disabled={!canApply} onClick={applyCalibration}>
               Apply
             </Button>
           </>
@@ -307,14 +301,22 @@ export default function ScaleCalibration(): ReactNode {
         </Button>
 
         {hasCalibration && (
-          <Button variant="ghost" size="sm" className="text-red-500" onClick={clearCalibration}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-red-500"
+            onClick={clearCalibration}
+          >
             Clear calibration
           </Button>
         )}
       </div>
 
       {/* Canvas */}
-      <div className="relative max-h-[calc(100vh-200px)] overflow-hidden" ref={containerRef}>
+      <div
+        className="relative max-h-[calc(100vh-200px)] overflow-hidden"
+        ref={containerRef}
+      >
         <canvas
           ref={canvasRef}
           width={settings.dimensions.width}

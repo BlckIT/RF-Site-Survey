@@ -1,9 +1,6 @@
 import React, { ReactNode, useRef, useState } from "react";
 import { useEffect } from "react";
-import {
-  rssiToPercentage,
-  delay,
-} from "../lib/utils";
+import { rssiToPercentage, delay } from "../lib/utils";
 import { getColorAt, objectToRGBAString } from "@/lib/utils-gradient";
 import { useSettings } from "./GlobalSettings";
 import { HeatmapSettings, SurveyResult, SurveyPoint } from "../lib/types";
@@ -409,7 +406,10 @@ export default function ClickableFloorplan(): ReactNode {
           <AlertDescription>{alertMessage}</AlertDescription>
         </Alert>
       )}
-      <div className="relative max-h-[calc(100vh-200px)] overflow-hidden" ref={containerRef}>
+      <div
+        className="relative max-h-[calc(100vh-200px)] overflow-hidden"
+        ref={containerRef}
+      >
         <canvas
           ref={canvasRef}
           width={settings.dimensions.width}
@@ -434,7 +434,7 @@ export default function ClickableFloorplan(): ReactNode {
           />
         </div>
 
-                {isToastOpen && (
+        {isToastOpen && (
           <NewToast
             onClose={() => setIsToastOpen(false)}
             toastIsReady={handleToastIsReady}

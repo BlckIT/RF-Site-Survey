@@ -45,7 +45,10 @@ interface KnownWifi {
 }
 
 const HOTSPOT_CONFIG_DIR = path.join(process.cwd(), "data");
-const HOTSPOT_CONFIG_PATH = path.join(HOTSPOT_CONFIG_DIR, "hotspot-config.json");
+const _HOTSPOT_CONFIG_PATH = path.join(
+  HOTSPOT_CONFIG_DIR,
+  "hotspot-config.json",
+);
 
 /** Prefix för NM connections skapade av appen */
 const NM_CON_PREFIX = "rf-known-";
@@ -71,7 +74,10 @@ export async function POST(request: NextRequest) {
   try {
     if (os.platform() !== "linux") {
       return NextResponse.json(
-        { success: false, message: "Known networks sync is only supported on Linux." },
+        {
+          success: false,
+          message: "Known networks sync is only supported on Linux.",
+        },
         { status: 400 },
       );
     }
@@ -104,9 +110,15 @@ export async function POST(request: NextRequest) {
     // 2. Ta bort gamla rf-known-* connections från NM
     try {
       const existing = await sudoNmcli(sudoerPassword, [
-        "-t", "-f", "NAME", "connection", "show",
+        "-t",
+        "-f",
+        "NAME",
+        "connection",
+        "show",
       ]);
-      const existingNames = existing.split("\n").filter((n) => n.startsWith(NM_CON_PREFIX));
+      const existingNames = existing
+        .split("\n")
+        .filter((n) => n.startsWith(NM_CON_PREFIX));
       for (const name of existingNames) {
         try {
           await sudoNmcli(sudoerPassword, ["connection", "delete", name]);
@@ -123,12 +135,18 @@ export async function POST(request: NextRequest) {
     for (const net of networks) {
       const conName = `${NM_CON_PREFIX}${sanitize(net.ssid)}`;
       const args: string[] = [
-        "connection", "add",
-        "type", "wifi",
-        "con-name", conName,
-        "ssid", net.ssid,
-        "connection.autoconnect", net.autoConnect ? "yes" : "no",
-        "connection.autoconnect-priority", String(net.priority),
+        "connection",
+        "add",
+        "type",
+        "wifi",
+        "con-name",
+        conName,
+        "ssid",
+        net.ssid,
+        "connection.autoconnect",
+        net.autoConnect ? "yes" : "no",
+        "connection.autoconnect-priority",
+        String(net.priority),
       ];
 
       if (net.password && net.password.length >= 8) {

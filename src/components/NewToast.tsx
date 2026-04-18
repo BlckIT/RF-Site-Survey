@@ -92,11 +92,7 @@ export default function NewToast({ onClose, toastIsReady }: NewToastProps) {
           </Toast.Description>
         </div>
         {taskRunning && (
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={handleCancel}
-          >
+          <Button variant="destructive" size="sm" onClick={handleCancel}>
             Cancel
           </Button>
         )}
