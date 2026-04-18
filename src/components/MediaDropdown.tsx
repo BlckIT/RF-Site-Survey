@@ -1,19 +1,25 @@
 "use client";
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { pdfToImage } from "@/lib/pdfToImage";
+import PdfPagePicker from "./PdfPagePicker";
 
 type MediaDropdownProps = {
   defaultValue?: string;
   onChange?: (value: string) => void;
+  /** Callback för att importera flera sidor som separata floors */
+  onMultiPageImport?: (
+    pages: { imageName: string; pageNumber: number }[],
+  ) => void;
 };
 
 export default function MediaDropdown({
   defaultValue,
   onChange,
+  onMultiPageImport,
 }: MediaDropdownProps) {
   const [files, setFiles] = useState<string[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
@@ -21,6 +27,9 @@ export default function MediaDropdown({
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // PDF page picker state
+  const [pendingPdf, setPendingPdf] = useState<File | null>(null);
 
   const fetchFiles = async () => {
     try {
@@ -45,7 +54,6 @@ export default function MediaDropdown({
       });
       setFiles(dedupedFiles);
       if (defaultValue) {
-        // Om defaultValue är en .png som har matchande .pdf, visa .pdf-namnet istället
         if (/\.png$/i.test(defaultValue)) {
           const pdfName = defaultValue.replace(/\.png$/i, ".pdf");
           if (dedupedFiles.includes(pdfName)) {
@@ -68,7 +76,6 @@ export default function MediaDropdown({
 
   useEffect(() => {
     if (defaultValue) {
-      // Om defaultValue är en .png med matchande .pdf i listan, visa .pdf
       if (/\.png$/i.test(defaultValue)) {
         const pdfName = defaultValue.replace(/\.png$/i, ".pdf");
         if (files.includes(pdfName)) {
@@ -81,7 +88,6 @@ export default function MediaDropdown({
   }, [defaultValue, files]);
 
   const handleSelect = async (value: string) => {
-    // If selecting a PDF from the list, convert it to PNG first
     if (value.toLowerCase().endsWith(".pdf")) {
       setUploading(true);
       setError(null);
@@ -91,7 +97,6 @@ export default function MediaDropdown({
         const file = new File([blob], value, { type: "application/pdf" });
         const { blob: pngBlob, filename } = await pdfToImage(file);
 
-        // Upload the converted PNG
         const formData = new FormData();
         formData.append(
           "file",
@@ -125,51 +130,94 @@ export default function MediaDropdown({
     });
   };
 
+  /** Konvertera och ladda upp valda PDF-sidor */
+  const handlePdfPagesConfirm = useCallback(
+    async (pages: number[]) => {
+      const pdfFile = pendingPdf;
+      setPendingPdf(null);
+      if (!pdfFile || pages.length === 0) return;
+
+      setUploading(true);
+      setError(null);
+
+      try {
+        // Ladda upp original-PDF:en
+        const pdfFormData = new FormData();
+        pdfFormData.append("file", pdfFile);
+        await fetch("/api/media", { method: "POST", body: pdfFormData });
+
+        const imported: { imageName: string; pageNumber: number }[] = [];
+
+        for (const pageNum of pages) {
+          const { blob, filename } = await pdfToImage(pdfFile, 2.0, pageNum);
+          const formData = new FormData();
+          formData.append(
+            "file",
+            new File([blob], filename, { type: "image/png" }),
+          );
+          const res = await fetch("/api/media", {
+            method: "POST",
+            body: formData,
+          });
+          const data = await res.json();
+          if (res.ok && data.name) {
+            imported.push({ imageName: data.name, pageNumber: pageNum });
+          }
+        }
+
+        await fetchFiles();
+
+        if (imported.length > 0) {
+          // Om multi-page callback finns och flera sidor valdes, skapa floors
+          if (onMultiPageImport && imported.length > 1) {
+            onMultiPageImport(imported);
+          } else {
+            // En sida — välj den som aktiv planritning
+            setSelected(imported[0].imageName);
+            onChange?.(imported[0].imageName);
+          }
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Unknown error";
+        setError(`PDF import failed: ${msg}`);
+      } finally {
+        setUploading(false);
+      }
+    },
+    [pendingPdf, onChange, onMultiPageImport],
+  );
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // PDF → visa page picker
+    if (
+      file.name.toLowerCase().endsWith(".pdf") ||
+      file.type === "application/pdf"
+    ) {
+      setPendingPdf(file);
+      e.target.value = "";
+      return;
+    }
+
+    // Vanlig bild — ladda upp direkt
     setUploading(true);
     setError(null);
 
     try {
-      let uploadFile: File = file;
-      let originalPdfName: string | null = null;
-
-      // Convert PDF to PNG client-side
-      if (
-        file.name.toLowerCase().endsWith(".pdf") ||
-        file.type === "application/pdf"
-      ) {
-        originalPdfName = file.name;
-        const { blob, filename } = await pdfToImage(file);
-        uploadFile = new File([blob], filename, { type: "image/png" });
-      }
-
       const formData = new FormData();
-      formData.append("file", uploadFile);
+      formData.append("file", file);
 
       const res = await fetch("/api/media", {
         method: "POST",
         body: formData,
       });
-
       const data = await res.json();
 
       if (res.ok && data.name) {
-        // Ladda även upp original-PDF:en så att den syns i fillistan
-        if (originalPdfName) {
-          const pdfFormData = new FormData();
-          pdfFormData.append("file", file);
-          await fetch("/api/media", { method: "POST", body: pdfFormData });
-        }
         await fetchFiles();
-        // Om det var en PDF-uppladdning, välj PDF-namnet (som visas i listan)
-        if (originalPdfName) {
-          handleSelect(originalPdfName);
-        } else {
-          handleSelect(data.name);
-        }
+        handleSelect(data.name);
       } else {
         setError(data.error || "Upload failed");
       }
@@ -252,6 +300,15 @@ export default function MediaDropdown({
       />
 
       {error && <div className="text-red-600 mt-2 text-sm">Error: {error}</div>}
+
+      {/* PDF Page Picker modal */}
+      {pendingPdf && (
+        <PdfPagePicker
+          pdfFile={pendingPdf}
+          onConfirm={handlePdfPagesConfirm}
+          onCancel={() => setPendingPdf(null)}
+        />
+      )}
     </div>
   );
 }

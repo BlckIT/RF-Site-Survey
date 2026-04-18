@@ -223,6 +223,19 @@ export default function SiteManager() {
             onChange={(val) =>
               updateFloorImage(settings.site.activeFloorIndex, val)
             }
+            onMultiPageImport={(pages) => {
+              // Första sidan uppdaterar aktiv floor, resten skapar nya floors
+              pages.forEach((p, i) => {
+                if (i === 0) {
+                  updateFloorImage(settings.site.activeFloorIndex, p.imageName);
+                } else {
+                  addFloor(
+                    `Floor ${settings.site.floors.length + i}`,
+                    p.imageName,
+                  );
+                }
+              });
+            }}
           />
         </div>
       </div>
