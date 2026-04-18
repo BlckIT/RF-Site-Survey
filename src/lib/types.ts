@@ -120,6 +120,7 @@ export interface GlobalAppSettings {
   targetSSID: string;
   snapRadius: number;
   knownWifiNetworks: KnownWifi[];
+  dualBand: DualBandConfig;
 }
 
 /**
@@ -170,6 +171,7 @@ export type SurveyPoint = {
   timestamp: number;
   id: string;
   isEnabled: boolean;
+  bandMeasurements?: BandMeasurement[]; // dual-band mätdata
 };
 
 /**
@@ -266,6 +268,28 @@ export interface KnownWifi {
   password?: string; // tom = öppet nätverk
   priority: number; // högre = försök först
   autoConnect: boolean;
+}
+
+/**
+ * Dual-band mätningskonfiguration
+ */
+export interface DualBandConfig {
+  enabled: boolean;
+  mode: "simultaneous" | "sequential";
+  interface24?: string; // NIC för 2.4 GHz (simultaneous mode)
+  interface5?: string; // NIC för 5 GHz (simultaneous mode)
+}
+
+/**
+ * Mätdata per frekvensband (dual-band)
+ */
+export interface BandMeasurement {
+  band: "2.4" | "5";
+  signal: number; // dBm
+  tcpDown?: number;
+  tcpUp?: number;
+  udpDown?: number;
+  udpUp?: number;
 }
 
 export interface SurveyPointActions {

@@ -97,6 +97,7 @@ function PreviewPane() {
       </div>
       <div className="relative max-h-[calc(100vh-200px)] overflow-hidden">
         <img
+          key={settings.floorplanImagePath}
           src={settings.floorplanImagePath}
           alt="Floor plan preview"
           className="border border-gray-200 rounded-sm w-full h-auto max-h-[calc(100vh-200px)] object-contain"

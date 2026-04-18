@@ -3,7 +3,12 @@ import { useEffect } from "react";
 import { rssiToPercentage, delay } from "../lib/utils";
 import { getColorAt, objectToRGBAString } from "@/lib/utils-gradient";
 import { useSettings } from "./GlobalSettings";
-import { HeatmapSettings, SurveyResult, SurveyPoint } from "../lib/types";
+import {
+  HeatmapSettings,
+  SurveyResult,
+  SurveyPoint,
+  BandMeasurement,
+} from "../lib/types";
 import NewToast from "@/components/NewToast";
 import PopupDetails from "@/components/PopupDetails";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -26,24 +31,33 @@ export default function ClickableFloorplan(): ReactNode {
   const [surveyClick, setSurveyClick] = useState({ x: 0, y: 0 });
 
   /**
-   * Load the image (and the canvas) when the component is mounted
+   * Load the image (and the canvas) when the component is mounted or floorplan changes
    */
   useEffect(() => {
     if (settings.floorplanImagePath != "") {
+      setImageLoaded(false);
       const img = new Image();
-      img.src = settings.floorplanImagePath; // load the image from the path
+      img.src = settings.floorplanImagePath;
 
       img.onload = () => {
         const newDimensions = { width: img.width, height: img.height };
         updateSettings({ dimensions: newDimensions });
-        setImageLoaded(true);
         imageRef.current = img;
+        setImageLoaded(true);
       };
       img.onerror = () => {
         console.log(`image error`);
+        setImageLoaded(false);
       };
+
+      return () => {
+        img.onload = null;
+        img.onerror = null;
+      };
+    } else {
+      setImageLoaded(false);
     }
-  }, []);
+  }, [settings.floorplanImagePath]);
 
   useEffect(() => {
     if (imageLoaded && canvasRef.current) {
@@ -71,35 +85,21 @@ export default function ClickableFloorplan(): ReactNode {
   };
 
   /**
-   * measureSurveyPoint - make measurements for point at x/y
-   * Triggered by a click on the canvas that _isn't_ an existing
-   *    surveypoint
-   * @param x
-   * @param y
-   * @returns null, but after having added the point to surveyPoints[]
-   *
-   * Error handling:
-   * If there are errors, this routine throws a string with an explanation
+   * Kör en enskild mätning mot API:et och returnera resultatet.
    */
-  const measureSurveyPoint = async (surveyClick: { x: number; y: number }) => {
-    const x = Math.round(surveyClick.x);
-    const y = Math.round(surveyClick.y);
-    let result: SurveyResult = { state: "pending" };
-
-    // an object with a single property: settings
+  const runSingleMeasurement = async (
+    overrideInterface?: string,
+  ): Promise<SurveyResult> => {
     const partialSettings = {
       settings: {
         iperfServerAdrs: settings.iperfServerAdrs,
         testDuration: settings.testDuration,
         sudoerPassword: settings.sudoerPassword,
-        wifiInterface: settings.wifiInterface || "",
+        wifiInterface: overrideInterface || settings.wifiInterface || "",
         targetSSID: settings.targetSSID || "",
-        // ignoredSSIDs: settings.ignoredSSIDs,
-        // sameSSID: settings.sameSSID,
       },
     };
-    // Kick off the measurement process by calling "action=start"
-    // This returns immediately, then poll for data
+
     const res = await fetch("/api/start-task?action=start", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -109,24 +109,168 @@ export default function ClickableFloorplan(): ReactNode {
       throw new Error(`Server error: ${res.status}`);
     }
 
-    const startTime = Date.now();
+    let result: SurveyResult = { state: "pending" };
     while (true) {
       try {
-        const res = await fetch("/api/start-task?action=results");
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        result = await res.json();
+        const pollRes = await fetch("/api/start-task?action=results");
+        if (!pollRes.ok) throw new Error(`HTTP ${pollRes.status}`);
+        result = await pollRes.json();
         logger.debug(`Status is: ${JSON.stringify(result)}`);
-        if (result.state != "pending") {
-          // got a result - status is "done" or "error"
-          break;
-        }
+        if (result.state !== "pending") break;
       } catch (err) {
-        // Typical: handle network errors, aborts, etc.
         console.error(`Measurement process gave error: ${err}`);
       }
-      await delay(1000); // ask again in one second
+      await delay(1000);
     }
-    console.log(`Measurement took ${Date.now() - startTime} ms`);
+    return result;
+  };
+
+  /**
+   * Konvertera mätresultat till BandMeasurement
+   */
+  const toBandMeasurement = (
+    result: SurveyResult,
+    band: "2.4" | "5",
+  ): BandMeasurement | null => {
+    if (
+      result.state !== "done" ||
+      !result.results?.wifiData ||
+      !result.results?.iperfData
+    ) {
+      return null;
+    }
+    const { wifiData, iperfData } = result.results;
+    return {
+      band,
+      signal: wifiData.rssi,
+      tcpDown: iperfData.tcpDownload.bitsPerSecond / 1e6,
+      tcpUp: iperfData.tcpUpload.bitsPerSecond / 1e6,
+      udpDown: iperfData.udpDownload.bitsPerSecond / 1e6,
+      udpUp: iperfData.udpUpload.bitsPerSecond / 1e6,
+    };
+  };
+
+  /**
+   * measureSurveyPoint - make measurements for point at x/y
+   * Triggered by a click on the canvas that _isn't_ an existing
+   *    surveypoint
+   * @param surveyClick
+   * @returns null, but after having added the point to surveyPoints[]
+   *
+   * Error handling:
+   * If there are errors, this routine throws a string with an explanation
+   */
+  const measureSurveyPoint = async (surveyClick: { x: number; y: number }) => {
+    const x = Math.round(surveyClick.x);
+    const y = Math.round(surveyClick.y);
+
+    const dualBand = settings.dualBand;
+
+    // ── Dual-band: sequential ──
+    if (dualBand?.enabled && dualBand.mode === "sequential") {
+      const bandMeasurements: BandMeasurement[] = [];
+      let primaryResult: SurveyResult | null = null;
+
+      // Mät 2.4 GHz först
+      const result24 = await runSingleMeasurement();
+      if (result24.state === "error") {
+        cleanupFailedTest(`2.4 GHz: ${result24.explanation}`);
+        return;
+      }
+      const bm24 = toBandMeasurement(result24, "2.4");
+      if (bm24) bandMeasurements.push(bm24);
+      primaryResult = result24;
+
+      // Mät 5 GHz
+      const result5 = await runSingleMeasurement();
+      if (result5.state === "error") {
+        cleanupFailedTest(`5 GHz: ${result5.explanation}`);
+        return;
+      }
+      const bm5 = toBandMeasurement(result5, "5");
+      if (bm5) bandMeasurements.push(bm5);
+      // Använd 5 GHz som primär om den lyckades
+      if (result5.state === "done" && result5.results?.wifiData) {
+        primaryResult = result5;
+      }
+
+      if (
+        !primaryResult?.results?.wifiData ||
+        !primaryResult?.results?.iperfData
+      ) {
+        cleanupFailedTest("Both band measurements failed");
+        return;
+      }
+
+      const { wifiData, iperfData } = primaryResult.results;
+      const newPoint: SurveyPoint = {
+        wifiData,
+        iperfData,
+        x,
+        y,
+        timestamp: Date.now(),
+        isEnabled: true,
+        id: `Point_${settings.nextPointNum}`,
+        bandMeasurements,
+      };
+      addSurveyPoint(newPoint, x, y, settings);
+      return;
+    }
+
+    // ── Dual-band: simultaneous ──
+    if (dualBand?.enabled && dualBand.mode === "simultaneous") {
+      // Kör båda parallellt med respektive interface
+      // OBS: API:et stöder bara en mätning åt gången, så vi kör sekventiellt
+      // men med olika interface. Riktig parallellism kräver server-side-stöd.
+      const bandMeasurements: BandMeasurement[] = [];
+
+      const result24 = await runSingleMeasurement(dualBand.interface24);
+      if (result24.state === "error") {
+        cleanupFailedTest(`2.4 GHz: ${result24.explanation}`);
+        return;
+      }
+      const bm24 = toBandMeasurement(result24, "2.4");
+      if (bm24) bandMeasurements.push(bm24);
+
+      const result5 = await runSingleMeasurement(dualBand.interface5);
+      if (result5.state === "error") {
+        cleanupFailedTest(`5 GHz: ${result5.explanation}`);
+        return;
+      }
+      const bm5 = toBandMeasurement(result5, "5");
+      if (bm5) bandMeasurements.push(bm5);
+
+      // Använd bästa resultatet som primär
+      const primaryResult =
+        result5.state === "done" && result5.results?.wifiData
+          ? result5
+          : result24;
+
+      if (
+        !primaryResult?.results?.wifiData ||
+        !primaryResult?.results?.iperfData
+      ) {
+        cleanupFailedTest("Both band measurements failed");
+        return;
+      }
+
+      const { wifiData, iperfData } = primaryResult.results;
+      const newPoint: SurveyPoint = {
+        wifiData,
+        iperfData,
+        x,
+        y,
+        timestamp: Date.now(),
+        isEnabled: true,
+        id: `Point_${settings.nextPointNum}`,
+        bandMeasurements,
+      };
+      addSurveyPoint(newPoint, x, y, settings);
+      return;
+    }
+
+    // ── Single-band (default) ──
+    const result = await runSingleMeasurement();
 
     if (result.state === "error") {
       cleanupFailedTest(`${result.explanation}`);
@@ -137,7 +281,6 @@ export default function ClickableFloorplan(): ReactNode {
       return;
     }
     const { wifiData, iperfData } = result.results!;
-    // Got measurements: add the x/y point, point number, and enabled
     const newPoint = {
       wifiData,
       iperfData,

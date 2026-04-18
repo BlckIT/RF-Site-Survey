@@ -38,12 +38,22 @@ export default function ScaleCalibration(): ReactNode {
   // Load floor plan image
   useEffect(() => {
     if (settings.floorplanImagePath) {
+      setImageLoaded(false);
       const img = new Image();
       img.src = settings.floorplanImagePath;
       img.onload = () => {
         imageRef.current = img;
         setImageLoaded(true);
       };
+      img.onerror = () => {
+        setImageLoaded(false);
+      };
+      return () => {
+        img.onload = null;
+        img.onerror = null;
+      };
+    } else {
+      setImageLoaded(false);
     }
   }, [settings.floorplanImagePath]);
 

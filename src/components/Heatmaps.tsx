@@ -10,6 +10,7 @@ import {
   MeasurementTestType,
   testTypes,
   MATERIAL_PRESETS,
+  BandMeasurement,
 } from "@/lib/types";
 import { getColorAt, objectToRGBAString } from "@/lib/utils-gradient";
 
@@ -26,6 +27,43 @@ import HeatmapImage from "./HeatmapImage";
 import HeatmapModal from "./HeatmapModal";
 
 const logger = getLogger("Heatmaps");
+
+/**
+ * Applicera BandMeasurement-data ovanpå en SurveyPoint.
+ * Returnerar en kopia med justerade wifi/iperf-värden.
+ */
+function applyBandOverlay(
+  point: SurveyPoint,
+  bm: BandMeasurement,
+): SurveyPoint {
+  return {
+    ...point,
+    wifiData: {
+      ...point.wifiData,
+      signalStrength: Math.round(((bm.signal + 100) / 60) * 100), // dBm → ungefärlig procent
+      rssi: bm.signal,
+    },
+    iperfData: {
+      ...point.iperfData,
+      tcpDownload: {
+        ...point.iperfData.tcpDownload,
+        bitsPerSecond: (bm.tcpDown ?? 0) * 1e6,
+      },
+      tcpUpload: {
+        ...point.iperfData.tcpUpload,
+        bitsPerSecond: (bm.tcpUp ?? 0) * 1e6,
+      },
+      udpDownload: {
+        ...point.iperfData.udpDownload,
+        bitsPerSecond: (bm.udpDown ?? 0) * 1e6,
+      },
+      udpUpload: {
+        ...point.iperfData.udpUpload,
+        bitsPerSecond: (bm.udpUp ?? 0) * 1e6,
+      },
+    },
+  };
+}
 
 const metricTitles: Record<MeasurementTestType, string> = {
   signalStrength: "Signal Strength",
@@ -65,7 +103,7 @@ const getAvailableProperties = (
  * that are selected in the checkboxes
  * @returns the rendered heat maps
  */
-export function Heatmaps() {
+export function Heatmaps({ showWalls = true }: { showWalls?: boolean } = {}) {
   const { settings, updateSettings } = useSettings();
 
   // array of surveyPoints passed in props
@@ -89,13 +127,46 @@ export function Heatmaps() {
   const [showSignalStrengthAsPercentage, setShowSignalStrengthAsPercentage] =
     useState(true);
 
+  // Dual-band filter: '2.4' | '5' | 'combined' | null (null = inga dual-band data)
+  type BandFilter = "2.4" | "5" | "combined";
+  const hasDualBandData = points.some(
+    (p) => p.bandMeasurements && p.bandMeasurements.length > 0,
+  );
+  const [bandFilter, setBandFilter] = useState<BandFilter>("combined");
+
+  /**
+   * Filtrera och transformera surveyPoints baserat på valt band.
+   * Om dual-band data saknas returneras punkterna oförändrade.
+   */
+  const filteredPoints = React.useMemo(() => {
+    if (!hasDualBandData) return points;
+
+    return points
+      .map((p) => {
+        if (!p.bandMeasurements || p.bandMeasurements.length === 0) return p;
+
+        if (bandFilter === "combined") {
+          // Välj bästa signalvärde per punkt
+          const best = p.bandMeasurements.reduce((a, b) =>
+            a.signal > b.signal ? a : b,
+          );
+          return applyBandOverlay(p, best);
+        }
+
+        const match = p.bandMeasurements.find((bm) => bm.band === bandFilter);
+        if (!match) return null; // Ingen data för detta band
+        return applyBandOverlay(p, match);
+      })
+      .filter((p): p is SurveyPoint => p !== null);
+  }, [points, bandFilter, hasDualBandData]);
+
   // const r1 = calculateRadiusByDensity; // bad for small numbers of points
   const r2 = calculateRadiusByBoundingBox;
   // const r3 = calculateOptimalRadius; // bad for small numbers of points
 
   const displayedRadius = settings.radiusDivider // if settings value is non-null
     ? settings.radiusDivider // use it
-    : Math.round(r2(points));
+    : Math.round(r2(filteredPoints));
 
   const handleRadiusChange = (r: number) => {
     let savedVal: number | null = null;
@@ -150,7 +221,7 @@ export function Heatmaps() {
    */
   const generateHeatmapData = useCallback(
     (metric: MeasurementTestType, testType?: keyof IperfTestProperty) => {
-      const data = points
+      const data = filteredPoints
         .filter((p) => p.isEnabled)
         .map((point) => {
           let value = getMetricValue(point, metric, testType);
@@ -170,7 +241,7 @@ export function Heatmaps() {
         .filter((value) => value !== null); // filter out any values that are null
       return data;
     },
-    [points, getMetricValue],
+    [filteredPoints, getMetricValue],
   );
 
   const offScreenContainerRef = useRef<HTMLDivElement | null>(null);
@@ -416,7 +487,7 @@ export function Heatmaps() {
         ctx.drawImage(glCanvas, 0, 20);
 
         // Rita väggar ovanpå heatmappen med materialfärger och tjocklek
-        if (settings.walls && settings.walls.length > 0) {
+        if (showWalls && settings.walls && settings.walls.length > 0) {
           ctx.save();
           ctx.translate(0, 20);
           for (const wall of settings.walls) {
@@ -487,11 +558,13 @@ export function Heatmaps() {
         );
 
         // Rita materiallegend
-        drawMaterialLegend(
-          ctx,
-          settings.dimensions.width + 40,
-          20 + settings.dimensions.height + 40,
-        );
+        if (showWalls) {
+          drawMaterialLegend(
+            ctx,
+            settings.dimensions.width + 40,
+            20 + settings.dimensions.height + 40,
+          );
+        }
 
         return outputCanvas.toDataURL();
       })();
@@ -552,6 +625,7 @@ export function Heatmaps() {
     selectedMetrics,
     selectedProperties,
     showSignalStrengthAsPercentage,
+    bandFilter,
   ]);
 
   const toggleMetric = (metric: MeasurementTestType) => {
@@ -632,6 +706,30 @@ export function Heatmaps() {
 
       <HeatmapSlider value={displayedRadius} onChange={handleRadiusChange} />
 
+      {/* Band-toggle — visas bara om dual-band data finns */}
+      {hasDualBandData && (
+        <div className="mb-4">
+          <h3 className="text-sm font-semibold text-gray-700 mb-2">
+            Band Filter
+          </h3>
+          <div className="flex gap-2">
+            {(["2.4", "5", "combined"] as const).map((band) => (
+              <button
+                key={band}
+                onClick={() => setBandFilter(band)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-sm border transition-colors ${
+                  bandFilter === band
+                    ? "bg-gray-900 text-white border-gray-900"
+                    : "bg-white text-gray-600 border-gray-300 hover:bg-gray-100"
+                }`}
+              >
+                {band === "combined" ? "Combined" : `${band} GHz`}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {selectedMetrics.map((metric) => (
           <div key={metric} className="bg-gray-50 p-4 rounded-lg">
@@ -701,4 +799,90 @@ export function Heatmaps() {
       />
     </div>
   );
+}
+
+/**
+ * Hook som genererar en heatmap-overlay (signal strength) som dataURL.
+ * Används i Survey-fliken för att visa heatmap ovanpå planritningen.
+ */
+export function useHeatmapOverlay(): string | null {
+  const { settings } = useSettings();
+  const [overlayUrl, setOverlayUrl] = useState<string | null>(null);
+
+  const points = settings.surveyPoints;
+  const r2 = calculateRadiusByBoundingBox;
+  const displayedRadius = settings.radiusDivider
+    ? settings.radiusDivider
+    : Math.round(r2(points));
+
+  useEffect(() => {
+    if (
+      settings.dimensions.width === 0 ||
+      settings.dimensions.height === 0 ||
+      points.length === 0
+    ) {
+      setOverlayUrl(null);
+      return;
+    }
+
+    // Generera heatmap-data (signal strength som %)
+    const heatmapData = points
+      .filter((p) => p.isEnabled)
+      .map((point) => {
+        const value = point.wifiData.signalStrength;
+        return value !== null ? { x: point.x, y: point.y, value } : null;
+      })
+      .filter((v) => v !== null);
+
+    if (heatmapData.length === 0) {
+      setOverlayUrl(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const generate = async () => {
+      const glCanvas = document.createElement("canvas");
+      glCanvas.width = settings.dimensions.width;
+      glCanvas.height = settings.dimensions.height;
+
+      const renderer = createHeatmapWebGLRenderer(
+        glCanvas,
+        heatmapData,
+        settings.gradient,
+        settings.walls || [],
+      );
+      await renderer.render({
+        points: heatmapData,
+        influenceRadius: displayedRadius,
+        maxOpacity: settings.maxOpacity,
+        minOpacity: settings.minOpacity,
+        width: settings.dimensions.width,
+        height: settings.dimensions.height,
+        blur: settings.blur ?? 0,
+      });
+
+      if (!cancelled) {
+        setOverlayUrl(glCanvas.toDataURL());
+      }
+    };
+
+    generate();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    points,
+    settings.dimensions,
+    settings.gradient,
+    settings.walls,
+    settings.maxOpacity,
+    settings.minOpacity,
+    settings.blur,
+    settings.radiusDivider,
+    displayedRadius,
+  ]);
+
+  return overlayUrl;
 }

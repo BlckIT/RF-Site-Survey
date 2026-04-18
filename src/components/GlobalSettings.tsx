@@ -23,6 +23,7 @@ import {
   SurveyPoint,
   SurveyPointActions,
   KnownWifi,
+  DualBandConfig,
 } from "../lib/types";
 import { join } from "path";
 
@@ -110,6 +111,7 @@ function extractGlobals(settings: HeatmapSettings) {
     targetSSID: settings.targetSSID,
     snapRadius: settings.snapRadius,
     knownWifiNetworks: settings.knownWifiNetworks,
+    dualBand: settings.dualBand,
   };
 }
 
@@ -141,6 +143,10 @@ const DEFAULT_GLOBALS = {
   targetSSID: "",
   snapRadius: 8,
   knownWifiNetworks: [] as KnownWifi[],
+  dualBand: {
+    enabled: false,
+    mode: "sequential",
+  } as DualBandConfig,
 };
 
 /**
@@ -201,6 +207,7 @@ function migrateOldFormat(data: any, fileName: string): HeatmapSettings {
     snapRadius: data.snapRadius ?? DEFAULT_GLOBALS.snapRadius,
     knownWifiNetworks:
       data.knownWifiNetworks ?? DEFAULT_GLOBALS.knownWifiNetworks,
+    dualBand: data.dualBand ?? DEFAULT_GLOBALS.dualBand,
   };
 
   return buildSettings(site, globals);
