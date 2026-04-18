@@ -24,7 +24,6 @@ export default function ClickableFloorplan({
   const [selectedPoint, setSelectedPoint] = useState<SurveyPoint | null>(null);
   const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
   // const [dimensions, setDimensions] = useState(settings.dimensions);
-  const [scale, setScale] = useState(1);
   const [alertMessage, setAlertMessage] = useState("");
   const [isToastOpen, setIsToastOpen] = useState(false);
   const [surveyClick, setSurveyClick] = useState({ x: 0, y: 0 });
@@ -71,11 +70,9 @@ export default function ClickableFloorplan({
       const maxH = window.innerHeight - 200;
       if (scaledHeight > maxH) {
         const constrainedScale = maxH / settings.dimensions.height;
-        setScale(constrainedScale);
         canvas.style.width = `${settings.dimensions.width * constrainedScale}px`;
         canvas.style.height = `${maxH}px`;
       } else {
-        setScale(scaleX);
         canvas.style.width = "100%";
         canvas.style.height = "auto";
       }
@@ -370,10 +367,15 @@ export default function ClickableFloorplan({
     const rect = canvas.getBoundingClientRect();
     const rotation = settings.rotation ?? 0;
 
+    // Beräkna faktisk skalning från renderad storlek vs logisk storlek
+    // Detta är alltid korrekt oavsett CSS-skalning, viewport eller ritning
+    const actualScaleX = rect.width / canvas.width;
+    const actualScaleY = rect.height / canvas.height;
+
     if (rotation === 0) {
       return {
-        x: (event.clientX - rect.left) / scale,
-        y: (event.clientY - rect.top) / scale,
+        x: (event.clientX - rect.left) / actualScaleX,
+        y: (event.clientY - rect.top) / actualScaleY,
       };
     }
 
@@ -397,12 +399,12 @@ export default function ClickableFloorplan({
     const localY = sin * dx + cos * dy;
 
     // Canvasens oroterade dimensioner i skärmpixlar
-    const canvasScreenW = settings.dimensions.width * scale;
-    const canvasScreenH = settings.dimensions.height * scale;
+    const canvasScreenW = canvas.width * actualScaleX;
+    const canvasScreenH = canvas.height * actualScaleY;
 
     return {
-      x: (localX + canvasScreenW / 2) / scale,
-      y: (localY + canvasScreenH / 2) / scale,
+      x: (localX + canvasScreenW / 2) / actualScaleX,
+      y: (localY + canvasScreenH / 2) / actualScaleY,
     };
   };
 
@@ -416,21 +418,25 @@ export default function ClickableFloorplan({
     canvasEl: HTMLCanvasElement,
   ) => {
     const rotation = settings.rotation ?? 0;
+    const rect = canvasEl.getBoundingClientRect();
+    // Beräkna faktisk skalning från renderad storlek vs logisk storlek
+    const actualScaleX = rect.width / canvasEl.width;
+    const actualScaleY = rect.height / canvasEl.height;
+
     if (rotation === 0) {
-      return { x: canvasX * scale, y: canvasY * scale };
+      return { x: canvasX * actualScaleX, y: canvasY * actualScaleY };
     }
 
-    const rect = canvasEl.getBoundingClientRect();
     const containerRect = containerRef.current?.getBoundingClientRect();
     const rad = (rotation * Math.PI) / 180;
     const cos = Math.cos(rad);
     const sin = Math.sin(rad);
 
     // Punkt relativt canvasens oroterade centrum (i skärmpixlar)
-    const canvasScreenW = settings.dimensions.width * scale;
-    const canvasScreenH = settings.dimensions.height * scale;
-    const lx = canvasX * scale - canvasScreenW / 2;
-    const ly = canvasY * scale - canvasScreenH / 2;
+    const canvasScreenW = canvasEl.width * actualScaleX;
+    const canvasScreenH = canvasEl.height * actualScaleY;
+    const lx = canvasX * actualScaleX - canvasScreenW / 2;
+    const ly = canvasY * actualScaleY - canvasScreenH / 2;
 
     // Rotera till skärmkoordinater
     const sx = cos * lx - sin * ly;

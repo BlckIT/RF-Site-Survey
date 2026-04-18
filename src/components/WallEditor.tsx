@@ -655,10 +655,15 @@ export default function WallEditor(): ReactNode {
     const canvas = e.currentTarget;
     const rect = canvas.getBoundingClientRect();
 
+    // Beräkna faktisk skalning från renderad storlek vs logisk storlek
+    // Detta är alltid korrekt oavsett CSS-skalning, viewport eller ritning
+    const actualScaleX = rect.width / canvas.width;
+    const actualScaleY = rect.height / canvas.height;
+
     if (rotation === 0) {
       return {
-        x: (e.clientX - rect.left) / scale,
-        y: (e.clientY - rect.top) / scale,
+        x: (e.clientX - rect.left) / actualScaleX,
+        y: (e.clientY - rect.top) / actualScaleY,
       };
     }
 
@@ -682,12 +687,12 @@ export default function WallEditor(): ReactNode {
     const localY = sin * dx + cos * dy;
 
     // Canvasens oroterade dimensioner i skärmpixlar
-    const canvasScreenW = settings.dimensions.width * scale;
-    const canvasScreenH = settings.dimensions.height * scale;
+    const canvasScreenW = canvas.width * actualScaleX;
+    const canvasScreenH = canvas.height * actualScaleY;
 
     return {
-      x: (localX + canvasScreenW / 2) / scale,
-      y: (localY + canvasScreenH / 2) / scale,
+      x: (localX + canvasScreenW / 2) / actualScaleX,
+      y: (localY + canvasScreenH / 2) / actualScaleY,
     };
   };
 
