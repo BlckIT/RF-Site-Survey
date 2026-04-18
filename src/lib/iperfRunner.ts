@@ -15,6 +15,7 @@ import { channelToBand } from "./utils";
 import { SSEMessageType } from "@/app/api/events/route";
 import { createWifiActions } from "./wifiScanner";
 import { splitColonDelimited } from "./wifiScanner-linux";
+import { LinuxWifiActions } from "./wifiScanner-linux";
 import { getLogger } from "./logger";
 import { defaultIperfCommands, buildIperfCommand } from "./iperfUtils";
 const logger = getLogger("iperfRunner");
@@ -52,6 +53,7 @@ const initialStates = {
   strength: "-",
   tcp: "-/- Mbps",
   udp: "-/- Mbps",
+  snrInfo: "",
 };
 
 // The measurement process updates these variables
@@ -62,6 +64,7 @@ let displayStates = {
   strength: "-",
   tcp: "-/- Mbps",
   udp: "-/- Mbps",
+  snrInfo: "",
 };
 
 /**
@@ -76,7 +79,7 @@ function getUpdatedMessage(): SSEMessageType {
   return {
     type: displayStates.type,
     header: displayStates.header,
-    status: `Signal strength: ${strength}\nTCP: ${displayStates.tcp}\nUDP: ${displayStates.udp}`,
+    status: `Signal strength: ${strength}${displayStates.snrInfo}\nTCP: ${displayStates.tcp}\nUDP: ${displayStates.udp}`,
   };
 }
 
@@ -285,6 +288,21 @@ export async function runSurveyTests(
           signalStrength: strength, // use the average signalStrength
           rssi: percentageToRssi(strength), // set corresponding RSSI
         };
+
+        // Hämta noise floor och channel utilization via iw survey dump (bara Linux)
+        if (wifiActions instanceof LinuxWifiActions) {
+          const surveyData = await wifiActions.getSurveyDump(settings);
+          if (surveyData && newWifiData) {
+            newWifiData.noiseFloor = surveyData.noiseFloor;
+            newWifiData.channelUtilization = surveyData.channelUtilization;
+            // SNR = RSSI - noiseFloor (båda i dBm)
+            newWifiData.snr = newWifiData.rssi - surveyData.noiseFloor;
+            displayStates.snrInfo = ` (SNR: ${newWifiData.snr} dB) | Ch.Util: ${surveyData.channelUtilization}%`;
+            logger.debug(
+              `Survey: noise=${surveyData.noiseFloor} dBm, SNR=${newWifiData.snr} dB, util=${surveyData.channelUtilization}%`,
+            );
+          }
+        }
       } catch (error: any) {
         logger.error(`Attempt ${attempts} failed:`, error);
         if (error.message == "cancelled") {

@@ -272,10 +272,106 @@ export class LinuxWifiActions implements WifiActions {
     }
     return response;
   }
+
+  /**
+   * getSurveyDump — hämta noise floor och kanalanvändning via `iw dev survey dump`.
+   * Parsar bara den aktiva kanalen (markerad med [in use]).
+   */
+  async getSurveyDump(
+    settings: PartialHeatmapSettings,
+  ): Promise<SurveyData | null> {
+    try {
+      const wlanInterface = await inferWifiDeviceIdOnLinux(
+        settings.wifiInterface,
+      );
+      return await getSurveyDump(wlanInterface, settings.sudoerPassword);
+    } catch (err) {
+      logger.warn(`getSurveyDump failed: ${err}`);
+      return null;
+    }
+  }
 }
 /**
  * END OF LinuxOSWifiActions - the remainder is a set of helper functions
  */
+
+/**
+ * SurveyData — resultat från `iw dev survey dump` för den aktiva kanalen.
+ */
+export interface SurveyData {
+  noiseFloor: number; // dBm (t.ex. -95)
+  channelUtilization: number; // 0-100% (busy/active * 100)
+  channelActiveTime: number; // ms
+  channelBusyTime: number; // ms
+  channelReceiveTime: number; // ms
+  channelTransmitTime: number; // ms
+}
+
+/**
+ * getSurveyDump() — kör `sudo iw dev <iface> survey dump` och parsar
+ * den aktiva kanalens noise floor och kanalanvändning.
+ * Returnerar null om data saknas eller är ogiltig.
+ */
+async function getSurveyDump(
+  wlanInterface: string,
+  pw: string,
+): Promise<SurveyData | null> {
+  const escapedPw = pw ? pw.replace(/'/g, "'\\''") : "";
+  const cmd = pw
+    ? `echo '${escapedPw}' | sudo -S iw dev ${wlanInterface} survey dump`
+    : `sudo iw dev ${wlanInterface} survey dump`;
+
+  try {
+    const { stdout } = await execAsync(cmd);
+    // Dela upp i block per frekvens
+    const blocks = stdout.split(/Survey data from/);
+    // Hitta blocket med [in use]
+    const activeBlock = blocks.find((b) => b.includes("[in use]"));
+    if (!activeBlock) {
+      logger.debug("No [in use] block found in survey dump");
+      return null;
+    }
+
+    const getVal = (label: string): number | null => {
+      const re = new RegExp(`${label}:\\s*(-?\\d+)`);
+      const m = activeBlock.match(re);
+      return m ? parseInt(m[1]) : null;
+    };
+
+    const noise = getVal("noise");
+    const activeTime = getVal("channel active time");
+    const busyTime = getVal("channel busy time");
+    const receiveTime = getVal("channel receive time");
+    const transmitTime = getVal("channel transmit time");
+
+    // Noise floor 0 eller saknas → ogiltig
+    if (noise === null || noise === 0) {
+      logger.debug(`Invalid noise floor: ${noise}`);
+      return null;
+    }
+
+    const channelActiveTime = activeTime ?? 0;
+    const channelBusyTime = busyTime ?? 0;
+    const channelUtilization =
+      channelActiveTime > 0 ? (channelBusyTime / channelActiveTime) * 100 : 0;
+
+    logger.debug(
+      `Survey dump: noise=${noise} dBm, util=${channelUtilization.toFixed(1)}%, active=${channelActiveTime}, busy=${channelBusyTime}`,
+    );
+
+    return {
+      noiseFloor: noise,
+      channelUtilization: Math.round(channelUtilization * 10) / 10,
+      channelActiveTime,
+      channelBusyTime,
+      channelReceiveTime: receiveTime ?? 0,
+      channelTransmitTime: transmitTime ?? 0,
+    };
+  } catch (err) {
+    logger.warn(`iw survey dump failed: ${err}`);
+    return null;
+  }
+}
 
 /**
  * forceRescan() — tvinga en aktiv WiFi-scan via nmcli så att

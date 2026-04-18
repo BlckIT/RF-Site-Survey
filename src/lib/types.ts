@@ -25,6 +25,9 @@ export interface WifiResults {
   currentSSID: boolean; // true if this is the SSID currently in use
   strongestSSID: WifiResults | null;
   // frequency: number; // exact frequency (as number) - xxxx GHz
+  noiseFloor?: number; // dBm (t.ex. -95)
+  snr?: number; // dB (RSSI - noiseFloor)
+  channelUtilization?: number; // 0-100%
 }
 
 /**

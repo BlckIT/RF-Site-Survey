@@ -61,6 +61,20 @@ const PopupDetails: React.FC<PopupDetailsProps> = ({
       // value: `${point.wifiData?.signalStrength || rssiToPercentage(point.wifiData?.rssi)}%`,
     },
     { label: "RSSI", value: `${point.wifiData.rssi} dBm` },
+    ...(point.wifiData.noiseFloor != null
+      ? [{ label: "Noise Floor", value: `${point.wifiData.noiseFloor} dBm` }]
+      : []),
+    ...(point.wifiData.snr != null
+      ? [{ label: "SNR", value: `${point.wifiData.snr} dB` }]
+      : []),
+    ...(point.wifiData.channelUtilization != null
+      ? [
+          {
+            label: "Channel Utilization",
+            value: `${point.wifiData.channelUtilization}%`,
+          },
+        ]
+      : []),
     { label: "Channel", value: point.wifiData?.channel },
     { label: "Band", value: `${point.wifiData?.band} GHz` },
     { label: "BSSID", value: formatMacAddress(point.wifiData?.bssid || "") },
