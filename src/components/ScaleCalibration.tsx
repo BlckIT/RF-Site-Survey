@@ -35,22 +35,27 @@ export default function ScaleCalibration(): ReactNode {
   const pixelsPerMeter = settings.pixelsPerMeter;
   const hasCalibration = pixelsPerMeter > 0 && pixelsPerMeter !== 10; // 10 is default/uncalibrated
 
-  // Load floor plan image
+  // Ladda planritningsbild — använd decode() för att undvika race condition
+  // med cachade bilder där onload kan triggas synkront innan handler sätts
   useEffect(() => {
     if (settings.floorplanImagePath) {
       setImageLoaded(false);
+      let cancelled = false;
       const img = new Image();
       img.src = settings.floorplanImagePath;
-      img.onload = () => {
-        imageRef.current = img;
-        setImageLoaded(true);
-      };
-      img.onerror = () => {
-        setImageLoaded(false);
-      };
+      img
+        .decode()
+        .then(() => {
+          if (!cancelled) {
+            imageRef.current = img;
+            setImageLoaded(true);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setImageLoaded(false);
+        });
       return () => {
-        img.onload = null;
-        img.onerror = null;
+        cancelled = true;
       };
     } else {
       setImageLoaded(false);

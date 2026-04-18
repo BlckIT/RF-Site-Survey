@@ -47,6 +47,7 @@ export default function WallEditor(): ReactNode {
     wallId: string;
     x: number;
     y: number;
+    nodePoint?: { x: number; y: number }; // Om högerklick nära en endpoint
   } | null>(null);
 
   // Material selection state
@@ -69,30 +70,34 @@ export default function WallEditor(): ReactNode {
 
   const isDrawing = chainPoints.length > 0;
 
-  // Load floor plan image and update dimensions if needed
+  // Ladda planritningsbild — använd decode() för att undvika race condition
+  // med cachade bilder där onload kan triggas synkront innan handler sätts
   useEffect(() => {
     if (settings.floorplanImagePath) {
       setImageLoaded(false);
+      let cancelled = false;
       const img = new Image();
       img.src = settings.floorplanImagePath;
-      img.onload = () => {
-        imageRef.current = img;
-        const imgW = img.naturalWidth;
-        const imgH = img.naturalHeight;
-        if (
-          imgW !== settings.dimensions.width ||
-          imgH !== settings.dimensions.height
-        ) {
-          updateSettings({ dimensions: { width: imgW, height: imgH } });
-        }
-        setImageLoaded(true);
-      };
-      img.onerror = () => {
-        setImageLoaded(false);
-      };
+      img
+        .decode()
+        .then(() => {
+          if (cancelled) return;
+          imageRef.current = img;
+          const imgW = img.naturalWidth;
+          const imgH = img.naturalHeight;
+          if (
+            imgW !== settings.dimensions.width ||
+            imgH !== settings.dimensions.height
+          ) {
+            updateSettings({ dimensions: { width: imgW, height: imgH } });
+          }
+          setImageLoaded(true);
+        })
+        .catch(() => {
+          if (!cancelled) setImageLoaded(false);
+        });
       return () => {
-        img.onload = null;
-        img.onerror = null;
+        cancelled = true;
       };
     } else {
       setImageLoaded(false);
@@ -779,10 +784,25 @@ export default function WallEditor(): ReactNode {
       const containerRect = containerRef.current?.getBoundingClientRect();
       const offsetX = containerRect ? rect.left - containerRect.left : 0;
       const offsetY = containerRect ? rect.top - containerRect.top : 0;
+
+      // Kolla om högerklicket är nära en endpoint (för "Delete node")
+      const nearEp = findNearEndpoint(x, y);
+      let nodePoint: { x: number; y: number } | undefined;
+      if (nearEp) {
+        const w = settings.walls.find((wall) => wall.id === nearEp.wallId);
+        if (w) {
+          nodePoint =
+            nearEp.endpoint === "start"
+              ? { x: w.x1, y: w.y1 }
+              : { x: w.x2, y: w.y2 };
+        }
+      }
+
       setMaterialPopover({
         wallId,
         x: e.clientX - rect.left + offsetX,
         y: e.clientY - rect.top + offsetY,
+        nodePoint,
       });
     } else {
       setMaterialPopover(null);
@@ -835,6 +855,26 @@ export default function WallEditor(): ReactNode {
     // Remove original wall
     const filtered = newWalls.filter((w) => w.id !== wallId);
     updateSettings({ walls: filtered });
+  };
+
+  // Ta bort en enskild vägg
+  const deleteWall = (wallId: string) => {
+    updateSettings({ walls: settings.walls.filter((w) => w.id !== wallId) });
+    if (selectedWallId === wallId) setSelectedWallId(null);
+    setMaterialPopover(null);
+  };
+
+  // Ta bort alla väggar som delar en specifik endpoint (nod-radering)
+  const deleteNode = (x: number, y: number) => {
+    const epsilon = SHARED_ENDPOINT_EPSILON;
+    const remaining = settings.walls.filter(
+      (w) =>
+        Math.hypot(w.x1 - x, w.y1 - y) > epsilon &&
+        Math.hypot(w.x2 - x, w.y2 - y) > epsilon,
+    );
+    updateSettings({ walls: remaining });
+    setSelectedWallId(null);
+    setMaterialPopover(null);
   };
 
   const clearAllWalls = () => {
@@ -984,13 +1024,22 @@ export default function WallEditor(): ReactNode {
               </div>
             )}
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => splitWall(selectedWallId!)}
-            >
-              Split Wall
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => splitWall(selectedWallId!)}
+              >
+                Split Wall
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => deleteWall(selectedWallId!)}
+              >
+                Delete Wall
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -1119,6 +1168,30 @@ export default function WallEditor(): ReactNode {
                         </button>
                       );
                     },
+                  )}
+                  <hr className="my-1 border-gray-200" />
+                  <button
+                    className="flex items-center gap-2 w-full text-left px-2 py-1 text-xs rounded text-red-600 hover:bg-red-50"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteWall(materialPopover.wallId);
+                    }}
+                  >
+                    Delete wall
+                  </button>
+                  {materialPopover.nodePoint && (
+                    <button
+                      className="flex items-center gap-2 w-full text-left px-2 py-1 text-xs rounded text-red-600 hover:bg-red-50"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteNode(
+                          materialPopover.nodePoint!.x,
+                          materialPopover.nodePoint!.y,
+                        );
+                      }}
+                    >
+                      Delete node (all connected)
+                    </button>
                   )}
                   <button
                     className="mt-1 text-xs text-gray-400 hover:text-gray-600 w-full text-left px-2"

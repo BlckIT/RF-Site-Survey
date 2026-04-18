@@ -35,28 +35,32 @@ export default function ClickableFloorplan({
   const [surveyClick, setSurveyClick] = useState({ x: 0, y: 0 });
 
   /**
-   * Load the image (and the canvas) when the component is mounted or floorplan changes
+   * Ladda planritningsbild — använd decode() för att undvika race condition
+   * med cachade bilder där onload kan triggas synkront innan handler sätts
    */
   useEffect(() => {
     if (settings.floorplanImagePath != "") {
       setImageLoaded(false);
+      let cancelled = false;
       const img = new Image();
       img.src = settings.floorplanImagePath;
-
-      img.onload = () => {
-        const newDimensions = { width: img.width, height: img.height };
-        updateSettings({ dimensions: newDimensions });
-        imageRef.current = img;
-        setImageLoaded(true);
-      };
-      img.onerror = () => {
-        console.log(`image error`);
-        setImageLoaded(false);
-      };
-
+      img
+        .decode()
+        .then(() => {
+          if (cancelled) return;
+          const newDimensions = { width: img.width, height: img.height };
+          updateSettings({ dimensions: newDimensions });
+          imageRef.current = img;
+          setImageLoaded(true);
+        })
+        .catch(() => {
+          if (!cancelled) {
+            console.log(`image error`);
+            setImageLoaded(false);
+          }
+        });
       return () => {
-        img.onload = null;
-        img.onerror = null;
+        cancelled = true;
       };
     } else {
       setImageLoaded(false);
@@ -557,15 +561,18 @@ export default function ClickableFloorplan({
         className="relative max-h-[calc(100vh-200px)] overflow-hidden"
         ref={containerRef}
       >
-        <canvas
-          ref={canvasRef}
-          width={settings.dimensions.width}
-          height={settings.dimensions.height}
-          onClick={handleCanvasClick}
-          className="border border-gray-300 rounded-lg cursor-pointer w-full h-auto max-h-[calc(100vh-200px)] object-contain"
-        />
+        {/* Wrapper som matchar canvasens exakta storlek så overlay hamnar rätt */}
+        <div className="relative inline-block">
+          <canvas
+            ref={canvasRef}
+            width={settings.dimensions.width}
+            height={settings.dimensions.height}
+            onClick={handleCanvasClick}
+            className="border border-gray-300 rounded-lg cursor-pointer w-full h-auto max-h-[calc(100vh-200px)] object-contain block"
+          />
 
-        {overlay}
+          {overlay}
+        </div>
 
         <div
           style={{

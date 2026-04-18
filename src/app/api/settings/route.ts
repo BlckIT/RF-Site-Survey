@@ -95,6 +95,9 @@ export async function POST(request: NextRequest) {
     // Remove sensitive data before saving
     const { sudoerPassword: _, ...safeSettings } = settings;
 
+    // Sätt lastModified-timestamp vid varje sparning för synk-polling
+    safeSettings.lastModified = Date.now();
+
     const filePath = getSurveyPath(fileName);
     await writeFile(filePath, JSON.stringify(safeSettings, null, 2));
 

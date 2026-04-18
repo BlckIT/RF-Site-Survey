@@ -10,6 +10,7 @@ import {
   ReactNode,
 } from "react";
 import { readSettingsFromFile, writeSettingsToFile } from "../lib/fileHandler";
+import { useSyncPolling } from "../hooks/useSyncPolling";
 import {
   hasLocalStorageData,
   hasMigrated,
@@ -305,11 +306,43 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setCurrentSiteName(siteName);
   }, []);
 
+  // ── Synk-polling: ladda om settings när en annan klient sparar ──
+  const reloadFromServer = useCallback(async () => {
+    const fileToLoad = currentSiteName || defaultFloorPlan;
+    const rawData = await readSettingsFromFile(fileToLoad);
+    if (!rawData) return;
+
+    const defaults = getDefaults(fileToLoad);
+    let mergedSettings: HeatmapSettings;
+
+    if (rawData.site) {
+      const globals = {
+        ...extractGlobals(defaults),
+        ...extractGlobals(rawData as HeatmapSettings),
+      };
+      globals.sudoerPassword = "";
+      mergedSettings = buildSettings(rawData.site, globals);
+    } else {
+      mergedSettings = migrateOldFormat(rawData, fileToLoad);
+    }
+
+    setSettings(mergedSettings);
+  }, [currentSiteName]);
+
+  const { notifyLocalSave } = useSyncPolling(
+    currentSiteName || defaultFloorPlan,
+    reloadFromServer,
+  );
+
   // ── Save helper ──
-  const saveSettings = useCallback((updated: HeatmapSettings) => {
-    setSettings(updated);
-    writeSettingsToFile(updated);
-  }, []);
+  const saveSettings = useCallback(
+    (updated: HeatmapSettings) => {
+      setSettings(updated);
+      writeSettingsToFile(updated);
+      notifyLocalSave();
+    },
+    [notifyLocalSave],
+  );
 
   // ── updateSettings — backward-compatible partial update ──
   const updateSettings = useCallback(
@@ -375,10 +408,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         });
 
         writeSettingsToFile(updatedSettings);
+        notifyLocalSave();
         return updatedSettings;
       });
     },
-    [],
+    [notifyLocalSave],
   );
 
   // ── Site management ──
@@ -405,99 +439,127 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const renameSite = useCallback((newName: string) => {
-    setSettings((prev) => {
-      const updatedSite = { ...prev.site, name: newName };
-      const updated = buildSettings(updatedSite, extractGlobals(prev));
-      writeSettingsToFile(updated);
-      return updated;
-    });
-  }, []);
+  const renameSite = useCallback(
+    (newName: string) => {
+      setSettings((prev) => {
+        const updatedSite = { ...prev.site, name: newName };
+        const updated = buildSettings(updatedSite, extractGlobals(prev));
+        writeSettingsToFile(updated);
+        notifyLocalSave();
+        return updated;
+      });
+    },
+    [notifyLocalSave],
+  );
 
   // ── Floor management ──
-  const addFloor = useCallback((name: string, imageName: string) => {
-    setSettings((prev) => {
-      const imagePath = imageName ? join("/media", imageName) : "";
-      const newFloor = createEmptyFloor(name, imageName, imagePath);
-      const newFloors = [...prev.site.floors, newFloor];
-      const updatedSite: Site = {
-        ...prev.site,
-        floors: newFloors,
-        activeFloorIndex: newFloors.length - 1,
-      };
-      const updated = buildSettings(updatedSite, extractGlobals(prev));
-      writeSettingsToFile(updated);
-      return updated;
-    });
-  }, []);
+  const addFloor = useCallback(
+    (name: string, imageName: string) => {
+      setSettings((prev) => {
+        const imagePath = imageName ? join("/media", imageName) : "";
+        const newFloor = createEmptyFloor(name, imageName, imagePath);
+        const newFloors = [...prev.site.floors, newFloor];
+        const updatedSite: Site = {
+          ...prev.site,
+          floors: newFloors,
+          activeFloorIndex: newFloors.length - 1,
+        };
+        const updated = buildSettings(updatedSite, extractGlobals(prev));
+        writeSettingsToFile(updated);
+        notifyLocalSave();
+        return updated;
+      });
+    },
+    [notifyLocalSave],
+  );
 
-  const removeFloor = useCallback((index: number) => {
-    setSettings((prev) => {
-      if (prev.site.floors.length <= 1) return prev; // Don't remove last floor
-      const newFloors = prev.site.floors.filter((_, i) => i !== index);
-      let newActiveIndex = prev.site.activeFloorIndex;
-      if (newActiveIndex >= newFloors.length) {
-        newActiveIndex = newFloors.length - 1;
-      }
-      const updatedSite: Site = {
-        ...prev.site,
-        floors: newFloors,
-        activeFloorIndex: newActiveIndex,
-      };
-      const updated = buildSettings(updatedSite, extractGlobals(prev));
-      writeSettingsToFile(updated);
-      return updated;
-    });
-  }, []);
+  const removeFloor = useCallback(
+    (index: number) => {
+      setSettings((prev) => {
+        if (prev.site.floors.length <= 1) return prev; // Don't remove last floor
+        const newFloors = prev.site.floors.filter((_, i) => i !== index);
+        let newActiveIndex = prev.site.activeFloorIndex;
+        if (newActiveIndex >= newFloors.length) {
+          newActiveIndex = newFloors.length - 1;
+        }
+        const updatedSite: Site = {
+          ...prev.site,
+          floors: newFloors,
+          activeFloorIndex: newActiveIndex,
+        };
+        const updated = buildSettings(updatedSite, extractGlobals(prev));
+        writeSettingsToFile(updated);
+        notifyLocalSave();
+        return updated;
+      });
+    },
+    [notifyLocalSave],
+  );
 
-  const setActiveFloor = useCallback((index: number) => {
-    setSettings((prev) => {
-      if (index < 0 || index >= prev.site.floors.length) return prev;
-      const updatedSite: Site = { ...prev.site, activeFloorIndex: index };
-      const updated = buildSettings(updatedSite, extractGlobals(prev));
-      writeSettingsToFile(updated);
-      return updated;
-    });
-  }, []);
+  const setActiveFloor = useCallback(
+    (index: number) => {
+      setSettings((prev) => {
+        if (index < 0 || index >= prev.site.floors.length) return prev;
+        const updatedSite: Site = { ...prev.site, activeFloorIndex: index };
+        const updated = buildSettings(updatedSite, extractGlobals(prev));
+        writeSettingsToFile(updated);
+        notifyLocalSave();
+        return updated;
+      });
+    },
+    [notifyLocalSave],
+  );
 
-  const renameFloor = useCallback((index: number, name: string) => {
-    setSettings((prev) => {
-      const newFloors = [...prev.site.floors];
-      newFloors[index] = { ...newFloors[index], name };
-      const updatedSite: Site = { ...prev.site, floors: newFloors };
-      const updated = buildSettings(updatedSite, extractGlobals(prev));
-      writeSettingsToFile(updated);
-      return updated;
-    });
-  }, []);
+  const renameFloor = useCallback(
+    (index: number, name: string) => {
+      setSettings((prev) => {
+        const newFloors = [...prev.site.floors];
+        newFloors[index] = { ...newFloors[index], name };
+        const updatedSite: Site = { ...prev.site, floors: newFloors };
+        const updated = buildSettings(updatedSite, extractGlobals(prev));
+        writeSettingsToFile(updated);
+        notifyLocalSave();
+        return updated;
+      });
+    },
+    [notifyLocalSave],
+  );
 
-  const updateFloorImage = useCallback((index: number, imageName: string) => {
-    setSettings((prev) => {
-      const imagePath = imageName ? join("/media", imageName) : "";
-      const newFloors = [...prev.site.floors];
-      newFloors[index] = {
-        ...newFloors[index],
-        floorplanImageName: imageName,
-        floorplanImagePath: imagePath,
-      };
-      const updatedSite: Site = { ...prev.site, floors: newFloors };
-      const updated = buildSettings(updatedSite, extractGlobals(prev));
-      writeSettingsToFile(updated);
-      return updated;
-    });
-  }, []);
+  const updateFloorImage = useCallback(
+    (index: number, imageName: string) => {
+      setSettings((prev) => {
+        const imagePath = imageName ? join("/media", imageName) : "";
+        const newFloors = [...prev.site.floors];
+        newFloors[index] = {
+          ...newFloors[index],
+          floorplanImageName: imageName,
+          floorplanImagePath: imagePath,
+        };
+        const updatedSite: Site = { ...prev.site, floors: newFloors };
+        const updated = buildSettings(updatedSite, extractGlobals(prev));
+        writeSettingsToFile(updated);
+        notifyLocalSave();
+        return updated;
+      });
+    },
+    [notifyLocalSave],
+  );
 
-  const updateActiveFloor = useCallback((partial: Partial<Floor>) => {
-    setSettings((prev) => {
-      const idx = prev.site.activeFloorIndex;
-      const newFloors = [...prev.site.floors];
-      newFloors[idx] = { ...newFloors[idx], ...partial };
-      const updatedSite: Site = { ...prev.site, floors: newFloors };
-      const updated = buildSettings(updatedSite, extractGlobals(prev));
-      writeSettingsToFile(updated);
-      return updated;
-    });
-  }, []);
+  const updateActiveFloor = useCallback(
+    (partial: Partial<Floor>) => {
+      setSettings((prev) => {
+        const idx = prev.site.activeFloorIndex;
+        const newFloors = [...prev.site.floors];
+        newFloors[idx] = { ...newFloors[idx], ...partial };
+        const updatedSite: Site = { ...prev.site, floors: newFloors };
+        const updated = buildSettings(updatedSite, extractGlobals(prev));
+        writeSettingsToFile(updated);
+        notifyLocalSave();
+        return updated;
+      });
+    },
+    [notifyLocalSave],
+  );
 
   // ── SurveyPoint actions ──
   const surveyPointActions: SurveyPointActions = {
