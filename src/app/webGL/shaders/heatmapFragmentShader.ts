@@ -82,64 +82,37 @@ const generateHeatmapFragmentShader = (
   void main() {
     vec2 pixel = v_uv * u_resolution;
 
-    // Avgör om skalan är kalibrerad (default/okalibrerad = 10 eller 0)
-    bool calibrated = u_pixelsPerMeter > 10.0;
-    // Skalfaktor: pixlar → meter. Om okalibrerad, använd 1.0 (pixelbaserat som förut)
-    float ppm = calibrated ? u_pixelsPerMeter : 1.0;
-
-    float radiusSq = u_radius * u_radius;
-
     float weightedSum = 0.0;
     float weightTotal = 0.0;
-    float pointCount = 0.0; // Räkna bidragande punkter för confidence
 
     for (int i = 0; i < ${clampedPointCount}; ++i) {
       if (i >= u_pointCount) break;
 
       vec2 point = u_points[i].xy;
-      float value = u_points[i].z; // Redan i dBm (negativa värden, t.ex. -65)
+      float value = u_points[i].z; // dBm (negativa värden, t.ex. -65)
 
       vec2 diff = pixel - point;
-      float distSqPx = dot(diff, diff);
+      float distSq = dot(diff, diff);
 
-      if (distSqPx < 1e-6) {
+      if (distSq < 1e-6) {
         weightedSum = value;
         weightTotal = 1.0;
-        pointCount = 1.0;
         break;
       }
 
-      // Radius-cutoff i pixlar (u_radius är alltid i pixlar)
-      if (distSqPx > radiusSq) continue;
+      if (distSq > u_radius * u_radius) continue;
 
-      float weight;
+      // IDW-vikt: samma beprövade formel som alltid fungerat visuellt
+      float weight = 1.0 / pow(distSq, u_pathLossExponent * 0.5);
 
-      if (calibrated) {
-        // ITU-R P.1238 logaritmisk path loss: vikt baserad på N * log10(d)
-        float distMeters = sqrt(distSqPx) / ppm;
-        float logDist = log(max(distMeters, 0.1)) / log(10.0); // log10(d)
-        float pathLossDb = u_pathLossExponent * logDist; // N * log10(d)
-        // Invers path loss som vikt (högre förlust = lägre vikt)
-        weight = 1.0 / max(pathLossDb * pathLossDb, 0.01);
-      } else {
-        // Okalibrerad fallback: enkel IDW med 1/distSq (pixelbaserat)
-        weight = 1.0 / max(distSqPx, 1.0);
-      }
-
-      // Väggdämpning: minskar vikten OCH dämpar signalen
-      // Vikten minskas så att mätpunkter bakom väggar bidrar mindre
-      // Signalen dämpas så att väggar syns visuellt i heatmappen
+      // Väggdämpning i dB (ITU-R P.1238 WAF)
       float wallDb = calcWallAttenuationDb(pixel, point);
-      float wallFactor = pow(10.0, -wallDb / 20.0); // dB → linjär faktor
-      weight *= wallFactor;
 
-      // Dämpa signalvärdet med väggförlust (synlig effekt i heatmappen)
-      float attenuatedValue = value - wallDb;
+      // Dämpa signalen med väggförlust (direkt i dBm)
+      float attenuated_dBm = value - wallDb;
 
-      // Använd dämpat värde
-      weightedSum += weight * attenuatedValue;
+      weightedSum += weight * attenuated_dBm;
       weightTotal += weight;
-      pointCount += 1.0;
     }
 
     if (weightTotal == 0.0) {
@@ -152,11 +125,9 @@ const generateHeatmapFragmentShader = (
     float normalized = clamp((signal + 100.0) / 60.0, 0.0, 1.0);
     vec3 color = texture2D(u_lut, vec2(normalized, 0.5)).rgb;
 
-    // Confidence: 1+ punkt = full confidence, avtar med avstånd till närmaste punkt
-    // Använd weightTotal normaliserat mot en referensvikt vid 1m avstånd
-    float refDist = calibrated ? 1.0 : 100.0; // 1 meter eller 100 pixlar
-    float refWeight = 1.0 / max(refDist * refDist, 1.0);
-    float confidence = clamp(weightTotal / refWeight * 0.5, 0.0, 1.0);
+    // Confidence: beprövad formel — pixlar nära mätpunkter får full opacity
+    float confidenceScale = u_radius * u_radius;
+    float confidence = clamp(weightTotal * confidenceScale, 0.0, 1.0);
     float alpha = mix(u_minOpacity, u_maxOpacity, normalized) * confidence;
     gl_FragColor = vec4(color, alpha);
   }

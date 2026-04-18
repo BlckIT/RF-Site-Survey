@@ -82,7 +82,7 @@ export const createHeatmapLayerRenderer = (
     gl.vertexAttribPointer(attribs.a_position, 2, gl.FLOAT, false, 0, 0);
 
     gl.uniform1f(uniforms.u_radius, influenceRadius);
-    gl.uniform1f(uniforms.u_pathLossExponent, 30.0); // ITU-R P.1238 N-värde (28-33 inomhus, 30 = office/2.4 GHz)
+    gl.uniform1f(uniforms.u_pathLossExponent, 2.5); // ITU-R P.1238 N-värde (28-33 inomhus, 30 = office/2.4 GHz)
     gl.uniform1f(u_pixelsPerMeter, pixelsPerMeter);
     gl.uniform1f(uniforms.u_minOpacity, minOpacity);
     gl.uniform1f(uniforms.u_maxOpacity, maxOpacity);
