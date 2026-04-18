@@ -717,6 +717,9 @@ function SettingsPanel() {
           <Tabs.Trigger value="display" className={subTabClass}>
             Display
           </Tabs.Trigger>
+          <Tabs.Trigger value="system" className={subTabClass}>
+            System
+          </Tabs.Trigger>
         </Tabs.List>
 
         {/* ═══ NETWORK TAB ═══ */}
@@ -1823,8 +1826,139 @@ function SettingsPanel() {
             </Button>
           </section>
         </Tabs.Content>
+
+        {/* ═══ SYSTEM TAB ═══ */}
+        <Tabs.Content value="system" className="space-y-4">
+          <SystemUpdateSection />
+        </Tabs.Content>
       </Tabs.Root>
     </div>
+  );
+}
+
+/** System-sektion: versionsinformation och uppdateringshantering */
+function SystemUpdateSection() {
+  const [info, setInfo] = useState<{
+    updateAvailable: boolean;
+    currentCommit: string;
+    latestCommit: string;
+    behindCount: number;
+    commits: string[];
+  } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [error, setError] = useState("");
+  const { toast } = useToast();
+
+  const checkUpdates = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/system/update");
+      if (!res.ok) throw new Error("Failed to check for updates");
+      const data = await res.json();
+      setInfo(data);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkUpdates();
+  }, [checkUpdates]);
+
+  const runUpdate = async () => {
+    setUpdating(true);
+    setError("");
+    try {
+      const res = await fetch("/api/system/update", { method: "POST" });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || data.message || "Update failed");
+      }
+      toast({ description: "Update complete. Restarting..." });
+      setTimeout(() => window.location.reload(), 5000);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      // Anslutningen kan brytas vid pm2 restart — det är förväntat
+      if (msg.includes("fetch") || msg.includes("network")) {
+        toast({ description: "Restarting — page will reload shortly..." });
+        const retryReload = () => {
+          fetch("/")
+            .then(() => window.location.reload())
+            .catch(() => setTimeout(retryReload, 3000));
+        };
+        setTimeout(retryReload, 5000);
+      } else {
+        setError(msg);
+      }
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  return (
+    <section className="space-y-4">
+      <h3 className="text-lg font-semibold">System Update</h3>
+
+      <div className="flex items-center gap-3">
+        <span className="text-sm text-gray-600">
+          Current version:{" "}
+          <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">
+            {info?.currentCommit ?? "..."}
+          </code>
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={checkUpdates}
+          disabled={loading}
+        >
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin mr-1" />
+          ) : (
+            <RefreshCw className="h-4 w-4 mr-1" />
+          )}
+          Check for updates
+        </Button>
+      </div>
+
+      {error && (
+        <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+          {error}
+        </div>
+      )}
+
+      {info?.updateAvailable && (
+        <div className="border border-amber-200 bg-amber-50 rounded-lg p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-amber-900">
+              {info.behindCount} new commit{info.behindCount !== 1 ? "s" : ""}{" "}
+              available
+            </span>
+            <Button size="sm" onClick={runUpdate} disabled={updating}>
+              {updating ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+              ) : null}
+              {updating ? "Updating..." : "Update now"}
+            </Button>
+          </div>
+          {info.commits.length > 0 && (
+            <ul className="text-xs text-gray-700 space-y-0.5 max-h-40 overflow-y-auto font-mono">
+              {info.commits.map((c, i) => (
+                <li key={i}>{c}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {info && !info.updateAvailable && !error && (
+        <p className="text-sm text-green-700">You&apos;re up to date.</p>
+      )}
+    </section>
   );
 }
 

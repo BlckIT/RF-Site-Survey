@@ -4,6 +4,7 @@ import "./globals.css";
 import { SettingsProvider } from "@/components/GlobalSettings";
 import { Toaster } from "@/components/ui/toaster";
 import { initServer } from "../lib/server-init";
+import UpdateBanner from "@/components/UpdateBanner";
 
 export const metadata: Metadata = {
   title: "WiFi Heatmapper",
@@ -21,6 +22,7 @@ export default function RootLayout({
     <html lang="en">
       <SettingsProvider>
         <body>
+          <UpdateBanner />
           {children}
           <Toaster />
         </body>
