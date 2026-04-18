@@ -144,34 +144,29 @@ export default function WallEditor(): ReactNode {
   }, [imageLoaded, settings.dimensions]);
 
   // Apply shift-snap to a point relative to a reference point
-  // Snap-axlarna följer rotationen så att "horisontellt/vertikalt" matchar den roterade vyn
+  // Shift-snap: raka linjer relativt SKÄRMEN (inte bilden)
+  // Eftersom koordinaterna är i bildens system men vi vill snappa till skärmens
+  // horisontella/vertikala, måste vi kompensera för rotationen.
+  // När rotation=0 är skärm och bild samma. När rotation!=0 är skärmens
+  // horisontella axel roterad med -rotation i bildens koordinatsystem.
   const applySnap = useCallback(
     (pos: { x: number; y: number }, ref: { x: number; y: number }) => {
       if (!shiftHeld) return pos;
-      if (rotation === 0) {
-        const dx = Math.abs(pos.x - ref.x);
-        const dy = Math.abs(pos.y - ref.y);
-        if (dx <= dy) {
-          return { x: ref.x, y: pos.y };
-        } else {
-          return { x: pos.x, y: ref.y };
-        }
-      }
-      // Rotera referensaxlarna med rotationsvinkeln
-      const rad = (rotation * Math.PI) / 180;
+      // Negativ rotation: skärmaxlarna är roterade åt andra hållet i bildkoordinater
+      const rad = (-rotation * Math.PI) / 180;
       const cos = Math.cos(rad);
       const sin = Math.sin(rad);
       const dx = pos.x - ref.x;
       const dy = pos.y - ref.y;
-      // Projicera på roterade axlar
-      const along = dx * cos + dy * sin;
-      const perp = -dx * sin + dy * cos;
-      if (Math.abs(along) >= Math.abs(perp)) {
-        // Snap till roterad horisontell axel
-        return { x: ref.x + along * cos, y: ref.y + along * sin };
+      // Projicera på skärmens axlar (uttryckta i bildkoordinater)
+      const screenH = dx * cos + dy * sin;
+      const screenV = -dx * sin + dy * cos;
+      if (Math.abs(screenH) >= Math.abs(screenV)) {
+        // Snap horisontellt på skärmen
+        return { x: ref.x + screenH * cos, y: ref.y + screenH * sin };
       } else {
-        // Snap till roterad vertikal axel
-        return { x: ref.x - perp * sin, y: ref.y + perp * cos };
+        // Snap vertikalt på skärmen
+        return { x: ref.x - screenV * sin, y: ref.y + screenV * cos };
       }
     },
     [shiftHeld, rotation],
