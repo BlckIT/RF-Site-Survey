@@ -975,13 +975,7 @@ export default function WallEditor(): ReactNode {
         ref={containerRef}
         tabIndex={0}
       >
-        <div
-          style={{
-            transform: `rotate(${settings.rotation ?? 0}deg)`,
-            transformOrigin: "center",
-          }}
-          className="relative transition-transform duration-300"
-        >
+        <div className="relative">
           <canvas
             ref={canvasRef}
             width={settings.dimensions.width}
