@@ -10,7 +10,12 @@ import {
 // import { scanWifi, blinkWifi } from "./wifiScanner";
 import { execAsync, delay } from "./server-utils";
 import { getCancelFlag, sendSSEMessage } from "./server-globals";
-import { percentageToRssi, toMbps, getDefaultIperfResults } from "./utils";
+import {
+  percentageToRssi,
+  rssiToPercentage,
+  toMbps,
+  getDefaultIperfResults,
+} from "./utils";
 import { channelToBand } from "./utils";
 import { SSEMessageType } from "@/app/api/events/route";
 import { createWifiActions } from "./wifiScanner";
@@ -169,7 +174,7 @@ export async function runSurveyTests(
       try {
         const server = settings.iperfServerAdrs;
         const duration = settings.testDuration;
-        const wifiStrengths: number[] = []; // percentages
+        const wifiStrengths: number[] = []; // dBm-värden (rssi) för korrekt medelvärde
         // add the SSID to the header if it's not <redacted>
         let newHeader = "Measuring Wi-Fi";
         if (!ssidName.includes("redacted")) {
@@ -190,8 +195,10 @@ export async function runSurveyTests(
               "No WiFi data available. Make sure you're connected to a network or select a Target SSID.",
           };
         }
-        wifiStrengths.push(wifiDataBefore.SSIDs[0].signalStrength);
-        displayStates.strength = arrayAverage(wifiStrengths).toString();
+        wifiStrengths.push(wifiDataBefore.SSIDs[0].rssi);
+        displayStates.strength = rssiToPercentage(
+          arrayAverage(wifiStrengths),
+        ).toString();
         checkForCancel();
         sendSSEMessage(getUpdatedMessage());
 
@@ -222,8 +229,10 @@ export async function runSurveyTests(
 
         const wifiDataMiddle = await wifiActions.getWifi(settings);
         if (wifiDataMiddle.SSIDs && wifiDataMiddle.SSIDs.length > 0) {
-          wifiStrengths.push(wifiDataMiddle.SSIDs[0].signalStrength);
-          displayStates.strength = arrayAverage(wifiStrengths).toString();
+          wifiStrengths.push(wifiDataMiddle.SSIDs[0].rssi);
+          displayStates.strength = rssiToPercentage(
+            arrayAverage(wifiStrengths),
+          ).toString();
         }
         checkForCancel();
         sendSSEMessage(getUpdatedMessage());
@@ -254,8 +263,10 @@ export async function runSurveyTests(
 
         const wifiDataAfter = await wifiActions.getWifi(settings);
         if (wifiDataAfter.SSIDs && wifiDataAfter.SSIDs.length > 0) {
-          wifiStrengths.push(wifiDataAfter.SSIDs[0].signalStrength);
-          displayStates.strength = arrayAverage(wifiStrengths).toString();
+          wifiStrengths.push(wifiDataAfter.SSIDs[0].rssi);
+          displayStates.strength = rssiToPercentage(
+            arrayAverage(wifiStrengths),
+          ).toString();
         }
         checkForCancel();
 
@@ -272,11 +283,11 @@ export async function runSurveyTests(
           );
         }
 
-        const strength = parseInt(displayStates.strength);
+        const avgRssi = arrayAverage(wifiStrengths); // Medelvärde i dBm
         newWifiData = {
           ...wifiDataBefore.SSIDs[0],
-          signalStrength: strength, // use the average signalStrength
-          rssi: percentageToRssi(strength), // set corresponding RSSI
+          rssi: avgRssi, // Korrekt dBm-medelvärde
+          signalStrength: rssiToPercentage(avgRssi), // Konvertera till procent för display
         };
 
         // Hämta noise floor och channel utilization via iw survey dump (bara Linux)

@@ -91,12 +91,13 @@ const generateHeatmapFragmentShader = (
 
     float weightedSum = 0.0;
     float weightTotal = 0.0;
+    float pointCount = 0.0; // Räkna bidragande punkter för confidence
 
     for (int i = 0; i < ${clampedPointCount}; ++i) {
       if (i >= u_pointCount) break;
 
       vec2 point = u_points[i].xy;
-      float value = u_points[i].z;
+      float value = u_points[i].z; // Redan i dBm (negativa värden, t.ex. -65)
 
       vec2 diff = pixel - point;
       float distSqPx = dot(diff, diff);
@@ -104,42 +105,50 @@ const generateHeatmapFragmentShader = (
       if (distSqPx < 1e-6) {
         weightedSum = value;
         weightTotal = 1.0;
+        pointCount = 1.0;
         break;
       }
 
       // Radius-cutoff i pixlar (u_radius är alltid i pixlar)
       if (distSqPx > radiusSq) continue;
 
-      // Konvertera till meter för IDW-viktning
-      float distSqUnit = distSqPx / (ppm * ppm);
+      float weight;
 
-      // IDW-vikt baserad på avstånd i meter (eller pixlar om okalibrerad)
-      float weight = 1.0 / pow(distSqUnit, u_pathLossExponent * 0.5);
+      if (calibrated) {
+        // ITU-R P.1238 logaritmisk path loss: vikt baserad på N * log10(d)
+        float distMeters = sqrt(distSqPx) / ppm;
+        float logDist = log(max(distMeters, 0.1)) / log(10.0); // log10(d)
+        float pathLossDb = u_pathLossExponent * logDist; // N * log10(d)
+        // Invers path loss som vikt (högre förlust = lägre vikt)
+        weight = 1.0 / max(pathLossDb * pathLossDb, 0.01);
+      } else {
+        // Okalibrerad fallback: enkel IDW med 1/distSq (pixelbaserat)
+        weight = 1.0 / max(distSqPx, 1.0);
+      }
 
-      // Wall attenuation in dB
+      // Väggdämpning minskar vikten — mätpunkter bakom väggar bidrar mindre
       float wallDb = calcWallAttenuationDb(pixel, point);
+      float wallFactor = pow(10.0, -wallDb / 20.0); // dB → linjär faktor
+      weight *= wallFactor;
 
-      // Convert percentage (0-100) to dBm, subtract wall attenuation, convert back
-      float signal_dBm = -100.0 + (value / 100.0) * 60.0;
-      float attenuated_dBm = signal_dBm - wallDb;
-      float attenuated_value = clamp((attenuated_dBm + 100.0) / 60.0 * 100.0, 0.0, 100.0);
-
-      weightedSum += weight * attenuated_value;
+      // Använd value direkt (redan dBm, inkluderar verkliga väggar vid mätning)
+      weightedSum += weight * value;
       weightTotal += weight;
+      pointCount += 1.0;
     }
 
     if (weightTotal == 0.0) {
       discard;
     }
 
-    float signal = weightedSum / weightTotal;
-    float normalized = clamp(signal / 100.0, 0.0, 1.0);
+    float signal = weightedSum / weightTotal; // Interpolerat dBm-värde
+
+    // Normalisera dBm till 0-1 för färg-LUT: -100 dBm → 0.0, -40 dBm → 1.0
+    float normalized = clamp((signal + 100.0) / 60.0, 0.0, 1.0);
     vec3 color = texture2D(u_lut, vec2(normalized, 0.5)).rgb;
 
-    // Confidence: pixlar nära mätpunkter får full opacity, avlägsna pixlar fadar ut
-    // Normalisera weightTotal med ppm² så confidence fungerar oavsett skala
-    float refWeight = 1.0 / pow(radiusSq / (ppm * ppm), u_pathLossExponent * 0.5);
-    float confidence = clamp(weightTotal * refWeight * 0.1, 0.0, 1.0);
+    // Confidence baserad på antal bidragande punkter (3+ = full confidence)
+    float confidence = clamp(pointCount / 3.0, 0.0, 1.0);
     float alpha = mix(u_minOpacity, u_maxOpacity, normalized) * confidence;
     gl_FragColor = vec4(color, alpha);
   }

@@ -241,8 +241,8 @@ export function Heatmaps({ showWalls = true }: { showWalls?: boolean } = {}) {
               if (value == 0) return null;
               break;
             case "signalStrength":
-              // always map the 0-100% signal strength (not rssi)
-              value = point.wifiData.signalStrength;
+              // Skicka rssi (dBm) direkt — shadern interpolerar i dBm-domänen
+              value = point.wifiData.rssi;
           }
           return value !== null ? { x: point.x, y: point.y, value } : null;
         })
@@ -843,11 +843,11 @@ export function useHeatmapOverlay(): string | null {
       return;
     }
 
-    // Generera heatmap-data (signal strength som %)
+    // Generera heatmap-data (signal strength som dBm för korrekt interpolation)
     const heatmapData = points
       .filter((p) => p.isEnabled)
       .map((point) => {
-        const value = point.wifiData.signalStrength;
+        const value = point.wifiData.rssi;
         return value !== null ? { x: point.x, y: point.y, value } : null;
       })
       .filter((v) => v !== null);
