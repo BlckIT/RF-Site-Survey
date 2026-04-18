@@ -27,12 +27,35 @@ export default function MediaDropdown({
       const res = await fetch("/api/media");
       if (!res.ok) throw new Error("Failed to fetch files");
       const data = await res.json();
-      const imageFiles = data.files.filter((name: string) =>
+      const imageFiles: string[] = data.files.filter((name: string) =>
         /\.(jpe?g|png|pdf)$/i.test(name),
       );
-      setFiles(imageFiles);
-      if (defaultValue && imageFiles.includes(defaultValue)) {
-        setSelected(defaultValue);
+      // Filtrera bort .png-filer som har en matchande .pdf (visa bara ursprungsformatet)
+      const pdfBaseNames = new Set(
+        imageFiles
+          .filter((n: string) => /\.pdf$/i.test(n))
+          .map((n: string) => n.replace(/\.pdf$/i, "").toLowerCase()),
+      );
+      const dedupedFiles = imageFiles.filter((n: string) => {
+        if (/\.png$/i.test(n)) {
+          const base = n.replace(/\.png$/i, "").toLowerCase();
+          return !pdfBaseNames.has(base);
+        }
+        return true;
+      });
+      setFiles(dedupedFiles);
+      if (defaultValue) {
+        // Om defaultValue är en .png som har matchande .pdf, visa .pdf-namnet istället
+        if (/\.png$/i.test(defaultValue)) {
+          const pdfName = defaultValue.replace(/\.png$/i, ".pdf");
+          if (dedupedFiles.includes(pdfName)) {
+            setSelected(pdfName);
+          } else if (dedupedFiles.includes(defaultValue)) {
+            setSelected(defaultValue);
+          }
+        } else if (dedupedFiles.includes(defaultValue)) {
+          setSelected(defaultValue);
+        }
       }
     } catch (err) {
       setError((err as Error).message);
@@ -45,9 +68,17 @@ export default function MediaDropdown({
 
   useEffect(() => {
     if (defaultValue) {
+      // Om defaultValue är en .png med matchande .pdf i listan, visa .pdf
+      if (/\.png$/i.test(defaultValue)) {
+        const pdfName = defaultValue.replace(/\.png$/i, ".pdf");
+        if (files.includes(pdfName)) {
+          setSelected(pdfName);
+          return;
+        }
+      }
       setSelected(defaultValue);
     }
-  }, [defaultValue]);
+  }, [defaultValue, files]);
 
   const handleSelect = async (value: string) => {
     // If selecting a PDF from the list, convert it to PNG first
@@ -97,9 +128,11 @@ export default function MediaDropdown({
 
     try {
       let uploadFile: File = file;
+      let originalPdfName: string | null = null;
 
       // Convert PDF to PNG client-side
       if (file.name.toLowerCase().endsWith(".pdf") || file.type === "application/pdf") {
+        originalPdfName = file.name;
         const { blob, filename } = await pdfToImage(file);
         uploadFile = new File([blob], filename, { type: "image/png" });
       }
@@ -115,8 +148,19 @@ export default function MediaDropdown({
       const data = await res.json();
 
       if (res.ok && data.name) {
+        // Ladda även upp original-PDF:en så att den syns i fillistan
+        if (originalPdfName) {
+          const pdfFormData = new FormData();
+          pdfFormData.append("file", file);
+          await fetch("/api/media", { method: "POST", body: pdfFormData });
+        }
         await fetchFiles();
-        handleSelect(data.name);
+        // Om det var en PDF-uppladdning, välj PDF-namnet (som visas i listan)
+        if (originalPdfName) {
+          handleSelect(originalPdfName);
+        } else {
+          handleSelect(data.name);
+        }
       } else {
         setError(data.error || "Upload failed");
       }

@@ -18,7 +18,7 @@ const HeatmapImage: React.FC<{
       <img
         src={src}
         alt={alt}
-        className="w-full rounded-md shadow-sm cursor-pointer transition-transform hover:scale-105"
+        className="w-full max-h-[calc(100vh-200px)] object-contain rounded-md shadow-sm cursor-pointer transition-transform hover:scale-105"
         onClick={onClick}
       />
       {isHovered && (

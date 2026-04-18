@@ -388,11 +388,17 @@ export function Heatmaps() {
         glCanvas.width = settings.dimensions.width;
         glCanvas.height = settings.dimensions.height;
 
+        const wallsForRender = settings.walls || [];
+        console.log(`[Heatmap] Rendering with ${wallsForRender.length} walls, dims: ${settings.dimensions.width}x${settings.dimensions.height}, points: ${heatmapData.length}`);
+        if (wallsForRender.length > 0) {
+          console.log(`[Heatmap] First wall:`, wallsForRender[0]);
+        }
+
         const renderer = createHeatmapWebGLRenderer(
           glCanvas,
           heatmapData,
           settings.gradient,
-          settings.walls || [],
+          wallsForRender,
         );
         await renderer.render({
           points: heatmapData,

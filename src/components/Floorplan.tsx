@@ -53,9 +53,18 @@ export default function ClickableFloorplan(): ReactNode {
       const canvas = canvasRef.current;
       const containerWidth = containerRef.current?.clientWidth || canvas.width;
       const scaleX = containerWidth / settings.dimensions.width;
-      setScale(scaleX);
-      canvas.style.width = "100%";
-      canvas.style.height = "auto";
+      const scaledHeight = settings.dimensions.height * scaleX;
+      const maxH = window.innerHeight - 200;
+      if (scaledHeight > maxH) {
+        const constrainedScale = maxH / settings.dimensions.height;
+        setScale(constrainedScale);
+        canvas.style.width = `${settings.dimensions.width * constrainedScale}px`;
+        canvas.style.height = `${maxH}px`;
+      } else {
+        setScale(scaleX);
+        canvas.style.width = "100%";
+        canvas.style.height = "auto";
+      }
       drawCanvas();
     }
   }, [imageLoaded, settings.dimensions, settings.surveyPoints]);
@@ -400,13 +409,13 @@ export default function ClickableFloorplan(): ReactNode {
           <AlertDescription>{alertMessage}</AlertDescription>
         </Alert>
       )}
-      <div className="relative" ref={containerRef}>
+      <div className="relative max-h-[calc(100vh-200px)] overflow-hidden" ref={containerRef}>
         <canvas
           ref={canvasRef}
           width={settings.dimensions.width}
           height={settings.dimensions.height}
           onClick={handleCanvasClick}
-          className="border border-gray-300 rounded-lg cursor-pointer"
+          className="border border-gray-300 rounded-lg cursor-pointer w-full h-auto max-h-[calc(100vh-200px)] object-contain"
         />
 
         <div

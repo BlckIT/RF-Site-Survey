@@ -121,12 +121,39 @@ Visualization and output. Requires at least some measurement points.
 - [x] Removed distance decay (not useful without proper scale calibration)
 - [x] Confidence-based opacity (edges fade out)
 
+### v0.7.1 — Site & Floor Management (2026-04-16)
+- [x] Site/project CRUD (create, rename, delete)
+- [x] Multi-floor support (Site → Floor[] model with backward compat)
+- [x] Floor plan import from image (PNG, JPG) and PDF (client-side pdfjs-dist)
+- [x] MediaDropdown with search, PDF auto-conversion
+- [x] Demo project: Planritning_nybyggnad (replaced old demo files)
+
+### v0.7.2 — Network Management (2026-04-17)
+- [x] Hotspot control (start/stop via nmcli, WPA2/CCMP)
+- [x] WiFi connect/disconnect (visible + hidden networks)
+- [x] Device status overview (all WiFi interfaces)
+- [x] Inlined in Settings panel (no separate component)
+- [x] Command injection protection on all shell inputs
+- [x] Sudoer password from settings context
+
+### v0.7.3 — Settings Reorganization & UI Cleanup (2026-04-17)
+- [x] Logical grouping: Network → Hotspot → WiFi → Survey → Visualization → Wall Editor → Reset
+- [x] Added missing UI fields: Test Duration, Target SSID
+- [x] iperf Commands + AP Mapping under collapsible Accordion
+- [x] Raw HTML → shadcn/ui components (Input, Button, Label) across all components
+- [x] Consistent inputClass/sectionHeaderClass patterns
+- [x] Interface usage conflict warnings in dropdowns
+
+### v0.7.4 — Wall Editor Fix (2026-04-17)
+- [x] Fixed dimensions not updating on image load (was stuck at 100x100)
+- [x] Canvas now matches actual floor plan dimensions
+
 ## Planned
 
-### v0.8 — Scale Calibration
-- [ ] Two-point scale tool (click two points, enter distance in meters)
-- [ ] Store scale per floor plan
-- [ ] Re-enable distance decay once scale is known
+### v0.8 — Scale Calibration (2026-04-17)
+- [x] Two-point scale tool (click two points, enter distance in meters)
+- [x] Store scale per floor plan (`floor.pixelsPerMeter`)
+- [ ] Re-enable distance decay once scale is known (connect `pixelsPerMeter` to propagation model)
 
 ### v0.9 — AP Placement
 - [ ] AP editor UI (click to place APs on floor plan)
@@ -136,18 +163,17 @@ Visualization and output. Requires at least some measurement points.
 - [ ] Significantly improved heatmap accuracy when AP positions are known
 
 ### Backlog / Future
-- [ ] Multi-floor support (multiple floor plans per site)
-- [ ] Site/project management (create, rename, delete sites)
-- [ ] PDF import with image extraction (pdf.js)
+- [x] Multi-floor support (multiple floor plans per site) — implemented in v0.7+ (Site → Floor[] model)
+- [x] Site/project management (create, rename, delete sites) — SiteManager component
+- [x] PDF import with image extraction (pdf.js) — client-side via pdfjs-dist (2026-04-17)
+- [ ] Multi-page PDF (page selector for multi-story buildings)
 - [ ] Auto wall detection from floor plan image (edge detection)
 - [ ] Floor switching during survey
 - [ ] Report generation (PDF export with heatmaps + summary)
 - [ ] Frequency-band-specific WAF values (2.4 GHz vs 5 GHz vs 6 GHz)
-- [ ] Frequency-band-specific WAF values (2.4 GHz vs 5 GHz vs 6 GHz)
 - [ ] Path loss exponent exposed in UI (HeatmapAdvancedConfig)
 - [ ] Floor/ceiling attenuation for multi-story buildings
 - [ ] Export survey data (PDF report, CSV)
-- [ ] Multiple floor plans in one project
 - [ ] AP coverage overlap visualization
 - [ ] Channel interference heatmap
 - [ ] Minimum signal threshold overlay (e.g. "below -67 dBm" zones)

@@ -25,15 +25,24 @@ export async function GET(request: NextRequest) {
   const listAll = searchParams.get("list");
   const name = searchParams.get("name");
 
-  // List all survey files
+  // Lista alla survey-filer — returnera riktiga site-namn från JSON-innehållet
   if (listAll === "true") {
     try {
       await mkdir(SURVEYS_DIR, { recursive: true });
       const files = await readdir(SURVEYS_DIR);
-      const jsonFiles = files
-        .filter((f) => f.endsWith(".json"))
-        .map((f) => f.replace(".json", ""));
-      return NextResponse.json({ surveys: jsonFiles });
+      const jsonFiles = files.filter((f) => f.endsWith(".json"));
+      const surveys: string[] = [];
+      for (const f of jsonFiles) {
+        const fallbackName = f.replace(".json", "");
+        try {
+          const content = await readFile(path.join(SURVEYS_DIR, f), "utf-8");
+          const data = JSON.parse(content);
+          surveys.push(data.site?.name || fallbackName);
+        } catch {
+          surveys.push(fallbackName);
+        }
+      }
+      return NextResponse.json({ surveys });
     } catch (err) {
       return NextResponse.json(
         { error: `Unable to list surveys: ${err}` },

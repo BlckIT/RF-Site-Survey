@@ -91,14 +91,24 @@ export default function WallEditor(): ReactNode {
     };
   }, []);
 
-  // Compute scale when image loads or dimensions change
+  // Beräkna skalning när bilden laddas eller dimensioner ändras
   useEffect(() => {
     if (imageLoaded && canvasRef.current && containerRef.current) {
       const containerWidth = containerRef.current.clientWidth;
       const scaleX = containerWidth / settings.dimensions.width;
-      setScale(scaleX);
-      canvasRef.current.style.width = "100%";
-      canvasRef.current.style.height = "auto";
+      const scaledHeight = settings.dimensions.height * scaleX;
+      // Begränsa till max viewport-höjd
+      const maxH = window.innerHeight - 200;
+      if (scaledHeight > maxH) {
+        const constrainedScale = maxH / settings.dimensions.height;
+        setScale(constrainedScale);
+        canvasRef.current.style.width = `${settings.dimensions.width * constrainedScale}px`;
+        canvasRef.current.style.height = `${maxH}px`;
+      } else {
+        setScale(scaleX);
+        canvasRef.current.style.width = "100%";
+        canvasRef.current.style.height = "auto";
+      }
     }
   }, [imageLoaded, settings.dimensions]);
 
@@ -788,7 +798,7 @@ export default function WallEditor(): ReactNode {
         </Button>
       )}
 
-      <div className="relative" ref={containerRef} tabIndex={0}>
+      <div className="relative max-h-[calc(100vh-200px)] overflow-hidden" ref={containerRef} tabIndex={0}>
         <canvas
           ref={canvasRef}
           width={settings.dimensions.width}
@@ -799,7 +809,7 @@ export default function WallEditor(): ReactNode {
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onContextMenu={handleContextMenu}
-          className="border border-gray-200 rounded-sm cursor-crosshair"
+          className="border border-gray-200 rounded-sm cursor-crosshair w-full h-auto max-h-[calc(100vh-200px)] object-contain"
         />
       </div>
     </div>
