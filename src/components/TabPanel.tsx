@@ -25,11 +25,22 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Wifi, WifiOff, RefreshCw, Loader2 } from "lucide-react";
+import { Wifi, WifiOff, RefreshCw, Loader2, Trash2, ArrowUp, ArrowDown, Plus, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getDefaults } from "@/components/GlobalSettings";
 import { useToast } from "@/components/ui/use-toast";
+import { KnownWifi } from "@/lib/types";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface NetworkDevice {
   device: string;
@@ -137,6 +148,26 @@ function SettingsPanel() {
   const [hiddenSsid, setHiddenSsid] = useState("");
   const [disconnecting, setDisconnecting] = useState(false);
 
+  // Known WiFi networks state
+  const [knownNetworks, setKnownNetworks] = useState<KnownWifi[]>([]);
+  const [newKnownSsid, setNewKnownSsid] = useState("");
+  const [newKnownPassword, setNewKnownPassword] = useState("");
+  const [newKnownPriority, setNewKnownPriority] = useState(0);
+  const [syncingKnown, setSyncingKnown] = useState(false);
+
+  // Persistent fallback hotspot config
+  const [fallbackEnabled, setFallbackEnabled] = useState(true);
+  const [fallbackSsid, setFallbackSsid] = useState("Buster");
+  const [fallbackPassword, setFallbackPassword] = useState("");
+  const [savingFallback, setSavingFallback] = useState(false);
+
+  // Varningsdialog-state för riskfyllda nätverksoperationer
+  const [warningDialog, setWarningDialog] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    onConfirm: () => void;
+  }>({ open: false, title: "", description: "", onConfirm: () => {} });
 
   const sudoerPassword = draft.sudoerPassword || "";
 
@@ -194,8 +225,173 @@ function SettingsPanel() {
     }
   }, [connectIface]);
 
-  // Toggle hotspot
+  // Hämta known networks från API
+  const fetchKnownNetworks = useCallback(async () => {
+    try {
+      const res = await fetch("/api/network/known");
+      const data = await res.json();
+      if (data.success) setKnownNetworks(data.networks || []);
+    } catch {
+      // Ignorera
+    }
+  }, []);
+
+  // Hämta fallback hotspot-config
+  const fetchFallbackConfig = useCallback(async () => {
+    try {
+      const res = await fetch("/api/network/hotspot-config");
+      const data = await res.json();
+      if (data.success && data.config) {
+        setFallbackEnabled(data.config.enabled ?? true);
+        setFallbackSsid(data.config.ssid || "Buster");
+        setFallbackPassword(data.config.password || "");
+      }
+    } catch {
+      // Ignorera
+    }
+  }, []);
+
+  // Spara fallback hotspot-config
+  const saveFallbackConfig = async () => {
+    setSavingFallback(true);
+    try {
+      const res = await fetch("/api/network/hotspot-config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ssid: fallbackSsid, password: fallbackPassword, enabled: fallbackEnabled }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({ description: "Fallback hotspot config saved." });
+      } else {
+        toast({ variant: "destructive", description: data.message || "Failed to save config." });
+      }
+    } catch (err) {
+      toast({ variant: "destructive", description: `Error: ${err instanceof Error ? err.message : String(err)}` });
+    } finally {
+      setSavingFallback(false);
+    }
+  };
+
+  // Synka known networks till NetworkManager
+  const syncKnownNetworks = async (nets: KnownWifi[]) => {
+    setSyncingKnown(true);
+    try {
+      const res = await fetch("/api/network/known", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ networks: nets, sudoerPassword }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({ description: data.message });
+      } else {
+        toast({ variant: "destructive", description: data.message || "Sync failed." });
+      }
+    } catch (err) {
+      toast({ variant: "destructive", description: `Error: ${err instanceof Error ? err.message : String(err)}` });
+    } finally {
+      setSyncingKnown(false);
+    }
+  };
+
+  // Lägg till known network
+  const addKnownNetwork = () => {
+    if (!newKnownSsid.trim()) return;
+    const updated = [...knownNetworks, {
+      ssid: newKnownSsid.trim(),
+      password: newKnownPassword || undefined,
+      priority: newKnownPriority,
+      autoConnect: true,
+    }];
+    setKnownNetworks(updated);
+    setNewKnownSsid("");
+    setNewKnownPassword("");
+    setNewKnownPriority(0);
+    syncKnownNetworks(updated);
+  };
+
+  // Ta bort known network
+  const removeKnownNetwork = (index: number) => {
+    const updated = knownNetworks.filter((_, i) => i !== index);
+    setKnownNetworks(updated);
+    syncKnownNetworks(updated);
+  };
+
+  // Flytta known network upp/ner (ändra prioritet)
+  const moveKnownNetwork = (index: number, direction: "up" | "down") => {
+    const updated = [...knownNetworks];
+    const swapIdx = direction === "up" ? index - 1 : index + 1;
+    if (swapIdx < 0 || swapIdx >= updated.length) return;
+    [updated[index], updated[swapIdx]] = [updated[swapIdx], updated[index]];
+    // Uppdatera prioriteter baserat på position (högst först)
+    updated.forEach((net, i) => { net.priority = updated.length - i; });
+    setKnownNetworks(updated);
+    syncKnownNetworks(updated);
+  };
+
+  // Toggle autoConnect för known network
+  const toggleKnownAutoConnect = (index: number) => {
+    const updated = [...knownNetworks];
+    updated[index] = { ...updated[index], autoConnect: !updated[index].autoConnect };
+    setKnownNetworks(updated);
+    syncKnownNetworks(updated);
+  };
+
+  // Connect Now — anslut till ett known network
+  const connectKnownNetwork = async (net: KnownWifi) => {
+    if (!connectIface) return;
+    setConnecting(true);
+    try {
+      const res = await fetch("/api/network/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ssid: net.ssid, password: net.password || "", ifname: connectIface, hidden: false, sudoerPassword }),
+      });
+      const data = await res.json();
+      toast({ description: data.message, variant: data.success ? "default" : "destructive" });
+      if (data.success) {
+        await fetchDeviceStatus();
+        await scanNetworks();
+      }
+    } catch (err) {
+      toast({ variant: "destructive", description: `Error: ${err instanceof Error ? err.message : String(err)}` });
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  /** Visa varningsdialog innan en riskfylld operation */
+  const showWarning = (title: string, description: string, onConfirm: () => void) => {
+    setWarningDialog({ open: true, title, description, onConfirm });
+  };
+
+  /** Kolla om disconnect är riskfyllt (enda aktiva anslutningen) */
+  const isOnlyConnection = (ifname: string): boolean => {
+    const connectedDevices = networkDevices.filter((d) => d.state.includes("connected") && d.connection);
+    return connectedDevices.length <= 1 && connectedDevices.some((d) => d.device === ifname);
+  };
+
+  /** Kolla om hotspot är enda anslutningen */
+  const isHotspotOnlyConnection = (): boolean => {
+    const connectedDevices = networkDevices.filter((d) => d.state.includes("connected") && d.connection);
+    return connectedDevices.length <= 1 && hotspotActive;
+  };
+
+  // Toggle hotspot — med varning om det är riskfyllt
   const toggleHotspot = async () => {
+    if (hotspotActive && isHotspotOnlyConnection()) {
+      showWarning(
+        "Stop Hotspot?",
+        "Warning: Stopping the hotspot while no other network is connected may make the device unreachable.",
+        () => doToggleHotspot(),
+      );
+      return;
+    }
+    doToggleHotspot();
+  };
+
+  const doToggleHotspot = async () => {
     setHotspotLoading(true);
     try {
       const action = hotspotActive ? "stop" : "start";
@@ -215,8 +411,24 @@ function SettingsPanel() {
     }
   };
 
-  // Connect to network
+  // Connect to network — med varning vid nätverksbyte
   const connectToNetwork = async () => {
+    const ssid = isHidden ? hiddenSsid : selectedNetwork?.ssid;
+    if (!ssid || !connectIface) return;
+    // Kolla om vi byter från ett befintligt nätverk
+    const currentDevice = networkDevices.find((d) => d.device === connectIface && d.state.includes("connected"));
+    if (currentDevice && currentDevice.connection) {
+      showWarning(
+        "Switch Network?",
+        "Connecting to a different network will disconnect from the current one. The device may be temporarily unreachable.",
+        () => doConnectToNetwork(),
+      );
+      return;
+    }
+    doConnectToNetwork();
+  };
+
+  const doConnectToNetwork = async () => {
     const ssid = isHidden ? hiddenSsid : selectedNetwork?.ssid;
     if (!ssid || !connectIface) return;
     setConnecting(true);
@@ -244,8 +456,20 @@ function SettingsPanel() {
     }
   };
 
-  // Disconnect interface
+  // Disconnect interface — med varning om det är enda anslutningen
   const disconnectDevice = async (ifname: string) => {
+    if (isOnlyConnection(ifname)) {
+      showWarning(
+        "Disconnect?",
+        "Warning: Disconnecting this interface may make the device unreachable. Make sure you have another way to connect (e.g., hotspot or ethernet).",
+        () => doDisconnectDevice(ifname),
+      );
+      return;
+    }
+    doDisconnectDevice(ifname);
+  };
+
+  const doDisconnectDevice = async (ifname: string) => {
     setDisconnecting(true);
     try {
       const res = await fetch("/api/network/disconnect", {
@@ -284,7 +508,9 @@ function SettingsPanel() {
   useEffect(() => {
     fetchInterfaces();
     fetchDeviceStatus();
-  }, [fetchInterfaces, fetchDeviceStatus]);
+    fetchKnownNetworks();
+    fetchFallbackConfig();
+  }, [fetchInterfaces, fetchDeviceStatus, fetchKnownNetworks, fetchFallbackConfig]);
 
   useEffect(() => {
     fetchHotspotStatus();
@@ -559,6 +785,180 @@ function SettingsPanel() {
                 </div>
               </AccordionContent>
             </AccordionItem>
+
+            <AccordionItem value="known-networks" className="border-gray-200">
+              <AccordionTrigger className="text-sm font-semibold text-gray-700 py-2 hover:no-underline">
+                Known Networks
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-3">
+                  {knownNetworks.length > 0 && (
+                    <div className="space-y-1">
+                      {knownNetworks.map((net, idx) => (
+                        <div key={`${net.ssid}-${idx}`} className="flex items-center justify-between text-sm border border-gray-200 rounded-sm px-3 py-2">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <Wifi className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+                            <span className="font-medium truncate">{net.ssid}</span>
+                            <span className="text-xs text-gray-400">pri:{net.priority}</span>
+                            <button
+                              onClick={() => toggleKnownAutoConnect(idx)}
+                              className={`text-xs px-1.5 py-0.5 rounded ${net.autoConnect ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}
+                            >
+                              {net.autoConnect ? "Auto" : "Manual"}
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0"
+                              disabled={idx === 0}
+                              onClick={() => moveKnownNetwork(idx, "up")}
+                              title="Move up (higher priority)"
+                            >
+                              <ArrowUp className="w-3 h-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0"
+                              disabled={idx === knownNetworks.length - 1}
+                              onClick={() => moveKnownNetwork(idx, "down")}
+                              title="Move down (lower priority)"
+                            >
+                              <ArrowDown className="w-3 h-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs text-blue-500 hover:text-blue-700"
+                              disabled={connecting || !connectIface}
+                              onClick={() => connectKnownNetwork(net)}
+                            >
+                              Connect
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0 text-gray-400 hover:text-red-500"
+                              onClick={() => removeKnownNetwork(idx)}
+                              title="Remove network"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {knownNetworks.length === 0 && (
+                    <p className="text-sm text-gray-500">No known networks saved.</p>
+                  )}
+                  <div className="border border-dashed border-gray-300 rounded-sm p-3 space-y-2">
+                    <p className="text-xs font-semibold text-gray-600">Add Network</p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                      <Input
+                        type="text"
+                        className={inputClass}
+                        placeholder="SSID"
+                        value={newKnownSsid}
+                        onChange={(e) => setNewKnownSsid(e.target.value)}
+                      />
+                      <PasswordInput
+                        value={newKnownPassword}
+                        onChange={(val) => setNewKnownPassword(val)}
+                      />
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          className={inputClass + " w-20"}
+                          placeholder="Priority"
+                          value={newKnownPriority}
+                          onChange={(e) => setNewKnownPriority(parseInt(e.target.value) || 0)}
+                          title="Priority (higher = connect first)"
+                        />
+                        <Button size="sm" onClick={addKnownNetwork} disabled={!newKnownSsid.trim() || syncingKnown}>
+                          <Plus className="w-3 h-3 mr-1" />
+                          Add
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                  {knownNetworks.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => syncKnownNetworks(knownNetworks)}
+                      disabled={syncingKnown || !sudoerPassword}
+                    >
+                      {syncingKnown ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-1" />}
+                      Sync to NetworkManager
+                    </Button>
+                  )}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="fallback-hotspot" className="border-gray-200">
+              <AccordionTrigger className="text-sm font-semibold text-gray-700 py-2 hover:no-underline">
+                Persistent Fallback Hotspot
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <Switch
+                      checked={fallbackEnabled}
+                      onCheckedChange={(checked) => setFallbackEnabled(checked)}
+                      aria-label="Toggle persistent fallback hotspot"
+                    />
+                    <span className="text-sm">
+                      {fallbackEnabled ? (
+                        <span className="text-green-600 font-medium">Enabled</span>
+                      ) : (
+                        <span className="text-gray-500">Disabled</span>
+                      )}
+                    </span>
+                  </div>
+                  {fallbackEnabled && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-sm px-3 py-2">
+                      <p className="text-xs text-blue-700">
+                        The device will always have a fallback hotspot (SSID: {fallbackSsid || "Buster"}) even if the app is not running.
+                        This requires the systemd service to be installed (see system/rf-survey-hotspot-setup.sh).
+                      </p>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="flex flex-col gap-1">
+                      <Label className="text-xs font-semibold">Fallback SSID</Label>
+                      <Input
+                        type="text"
+                        className={inputClass}
+                        value={fallbackSsid}
+                        onChange={(e) => setFallbackSsid(e.target.value)}
+                        placeholder="Buster"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <Label className="text-xs font-semibold">
+                        Password (empty = open network)
+                      </Label>
+                      <PasswordInput
+                        value={fallbackPassword}
+                        onChange={(val) => setFallbackPassword(val)}
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={saveFallbackConfig}
+                    disabled={savingFallback}
+                  >
+                    {savingFallback ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : null}
+                    Save Fallback Config
+                  </Button>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
           </Accordion>
         </Tabs.Content>
 
@@ -617,6 +1017,33 @@ function SettingsPanel() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Varningsdialog för riskfyllda nätverksoperationer */}
+      <AlertDialog open={warningDialog.open} onOpenChange={(open) => setWarningDialog((prev) => ({ ...prev, open }))}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              {warningDialog.title}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {warningDialog.description}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                warningDialog.onConfirm();
+                setWarningDialog((prev) => ({ ...prev, open: false }));
+              }}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              Continue Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* ═══ SURVEY TAB ═══ */}
         <Tabs.Content value="survey" className="space-y-4">

@@ -119,6 +119,7 @@ export interface GlobalAppSettings {
   wifiInterface: string;
   targetSSID: string;
   snapRadius: number;
+  knownWifiNetworks: KnownWifi[];
 }
 
 /**
@@ -245,6 +246,16 @@ export interface Wall {
   y2: number;
   material: WallMaterial;
   customAttenuationDb?: number;
+}
+
+/**
+ * Known WiFi network for auto-connect management
+ */
+export interface KnownWifi {
+  ssid: string;
+  password?: string;   // tom = öppet nätverk
+  priority: number;    // högre = försök först
+  autoConnect: boolean;
 }
 
 export interface SurveyPointActions {

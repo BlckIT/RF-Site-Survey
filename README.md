@@ -62,6 +62,51 @@ Install `iperf3` on both the survey laptop and a server machine. Start the serve
 - [FAQ](docs/FAQ.md)
 - [Changelog](CHANGELOG.md)
 
+## Deployment
+
+### Requirements
+
+- Node.js 22+
+- pm2 (`npm install -g pm2`)
+
+### Installation
+
+```bash
+git clone https://github.com/BlckIT/RF-Site-Survey.git /opt/rf-site-survey
+cd /opt/rf-site-survey
+npm link            # makes rf-survey available globally
+rf-survey setup     # install, build, start, enable boot
+```
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `rf-survey start` | Start the application |
+| `rf-survey stop` | Stop the application |
+| `rf-survey restart` | Restart the application |
+| `rf-survey status` | Show application status |
+| `rf-survey update` | Pull latest code, rebuild, and restart |
+| `rf-survey logs` | Show application logs (follow mode) |
+| `rf-survey setup` | Initial setup: install, build, start, enable boot |
+| `rf-survey help` | Show help |
+
+### Updating
+
+```bash
+rf-survey update
+```
+
+This pulls the latest code, installs dependencies, rebuilds, and restarts the service. It shows which commit you were on and which you updated to.
+
+### Auto-start on boot
+
+`rf-survey setup` runs `pm2 startup` which generates a systemd command. Run that command as root to enable auto-start. pm2 will restore all saved processes on reboot.
+
+### Watchdog
+
+pm2 automatically restarts the application on crash — up to 10 restarts with a 5-second delay between each. Memory is capped at 512 MB; if exceeded, pm2 restarts the process.
+
 ## Credits
 
 Fork of [wifi-heatmapper](https://github.com/hnykda/wifi-heatmapper) by @hnykda, inspired by [python-wifi-survey-heatmap](https://github.com/jantman/python-wifi-survey-heatmap).

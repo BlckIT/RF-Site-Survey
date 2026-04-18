@@ -16,7 +16,7 @@ import {
   migrateLocalStorageToFiles,
 } from "../lib/localStorageMigration";
 import { toast } from "./ui/use-toast";
-import { HeatmapSettings, Floor, Site, SurveyPoint, SurveyPointActions } from "../lib/types";
+import { HeatmapSettings, Floor, Site, SurveyPoint, SurveyPointActions, KnownWifi } from "../lib/types";
 import { join } from "path";
 
 // ── Helpers ──
@@ -85,6 +85,7 @@ function extractGlobals(settings: HeatmapSettings) {
     wifiInterface: settings.wifiInterface,
     targetSSID: settings.targetSSID,
     snapRadius: settings.snapRadius,
+    knownWifiNetworks: settings.knownWifiNetworks,
   };
 }
 
@@ -115,6 +116,7 @@ const DEFAULT_GLOBALS = {
   wifiInterface: "",
   targetSSID: "",
   snapRadius: 8,
+  knownWifiNetworks: [] as KnownWifi[],
 };
 
 /**
@@ -172,6 +174,7 @@ function migrateOldFormat(data: any, fileName: string): HeatmapSettings {
     wifiInterface: data.wifiInterface ?? DEFAULT_GLOBALS.wifiInterface,
     targetSSID: data.targetSSID ?? DEFAULT_GLOBALS.targetSSID,
     snapRadius: data.snapRadius ?? DEFAULT_GLOBALS.snapRadius,
+    knownWifiNetworks: data.knownWifiNetworks ?? DEFAULT_GLOBALS.knownWifiNetworks,
   };
 
   return buildSettings(site, globals);

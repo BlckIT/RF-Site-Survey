@@ -1,0 +1,61 @@
+[Unit]
+Description=RF Survey Fallback Hotspot
+Documentation=https://github.com/blckit/wifi-heatmapper
+After=NetworkManager.service
+Wants=NetworkManager.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+
+# Läs hotspot-config från appen om den finns, annars default SSID "Buster" (öppet)
+ExecStartPre=/bin/bash -c '\
+  CONFIG="/opt/rf-survey/hotspot-config.json"; \
+  if [ -f "$CONFIG" ]; then \
+    ENABLED=$(python3 -c "import json; print(json.load(open(\"$CONFIG\")).get(\"enabled\", True))" 2>/dev/null || echo "true"); \
+    if [ "$ENABLED" = "False" ] || [ "$ENABLED" = "false" ]; then \
+      echo "Fallback hotspot disabled via config"; exit 1; \
+    fi; \
+  fi'
+
+ExecStart=/bin/bash -c '\
+  CONFIG="/opt/rf-survey/hotspot-config.json"; \
+  SSID="Buster"; \
+  PASSWORD=""; \
+  if [ -f "$CONFIG" ]; then \
+    SSID=$(python3 -c "import json; print(json.load(open(\"$CONFIG\")).get(\"ssid\", \"Buster\"))" 2>/dev/null || echo "Buster"); \
+    PASSWORD=$(python3 -c "import json; print(json.load(open(\"$CONFIG\")).get(\"password\", \"\"))" 2>/dev/null || echo ""); \
+  fi; \
+  CON_EXISTS=$(nmcli -t -f NAME connection show | grep -c "^rf-survey-fallback$" || true); \
+  if [ "$CON_EXISTS" -gt 0 ]; then \
+    nmcli connection modify rf-survey-fallback 802-11-wireless.ssid "$SSID"; \
+    if [ -n "$PASSWORD" ] && [ ${#PASSWORD} -ge 8 ]; then \
+      nmcli connection modify rf-survey-fallback wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$PASSWORD"; \
+    else \
+      nmcli connection modify rf-survey-fallback wifi-sec.key-mgmt none; \
+    fi; \
+  else \
+    if [ -n "$PASSWORD" ] && [ ${#PASSWORD} -ge 8 ]; then \
+      nmcli connection add type wifi ifname wlan0 con-name rf-survey-fallback \
+        ssid "$SSID" 802-11-wireless.mode ap 802-11-wireless.band bg \
+        wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$PASSWORD" \
+        ipv4.method shared ipv6.method disabled \
+        connection.autoconnect yes connection.autoconnect-priority -1; \
+    else \
+      nmcli connection add type wifi ifname wlan0 con-name rf-survey-fallback \
+        ssid "$SSID" 802-11-wireless.mode ap 802-11-wireless.band bg \
+        ipv4.method shared ipv6.method disabled \
+        connection.autoconnect yes connection.autoconnect-priority -1; \
+    fi; \
+  fi; \
+  ACTIVE=$(nmcli -t -f NAME connection show --active | grep -c "^rf-survey-hotspot$" || true); \
+  if [ "$ACTIVE" -gt 0 ]; then \
+    echo "App hotspot already active, skipping fallback activation"; \
+  else \
+    nmcli connection up rf-survey-fallback || true; \
+  fi'
+
+ExecStop=/bin/bash -c 'nmcli connection down rf-survey-fallback 2>/dev/null || true'
+
+[Install]
+WantedBy=multi-user.target
