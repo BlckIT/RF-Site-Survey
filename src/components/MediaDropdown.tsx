@@ -87,6 +87,9 @@ export default function MediaDropdown({
         }
       }
       setSelected(defaultValue);
+    } else {
+      // Inget defaultValue — rensa valet (nytt tomt projekt)
+      setSelected("");
     }
   }, [defaultValue, files]);
 

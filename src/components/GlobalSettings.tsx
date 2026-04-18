@@ -61,7 +61,7 @@ function createEmptySite(name: string): Site {
 }
 
 function getActiveFloor(site: Site): Floor {
-  const idx = Math.min(site.activeFloorIndex, site.floors.length - 1);
+  const idx = Math.min(site.activeFloorIndex ?? 0, site.floors.length - 1);
   return site.floors[Math.max(0, idx)] || createEmptyFloor("Floor 1");
 }
 
