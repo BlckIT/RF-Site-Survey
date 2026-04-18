@@ -40,19 +40,30 @@ export default function WallEditor(): ReactNode {
     endpoint: "start" | "end";
   } | null>(null);
 
+  // Material popover state (visas vid klick på vägg)
+  const [materialPopover, setMaterialPopover] = useState<{
+    wallId: string;
+    x: number;
+    y: number;
+  } | null>(null);
+
   // Material selection state
   const [activeMaterial, setActiveMaterial] = useState<WallMaterial>("drywall");
   const [selectedWallId, setSelectedWallId] = useState<string | null>(null);
 
   // Snap radius from global settings
   const snapRadius = settings.snapRadius ?? 8;
-
-  // Snap target for visual feedback
   const [snapTarget, setSnapTarget] = useState<{
     x: number;
     y: number;
-    type: "close" | "endpoint";
+    type: "close" | "endpoint" | "t-junction";
+    wallId?: string;
   } | null>(null);
+
+  // Samla T-junction splits som ska utföras vid commit
+  const pendingTJunctionSplits = useRef<
+    { wallId: string; x: number; y: number }[]
+  >([]);
 
   const isDrawing = chainPoints.length > 0;
 
@@ -85,6 +96,7 @@ export default function WallEditor(): ReactNode {
         setChainPoints([]);
         setMousePos(null);
         setSnapTarget(null);
+        pendingTJunctionSplits.current = [];
       }
     };
     const onKeyUp = (e: KeyboardEvent) => {
@@ -144,21 +156,27 @@ export default function WallEditor(): ReactNode {
     return points;
   }, [settings.walls]);
 
-  // Find nearest snap target (existing endpoint or chain-close point)
+  // Find nearest snap target (existing endpoint, chain-close, or T-junction on wall segment)
   const findSnapTarget = useCallback(
     (pos: {
       x: number;
       y: number;
-    }): { x: number; y: number; type: "close" | "endpoint" } | null => {
+    }): {
+      x: number;
+      y: number;
+      type: "close" | "endpoint" | "t-junction";
+      wallId?: string;
+    } | null => {
       const threshold = snapRadius / scale;
       let bestDist = threshold;
       let bestTarget: {
         x: number;
         y: number;
-        type: "close" | "endpoint";
+        type: "close" | "endpoint" | "t-junction";
+        wallId?: string;
       } | null = null;
 
-      // Check chain-close (first point of current chain) — priority
+      // Check chain-close (first point of current chain) — högsta prioritet
       if (chainPoints.length >= 2) {
         const first = chainPoints[0];
         const dist = Math.hypot(pos.x - first.x, pos.y - first.y);
@@ -178,9 +196,39 @@ export default function WallEditor(): ReactNode {
         }
       }
 
+      // Check T-junction: närmaste punkt på befintliga väggsegment (inte endpoints)
+      for (const wall of settings.walls) {
+        const closest = closestPointOnSegment(
+          pos.x,
+          pos.y,
+          wall.x1,
+          wall.y1,
+          wall.x2,
+          wall.y2,
+        );
+        // Skippa om närmaste punkten är en endpoint (redan hanterad ovan)
+        const distToStart = Math.hypot(
+          closest.x - wall.x1,
+          closest.y - wall.y1,
+        );
+        const distToEnd = Math.hypot(closest.x - wall.x2, closest.y - wall.y2);
+        if (distToStart < 1 || distToEnd < 1) continue;
+
+        const dist = Math.hypot(pos.x - closest.x, pos.y - closest.y);
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestTarget = {
+            x: closest.x,
+            y: closest.y,
+            type: "t-junction",
+            wallId: wall.id,
+          };
+        }
+      }
+
       return bestTarget;
     },
-    [snapRadius, scale, chainPoints, getAllEndpoints],
+    [snapRadius, scale, chainPoints, getAllEndpoints, settings.walls],
   );
 
   // Get the effective mouse position (with endpoint snap > shift-snap)
@@ -240,12 +288,21 @@ export default function WallEditor(): ReactNode {
     if (snapTarget && isDrawing) {
       ctx.beginPath();
       ctx.arc(snapTarget.x, snapTarget.y, 10, 0, Math.PI * 2);
-      ctx.fillStyle =
+      const snapColor =
         snapTarget.type === "close"
           ? "rgba(34, 197, 94, 0.35)"
-          : "rgba(59, 130, 246, 0.35)";
+          : snapTarget.type === "t-junction"
+            ? "rgba(249, 115, 22, 0.35)"
+            : "rgba(59, 130, 246, 0.35)";
+      const snapStroke =
+        snapTarget.type === "close"
+          ? "#22c55e"
+          : snapTarget.type === "t-junction"
+            ? "#f97316"
+            : "#3b82f6";
+      ctx.fillStyle = snapColor;
       ctx.fill();
-      ctx.strokeStyle = snapTarget.type === "close" ? "#22c55e" : "#3b82f6";
+      ctx.strokeStyle = snapStroke;
       ctx.lineWidth = 2;
       ctx.stroke();
     }
@@ -310,7 +367,9 @@ export default function WallEditor(): ReactNode {
           snapTarget
             ? snapTarget.type === "close"
               ? "#22c55e"
-              : "#3b82f6"
+              : snapTarget.type === "t-junction"
+                ? "#f97316"
+                : "#3b82f6"
             : "#f97316",
           2,
         );
@@ -439,17 +498,35 @@ export default function WallEditor(): ReactNode {
 
     const raw = getCanvasCoords(e);
 
-    // If not drawing, check if clicking on a wall to select it
+    // If not drawing, check if clicking on a wall to select it and show popover
     if (!isDrawing) {
       const wallId = findNearWall(raw.x, raw.y);
       if (wallId) {
         setSelectedWallId(wallId);
+        // Visa material-popover vid klickpositionen (screen coords relativt container)
+        const rect = e.currentTarget.getBoundingClientRect();
+        const containerRect = containerRef.current?.getBoundingClientRect();
+        const offsetX = containerRect ? rect.left - containerRect.left : 0;
+        const offsetY = containerRect ? rect.top - containerRect.top : 0;
+        setMaterialPopover({
+          wallId,
+          x: e.clientX - rect.left + offsetX,
+          y: e.clientY - rect.top + offsetY,
+        });
         return;
       }
       setSelectedWallId(null);
-      // Start a new chain — check for endpoint snap first
+      setMaterialPopover(null);
+      // Start a new chain — check for endpoint/t-junction snap first
       const snap = findSnapTarget(raw);
       if (snap) {
+        if (snap.type === "t-junction" && snap.wallId) {
+          pendingTJunctionSplits.current.push({
+            wallId: snap.wallId,
+            x: snap.x,
+            y: snap.y,
+          });
+        }
         setChainPoints([{ x: snap.x, y: snap.y }]);
       } else {
         setChainPoints([raw]);
@@ -457,22 +534,28 @@ export default function WallEditor(): ReactNode {
       return;
     }
 
-    // Check for endpoint/close snap first
+    // Check for endpoint/close/t-junction snap first
     const snap = findSnapTarget(raw);
     if (snap) {
       if (snap.type === "close" && chainPoints.length >= 2) {
         // Snap-to-close: add the closing point and auto-commit
         setChainPoints((prev) => {
           const updated = [...prev, { x: snap.x, y: snap.y }];
-          // We need to commit after state update, so use a timeout
           return updated;
         });
-        // Commit the chain with the closing point included
         const closedChain = [...chainPoints, { x: snap.x, y: snap.y }];
         commitChainWith(closedChain);
         return;
       }
-      // Snap to existing endpoint
+      // Registrera T-junction split om det är en mitt-på-vägg snap
+      if (snap.type === "t-junction" && snap.wallId) {
+        pendingTJunctionSplits.current.push({
+          wallId: snap.wallId,
+          x: snap.x,
+          y: snap.y,
+        });
+      }
+      // Snap to existing endpoint or T-junction point
       setChainPoints((prev) => [...prev, { x: snap.x, y: snap.y }]);
       return;
     }
@@ -497,8 +580,38 @@ export default function WallEditor(): ReactNode {
         setChainPoints([]);
         setMousePos(null);
         setSnapTarget(null);
+        pendingTJunctionSplits.current = [];
         return;
       }
+
+      // Utför T-junction splits på befintliga väggar
+      const existingWalls = [...settings.walls];
+      for (const split of pendingTJunctionSplits.current) {
+        const wallIdx = existingWalls.findIndex((w) => w.id === split.wallId);
+        if (wallIdx === -1) continue;
+        const wall = existingWalls[wallIdx];
+        // Splitta väggen i två segment vid T-junction-punkten
+        const wallA: Wall = {
+          id: `wall_${Date.now()}_tsplit_a_${wallIdx}`,
+          x1: wall.x1,
+          y1: wall.y1,
+          x2: split.x,
+          y2: split.y,
+          material: wall.material,
+          customAttenuationDb: wall.customAttenuationDb,
+        };
+        const wallB: Wall = {
+          id: `wall_${Date.now()}_tsplit_b_${wallIdx}`,
+          x1: split.x,
+          y1: split.y,
+          x2: wall.x2,
+          y2: wall.y2,
+          material: wall.material,
+          customAttenuationDb: wall.customAttenuationDb,
+        };
+        existingWalls.splice(wallIdx, 1, wallA, wallB);
+      }
+      pendingTJunctionSplits.current = [];
 
       const newWalls: Wall[] = [];
       for (let i = 0; i < points.length - 1; i++) {
@@ -512,7 +625,7 @@ export default function WallEditor(): ReactNode {
         });
       }
 
-      updateSettings({ walls: [...settings.walls, ...newWalls] });
+      updateSettings({ walls: [...existingWalls, ...newWalls] });
       setChainPoints([]);
       setMousePos(null);
       setSnapTarget(null);
@@ -680,8 +793,8 @@ export default function WallEditor(): ReactNode {
           chain.
         </p>
         <p>
-          Points snap to nearby endpoints and to the first point to close a
-          room.
+          Points snap to nearby endpoints, wall midpoints (T-junctions), and to
+          the first point to close a room.
         </p>
         <p>
           Hold Shift for horizontal/vertical snap. Drag endpoints to adjust.

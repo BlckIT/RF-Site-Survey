@@ -151,7 +151,7 @@ function SettingsPanel() {
   // Network management state
   const [networkDevices, setNetworkDevices] = useState<NetworkDevice[]>([]);
   const [hotspotIface, setHotspotIface] = useState("");
-  const [hotspotSsid, setHotspotSsid] = useState("BlckIT-Survey");
+  const [hotspotSsid, setHotspotSsid] = useState("Buster");
   const [hotspotPassword, setHotspotPassword] = useState("");
   const [hotspotActive, setHotspotActive] = useState(false);
   const [hotspotLoading, setHotspotLoading] = useState(false);
@@ -175,11 +175,9 @@ function SettingsPanel() {
   const [newKnownPriority, setNewKnownPriority] = useState(0);
   const [syncingKnown, setSyncingKnown] = useState(false);
 
-  // Persistent fallback hotspot config
-  const [fallbackEnabled, setFallbackEnabled] = useState(true);
-  const [fallbackSsid, setFallbackSsid] = useState("Buster");
-  const [fallbackPassword, setFallbackPassword] = useState("");
-  const [savingFallback, setSavingFallback] = useState(false);
+  // Hotspot fallback-auto-activate (sparas i hotspot-config.json)
+  const [hotspotAutoActivate, setHotspotAutoActivate] = useState(true);
+  const [savingHotspotConfig, setSavingHotspotConfig] = useState(false);
 
   // Varningsdialog-state för riskfyllda nätverksoperationer
   const [warningDialog, setWarningDialog] = useState<{
@@ -260,37 +258,37 @@ function SettingsPanel() {
     }
   }, []);
 
-  // Hämta fallback hotspot-config
-  const fetchFallbackConfig = useCallback(async () => {
+  // Hämta hotspot-config (fallback auto-activate + SSID/password)
+  const fetchHotspotConfig = useCallback(async () => {
     try {
       const res = await fetch("/api/network/hotspot-config");
       const data = await res.json();
       if (data.success && data.config) {
-        setFallbackEnabled(data.config.enabled ?? true);
-        setFallbackSsid(data.config.ssid || "Buster");
-        setFallbackPassword(data.config.password || "");
+        setHotspotAutoActivate(data.config.enabled ?? true);
+        setHotspotSsid(data.config.ssid || "Buster");
+        setHotspotPassword(data.config.password || "");
       }
     } catch {
       // Ignorera
     }
   }, []);
 
-  // Spara fallback hotspot-config
-  const saveFallbackConfig = async () => {
-    setSavingFallback(true);
+  // Spara hotspot-config (fallback auto-activate + SSID/password)
+  const saveHotspotConfig = async () => {
+    setSavingHotspotConfig(true);
     try {
       const res = await fetch("/api/network/hotspot-config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ssid: fallbackSsid,
-          password: fallbackPassword,
-          enabled: fallbackEnabled,
+          ssid: hotspotSsid,
+          password: hotspotPassword,
+          enabled: hotspotAutoActivate,
         }),
       });
       const data = await res.json();
       if (data.success) {
-        toast({ description: "Fallback hotspot config saved." });
+        toast({ description: "Hotspot config saved." });
       } else {
         toast({
           variant: "destructive",
@@ -303,7 +301,7 @@ function SettingsPanel() {
         description: `Error: ${err instanceof Error ? err.message : String(err)}`,
       });
     } finally {
-      setSavingFallback(false);
+      setSavingHotspotConfig(false);
     }
   };
 
@@ -609,12 +607,12 @@ function SettingsPanel() {
     fetchInterfaces();
     fetchDeviceStatus();
     fetchKnownNetworks();
-    fetchFallbackConfig();
+    fetchHotspotConfig();
   }, [
     fetchInterfaces,
     fetchDeviceStatus,
     fetchKnownNetworks,
-    fetchFallbackConfig,
+    fetchHotspotConfig,
   ]);
 
   useEffect(() => {
@@ -752,75 +750,116 @@ function SettingsPanel() {
                 Hotspot
               </AccordionTrigger>
               <AccordionContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="flex flex-col gap-1">
-                    <Label className="text-xs font-semibold">
-                      Interface&nbsp;
-                      <PopoverHelper text="Select which WiFi adapter to use for the hotspot." />
-                    </Label>
-                    <select
-                      className={inputClass}
-                      value={hotspotIface}
-                      onChange={(e) => setHotspotIface(e.target.value)}
-                      disabled={hotspotActive}
-                    >
-                      {wifiInterfaces.map((iface) => {
-                        const usedBy = ifaceUsedBy(iface, "hotspot");
-                        return (
-                          <option key={iface} value={iface}>
-                            {iface}
-                            {usedBy ? ` (used by ${usedBy})` : ""}
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <Label className="text-xs font-semibold">SSID</Label>
-                    <Input
-                      type="text"
-                      className={inputClass}
-                      value={hotspotSsid}
-                      onChange={(e) => setHotspotSsid(e.target.value)}
-                      placeholder="BlckIT-Survey"
-                      disabled={hotspotActive}
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <Label className="text-xs font-semibold">
-                      Password (min 8 characters)&nbsp;
-                      <PopoverHelper text="WPA2 password for the hotspot. Must be at least 8 characters." />
-                    </Label>
-                    <PasswordInput
-                      value={hotspotPassword}
-                      onChange={(val) => setHotspotPassword(val)}
-                    />
-                  </div>
-                  <div className="flex items-end gap-3 pb-0.5">
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        checked={hotspotActive}
-                        onCheckedChange={toggleHotspot}
-                        disabled={
-                          hotspotLoading ||
-                          (!hotspotActive &&
-                            (hotspotPassword.length < 8 || !hotspotSsid))
-                        }
-                        aria-label="Toggle hotspot"
-                      />
-                      <span className="text-sm">
-                        {hotspotLoading ? (
-                          <Loader2 className="w-4 h-4 animate-spin inline" />
-                        ) : hotspotActive ? (
-                          <span className="text-green-600 font-medium">
-                            Active
-                          </span>
-                        ) : (
-                          <span className="text-gray-500">Inactive</span>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="flex flex-col gap-1">
+                      <Label className="text-xs font-semibold">
+                        Interface&nbsp;
+                        <PopoverHelper text="Select which WiFi adapter to use for the hotspot. Leave empty to auto-select the first available." />
+                      </Label>
+                      <select
+                        className={inputClass}
+                        value={hotspotIface}
+                        onChange={(e) => setHotspotIface(e.target.value)}
+                        disabled={hotspotActive}
+                      >
+                        {wifiInterfaces.length === 0 && (
+                          <option value="">Auto (first available)</option>
                         )}
-                      </span>
+                        {wifiInterfaces.map((iface) => {
+                          const usedBy = ifaceUsedBy(iface, "hotspot");
+                          return (
+                            <option key={iface} value={iface}>
+                              {iface}
+                              {usedBy ? ` (used by ${usedBy})` : ""}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <Label className="text-xs font-semibold">SSID</Label>
+                      <Input
+                        type="text"
+                        className={inputClass}
+                        value={hotspotSsid}
+                        onChange={(e) => setHotspotSsid(e.target.value)}
+                        placeholder="Buster"
+                        disabled={hotspotActive}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <Label className="text-xs font-semibold">
+                        Password (empty = open network)&nbsp;
+                        <PopoverHelper text="WPA2 password for the hotspot. Leave empty for an open network." />
+                      </Label>
+                      <PasswordInput
+                        value={hotspotPassword}
+                        onChange={(val) => setHotspotPassword(val)}
+                      />
+                    </div>
+                    <div className="flex items-end gap-3 pb-0.5">
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={hotspotActive}
+                          onCheckedChange={toggleHotspot}
+                          disabled={
+                            hotspotLoading || (!hotspotActive && !hotspotSsid)
+                          }
+                          aria-label="Toggle hotspot"
+                        />
+                        <span className="text-sm">
+                          {hotspotLoading ? (
+                            <Loader2 className="w-4 h-4 animate-spin inline" />
+                          ) : hotspotActive ? (
+                            <span className="text-green-600 font-medium">
+                              Active
+                            </span>
+                          ) : (
+                            <span className="text-gray-500">Inactive</span>
+                          )}
+                        </span>
+                      </div>
                     </div>
                   </div>
+
+                  {/* Auto-activate fallback */}
+                  <div className="border-t border-gray-100 pt-3">
+                    <div className="flex items-center gap-3">
+                      <Switch
+                        checked={hotspotAutoActivate}
+                        onCheckedChange={(checked) =>
+                          setHotspotAutoActivate(checked)
+                        }
+                        aria-label="Auto-activate hotspot when no external connection is available"
+                      />
+                      <span className="text-sm">
+                        Auto-activate hotspot when no external connection is
+                        available
+                      </span>
+                    </div>
+                    {hotspotAutoActivate && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-sm px-3 py-2 mt-2">
+                        <p className="text-xs text-blue-700">
+                          The device will automatically start a hotspot (SSID:{" "}
+                          {hotspotSsid || "Buster"}) when no external network is
+                          available. This requires the systemd service to be
+                          installed (see system/rf-survey-hotspot-setup.sh).
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <Button
+                    size="sm"
+                    onClick={saveHotspotConfig}
+                    disabled={savingHotspotConfig}
+                  >
+                    {savingHotspotConfig ? (
+                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                    ) : null}
+                    Save Hotspot Config
+                  </Button>
                 </div>
               </AccordionContent>
             </AccordionItem>
@@ -1089,75 +1128,6 @@ function SettingsPanel() {
                       Sync to NetworkManager
                     </Button>
                   )}
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="fallback-hotspot" className="border-gray-200">
-              <AccordionTrigger className="text-sm font-semibold text-gray-700 py-2 hover:no-underline">
-                Persistent Fallback Hotspot
-              </AccordionTrigger>
-              <AccordionContent>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <Switch
-                      checked={fallbackEnabled}
-                      onCheckedChange={(checked) => setFallbackEnabled(checked)}
-                      aria-label="Toggle persistent fallback hotspot"
-                    />
-                    <span className="text-sm">
-                      {fallbackEnabled ? (
-                        <span className="text-green-600 font-medium">
-                          Enabled
-                        </span>
-                      ) : (
-                        <span className="text-gray-500">Disabled</span>
-                      )}
-                    </span>
-                  </div>
-                  {fallbackEnabled && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-sm px-3 py-2">
-                      <p className="text-xs text-blue-700">
-                        The device will always have a fallback hotspot (SSID:{" "}
-                        {fallbackSsid || "Buster"}) even if the app is not
-                        running. This requires the systemd service to be
-                        installed (see system/rf-survey-hotspot-setup.sh).
-                      </p>
-                    </div>
-                  )}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div className="flex flex-col gap-1">
-                      <Label className="text-xs font-semibold">
-                        Fallback SSID
-                      </Label>
-                      <Input
-                        type="text"
-                        className={inputClass}
-                        value={fallbackSsid}
-                        onChange={(e) => setFallbackSsid(e.target.value)}
-                        placeholder="Buster"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <Label className="text-xs font-semibold">
-                        Password (empty = open network)
-                      </Label>
-                      <PasswordInput
-                        value={fallbackPassword}
-                        onChange={(val) => setFallbackPassword(val)}
-                      />
-                    </div>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={saveFallbackConfig}
-                    disabled={savingFallback}
-                  >
-                    {savingFallback ? (
-                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                    ) : null}
-                    Save Fallback Config
-                  </Button>
                 </div>
               </AccordionContent>
             </AccordionItem>
