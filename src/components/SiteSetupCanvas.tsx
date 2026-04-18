@@ -79,7 +79,7 @@ export default function SiteSetupCanvas() {
   );
 }
 
-/** Rotera planritningen med slider (0°–360°) */
+/** Rotera planritningen med slider (-15° till +15°, steg 0.5°) för finjustering */
 function RotateFloorPlan() {
   const { settings, updateSettings } = useSettings();
   const currentRotation = settings.rotation ?? 0;
@@ -93,9 +93,9 @@ function RotateFloorPlan() {
       <div className="flex items-center gap-3">
         <SliderPrimitive.Root
           className="relative flex items-center h-3 select-none touch-none w-64"
-          min={0}
-          max={360}
-          step={1}
+          min={-15}
+          max={15}
+          step={0.5}
           value={[currentRotation]}
           onValueChange={(val) => setRotation(val[0])}
         >
@@ -107,8 +107,8 @@ function RotateFloorPlan() {
             aria-label="Floor plan rotation in degrees"
           />
         </SliderPrimitive.Root>
-        <span className="text-sm text-gray-600 tabular-nums w-10 text-right">
-          {currentRotation}°
+        <span className="text-sm text-gray-600 tabular-nums w-14 text-right">
+          {currentRotation.toFixed(1)}°
         </span>
         {currentRotation !== 0 && (
           <Button variant="outline" size="sm" onClick={() => setRotation(0)}>

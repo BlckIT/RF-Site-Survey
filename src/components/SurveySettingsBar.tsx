@@ -55,11 +55,7 @@ export default function SurveySettingsBar() {
             <option value="">Connected (auto)</option>
             {grouped.map((net) => (
               <option key={net.ssid} value={net.ssid}>
-                {net.ssid} (
-                {net.bands
-                  .map((b) => (b === "2.4" ? "2.4 GHz" : "5 GHz"))
-                  .join(" + ")}
-                )
+                {net.ssid}
               </option>
             ))}
           </select>
