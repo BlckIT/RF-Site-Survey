@@ -106,6 +106,29 @@ const PopupDetails: React.FC<PopupDetailsProps> = ({
       },
     );
   }
+
+  // Dual-band mätdata — visa signal (och throughput om tillgängligt) per band
+  if (point.bandMeasurements && point.bandMeasurements.length > 0) {
+    for (const bm of point.bandMeasurements) {
+      rows.push({
+        label: `${bm.band} GHz Signal`,
+        value: `${bm.signal} dBm`,
+      });
+      if (bm.tcpDown != null && bm.tcpUp != null) {
+        rows.push({
+          label: `${bm.band} GHz TCP`,
+          value: `${bm.tcpDown.toFixed(1)} / ${bm.tcpUp.toFixed(1)} Mbps`,
+        });
+      }
+      if (bm.udpDown != null && bm.udpUp != null) {
+        rows.push({
+          label: `${bm.band} GHz UDP`,
+          value: `${bm.udpDown.toFixed(1)} / ${bm.udpUp.toFixed(1)} Mbps`,
+        });
+      }
+    }
+  }
+
   rows.push({ label: "Position", value: `X: ${point.x}, Y: ${point.y}` });
   rows.push({
     label: "Created",

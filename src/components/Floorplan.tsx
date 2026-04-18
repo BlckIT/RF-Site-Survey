@@ -3,12 +3,7 @@ import { useEffect } from "react";
 import { rssiToPercentage, delay } from "../lib/utils";
 import { getColorAt, objectToRGBAString } from "@/lib/utils-gradient";
 import { useSettings } from "./GlobalSettings";
-import {
-  HeatmapSettings,
-  SurveyResult,
-  SurveyPoint,
-  BandMeasurement,
-} from "../lib/types";
+import { HeatmapSettings, SurveyResult, SurveyPoint } from "../lib/types";
 import NewToast from "@/components/NewToast";
 import PopupDetails from "@/components/PopupDetails";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -135,31 +130,6 @@ export default function ClickableFloorplan({
   };
 
   /**
-   * Konvertera mätresultat till BandMeasurement
-   */
-  const toBandMeasurement = (
-    result: SurveyResult,
-    band: "2.4" | "5",
-  ): BandMeasurement | null => {
-    if (
-      result.state !== "done" ||
-      !result.results?.wifiData ||
-      !result.results?.iperfData
-    ) {
-      return null;
-    }
-    const { wifiData, iperfData } = result.results;
-    return {
-      band,
-      signal: wifiData.rssi,
-      tcpDown: iperfData.tcpDownload.bitsPerSecond / 1e6,
-      tcpUp: iperfData.tcpUpload.bitsPerSecond / 1e6,
-      udpDown: iperfData.udpDownload.bitsPerSecond / 1e6,
-      udpUp: iperfData.udpUpload.bitsPerSecond / 1e6,
-    };
-  };
-
-  /**
    * measureSurveyPoint - make measurements for point at x/y
    * Triggered by a click on the canvas that _isn't_ an existing
    *    surveypoint
@@ -173,123 +143,18 @@ export default function ClickableFloorplan({
     const x = Math.round(surveyClick.x);
     const y = Math.round(surveyClick.y);
 
-    const dualBand = settings.dualBand;
-
-    // ── Dual-band: sequential ──
-    if (dualBand?.enabled && dualBand.mode === "sequential") {
-      const bandMeasurements: BandMeasurement[] = [];
-      let primaryResult: SurveyResult | null = null;
-
-      // Mät 2.4 GHz först
-      const result24 = await runSingleMeasurement();
-      if (result24.state === "error") {
-        cleanupFailedTest(`2.4 GHz: ${result24.explanation}`);
-        return;
-      }
-      const bm24 = toBandMeasurement(result24, "2.4");
-      if (bm24) bandMeasurements.push(bm24);
-      primaryResult = result24;
-
-      // Mät 5 GHz
-      const result5 = await runSingleMeasurement();
-      if (result5.state === "error") {
-        cleanupFailedTest(`5 GHz: ${result5.explanation}`);
-        return;
-      }
-      const bm5 = toBandMeasurement(result5, "5");
-      if (bm5) bandMeasurements.push(bm5);
-      // Använd 5 GHz som primär om den lyckades
-      if (result5.state === "done" && result5.results?.wifiData) {
-        primaryResult = result5;
-      }
-
-      if (
-        !primaryResult?.results?.wifiData ||
-        !primaryResult?.results?.iperfData
-      ) {
-        cleanupFailedTest("Both band measurements failed");
-        return;
-      }
-
-      const { wifiData, iperfData } = primaryResult.results;
-      const newPoint: SurveyPoint = {
-        wifiData,
-        iperfData,
-        x,
-        y,
-        timestamp: Date.now(),
-        isEnabled: true,
-        id: `Point_${settings.nextPointNum}`,
-        bandMeasurements,
-      };
-      addSurveyPoint(newPoint, x, y, settings);
-      return;
-    }
-
-    // ── Dual-band: simultaneous ──
-    if (dualBand?.enabled && dualBand.mode === "simultaneous") {
-      // Kör båda parallellt med respektive interface
-      // OBS: API:et stöder bara en mätning åt gången, så vi kör sekventiellt
-      // men med olika interface. Riktig parallellism kräver server-side-stöd.
-      const bandMeasurements: BandMeasurement[] = [];
-
-      const result24 = await runSingleMeasurement(dualBand.interface24);
-      if (result24.state === "error") {
-        cleanupFailedTest(`2.4 GHz: ${result24.explanation}`);
-        return;
-      }
-      const bm24 = toBandMeasurement(result24, "2.4");
-      if (bm24) bandMeasurements.push(bm24);
-
-      const result5 = await runSingleMeasurement(dualBand.interface5);
-      if (result5.state === "error") {
-        cleanupFailedTest(`5 GHz: ${result5.explanation}`);
-        return;
-      }
-      const bm5 = toBandMeasurement(result5, "5");
-      if (bm5) bandMeasurements.push(bm5);
-
-      // Använd bästa resultatet som primär
-      const primaryResult =
-        result5.state === "done" && result5.results?.wifiData
-          ? result5
-          : result24;
-
-      if (
-        !primaryResult?.results?.wifiData ||
-        !primaryResult?.results?.iperfData
-      ) {
-        cleanupFailedTest("Both band measurements failed");
-        return;
-      }
-
-      const { wifiData, iperfData } = primaryResult.results;
-      const newPoint: SurveyPoint = {
-        wifiData,
-        iperfData,
-        x,
-        y,
-        timestamp: Date.now(),
-        isEnabled: true,
-        id: `Point_${settings.nextPointNum}`,
-        bandMeasurements,
-      };
-      addSurveyPoint(newPoint, x, y, settings);
-      return;
-    }
-
-    // ── Single-band (default) ──
+    // Dual-band hanteras server-side i iperfRunner — kör alltid EN mätning
     const result = await runSingleMeasurement();
 
     if (result.state === "error") {
       cleanupFailedTest(`${result.explanation}`);
       return;
     }
-    if (!result.results!.wifiData || !result.results!.iperfData) {
+    if (!result.results?.wifiData || !result.results?.iperfData) {
       cleanupFailedTest("Measurement cancelled");
       return;
     }
-    const { wifiData, iperfData, bandMeasurements } = result.results!;
+    const { wifiData, iperfData, bandMeasurements } = result.results;
     const newPoint: SurveyPoint = {
       wifiData,
       iperfData,

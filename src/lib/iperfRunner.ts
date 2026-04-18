@@ -29,16 +29,8 @@ const validateWifiDataConsistency = (
   wifiDataBefore: WifiResults,
   wifiDataAfter: WifiResults,
 ) => {
-  if (
-    wifiDataBefore.bssid === wifiDataAfter.bssid &&
-    wifiDataBefore.ssid === wifiDataAfter.ssid &&
-    wifiDataBefore.band === wifiDataAfter.band &&
-    wifiDataBefore.channel === wifiDataAfter.channel
-  ) {
-    return true;
-  }
-  const logString = `${JSON.stringify(wifiDataBefore.bssid)} ${JSON.stringify(wifiDataAfter.bssid)}`;
-  logger.debug(logString);
+  // Jämför bara SSID — BSSID/channel kan ändras vid roaming mellan AP:er
+  return wifiDataBefore.ssid === wifiDataAfter.ssid;
 };
 
 function arrayAverage(arr: number[]): number {
@@ -133,6 +125,7 @@ export async function runSurveyTests(
     let attempts = 0;
     const newIperfData = getDefaultIperfResults();
     let newWifiData: WifiResults | null = null;
+    let bandMeasurements: BandMeasurement[] | undefined;
 
     // set the initial states, then send an event to the client
     const startTime = Date.now();
@@ -303,6 +296,26 @@ export async function runSurveyTests(
             );
           }
         }
+
+        // ── Dual-band: hämta RSSI för det andra bandet via scan ──
+        if (newWifiData) {
+          bandMeasurements = await collectDualBandMeasurements(
+            newWifiData,
+            newIperfData,
+            settings,
+          );
+          // SSE-meddelande med dual-band resultat
+          if (bandMeasurements && bandMeasurements.length > 1) {
+            const bandInfo = bandMeasurements
+              .map((bm) => `${bm.band} GHz: ${bm.signal} dBm`)
+              .join(" | ");
+            sendSSEMessage({
+              type: "done",
+              header: "Measurement complete",
+              status: `${bandInfo}\nTCP: ${displayStates.tcp}\nUDP: ${displayStates.udp}`,
+            });
+          }
+        }
       } catch (error: any) {
         logger.error(`Attempt ${attempts} failed:`, error);
         if (error.message == "cancelled") {
@@ -313,20 +326,6 @@ export async function runSurveyTests(
           };
         }
       }
-    }
-
-    // ── Dual-band: hämta RSSI för det andra bandet via scan ──
-    let bandMeasurements: BandMeasurement[] | undefined;
-    if (
-      settings.dualBand?.enabled &&
-      settings.dualBand.mode === "sequential" &&
-      newWifiData
-    ) {
-      bandMeasurements = await collectDualBandMeasurements(
-        newWifiData,
-        newIperfData,
-        settings,
-      );
     }
 
     // return the values ("!" asserts that the values are non-null)
