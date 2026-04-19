@@ -86,10 +86,20 @@ export function ApFilterList({
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-semibold text-gray-700">AP Filter</h3>
         <div className="flex gap-1">
-          <Button variant="outline" size="sm" className="text-xs h-6 px-2" onClick={onSelectAll}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs h-6 px-2"
+            onClick={onSelectAll}
+          >
             All
           </Button>
-          <Button variant="outline" size="sm" className="text-xs h-6 px-2" onClick={onSelectNone}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs h-6 px-2"
+            onClick={onSelectNone}
+          >
             None
           </Button>
         </div>

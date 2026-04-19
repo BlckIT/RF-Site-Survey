@@ -33,8 +33,7 @@ export class LinuxWifiActions implements WifiActions {
       await execAsync("which iw");
       logger.info("  ✓ iw found");
     } catch {
-      reason =
-        "Missing required tool: iw. Install with: apt install iw";
+      reason = "Missing required tool: iw. Install with: apt install iw";
       logger.error(reason);
     }
 
@@ -138,9 +137,13 @@ export class LinuxWifiActions implements WifiActions {
 
       if (settings.targetSSID) {
         // Hitta starkaste AP:n för target SSID
-        logger.debug(`Target SSID set: "${settings.targetSSID}", filtering scan results`);
+        logger.debug(
+          `Target SSID set: "${settings.targetSSID}", filtering scan results`,
+        );
         const match = allAPs
-          .filter((ap) => ap.ssid.toLowerCase() === settings.targetSSID.toLowerCase())
+          .filter(
+            (ap) => ap.ssid.toLowerCase() === settings.targetSSID.toLowerCase(),
+          )
           .sort(bySignalStrength)[0];
 
         if (match) {
@@ -155,7 +158,9 @@ export class LinuxWifiActions implements WifiActions {
 
         if (connectedBssid) {
           const match = allAPs.find(
-            (ap) => normalizeMacAddress(ap.bssid) === normalizeMacAddress(connectedBssid),
+            (ap) =>
+              normalizeMacAddress(ap.bssid) ===
+              normalizeMacAddress(connectedBssid),
           );
           if (match) {
             match.currentSSID = true;
@@ -295,7 +300,9 @@ export function parseIwScanDump(dump: string): WifiResults[] {
     ap.security = securityParts.length > 0 ? securityParts.join("/") : "Open";
 
     // ─── HT capabilities ───
-    const htCapsBlock = block.match(/HT capabilities:[\s\S]*?(?=\n\s{8}\w|\n\s{0,7}\S|$)/);
+    const htCapsBlock = block.match(
+      /HT capabilities:[\s\S]*?(?=\n\s{8}\w|\n\s{0,7}\S|$)/,
+    );
     if (htCapsBlock) {
       if (htCapsBlock[0].includes("HT20/HT40")) {
         ap.htCapabilities = "HT20/HT40";
@@ -305,7 +312,9 @@ export function parseIwScanDump(dump: string): WifiResults[] {
     }
 
     // ─── HT operation — kanalbredd (fallback om VHT saknas) ───
-    const htOpBlock = block.match(/HT operation:[\s\S]*?(?=\n\s{8}\w|\n\s{0,7}\S|$)/);
+    const htOpBlock = block.match(
+      /HT operation:[\s\S]*?(?=\n\s{8}\w|\n\s{0,7}\S|$)/,
+    );
     if (htOpBlock) {
       const staWidth = htOpBlock[0].match(/STA channel width:\s*(.+)/);
       if (staWidth) {
@@ -324,7 +333,9 @@ export function parseIwScanDump(dump: string): WifiResults[] {
     }
 
     // ─── VHT capabilities ───
-    const vhtCapsBlock = block.match(/VHT capabilities:[\s\S]*?VHT TX highest supported:.*$/m);
+    const vhtCapsBlock = block.match(
+      /VHT capabilities:[\s\S]*?VHT TX highest supported:.*$/m,
+    );
     if (vhtCapsBlock) {
       ap.vhtCapabilities = true;
 
@@ -348,9 +359,13 @@ export function parseIwScanDump(dump: string): WifiResults[] {
     }
 
     // ─── VHT operation — kanalbredd (överskriver HT) ───
-    const vhtOpBlock = block.match(/VHT operation:[\s\S]*?(?=\n\s{8}\w|\n\s{0,7}\S|$)/);
+    const vhtOpBlock = block.match(
+      /VHT operation:[\s\S]*?(?=\n\s{8}\w|\n\s{0,7}\S|$)/,
+    );
     if (vhtOpBlock) {
-      const cwMatch = vhtOpBlock[0].match(/channel width:\s*(\d+)\s*\(([^)]+)\)/);
+      const cwMatch = vhtOpBlock[0].match(
+        /channel width:\s*(\d+)\s*\(([^)]+)\)/,
+      );
       if (cwMatch) {
         const desc = cwMatch[2].trim();
         if (desc.includes("80+80")) ap.channelWidth = 160;

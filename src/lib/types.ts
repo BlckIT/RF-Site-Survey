@@ -183,7 +183,7 @@ export type SurveyPoint = {
   id: string;
   isEnabled: boolean;
   bandMeasurements?: BandMeasurement[]; // dual-band mätdata
-  scannedBSSList?: ScannedBSS[];         // ALLA BSS:er för target SSID vid denna punkt
+  scannedBSSList?: ScannedBSS[]; // ALLA BSS:er för target SSID vid denna punkt
 };
 
 /**
@@ -291,15 +291,15 @@ export interface KnownWifi {
 export interface ScannedBSS {
   bssid: string;
   ssid: string;
-  signal: number;           // dBm, rå från adaptern
-  frequency: number;        // MHz
+  signal: number; // dBm, rå från adaptern
+  frequency: number; // MHz
   channel: number;
-  band: number;             // 2.4 | 5
-  channelWidth: number;     // 20/40/80/160 MHz
+  band: number; // 2.4 | 5
+  channelWidth: number; // 20/40/80/160 MHz
   spatialStreams?: number;
   beamforming?: boolean;
   security?: string;
-  lastSeen?: number;        // ms sedan senaste beacon
+  lastSeen?: number; // ms sedan senaste beacon
 }
 
 /**

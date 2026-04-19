@@ -151,7 +151,8 @@ export default function ClickableFloorplan({
       cleanupFailedTest("Measurement cancelled");
       return;
     }
-    const { wifiData, iperfData, bandMeasurements, scannedBSSList } = result.results;
+    const { wifiData, iperfData, bandMeasurements, scannedBSSList } =
+      result.results;
     const newPoint: SurveyPoint = {
       wifiData,
       iperfData,

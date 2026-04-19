@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { execAsync } from "@/lib/server-utils";
 import os from "os";
-import { parseIwScanDump, inferWifiDeviceIdOnLinux } from "@/lib/wifiScanner-linux";
+import {
+  parseIwScanDump,
+  inferWifiDeviceIdOnLinux,
+} from "@/lib/wifiScanner-linux";
 
 export async function GET(request: Request) {
   try {
@@ -18,7 +21,7 @@ export async function GET(request: Request) {
     }
 
     // Kör iw scan dump (kräver sudo)
-    let cmd = `sudo iw dev ${wlanInterface} scan dump`;
+    const cmd = `sudo iw dev ${wlanInterface} scan dump`;
     const { stdout } = await execAsync(cmd);
 
     const allAPs = parseIwScanDump(stdout);

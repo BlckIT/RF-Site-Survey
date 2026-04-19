@@ -11,11 +11,7 @@ import {
 // import { scanWifi, blinkWifi } from "./wifiScanner";
 import { execAsync, delay } from "./server-utils";
 import { getCancelFlag, sendSSEMessage } from "./server-globals";
-import {
-  rssiToPercentage,
-  toMbps,
-  getDefaultIperfResults,
-} from "./utils";
+import { rssiToPercentage, toMbps, getDefaultIperfResults } from "./utils";
 import { SSEMessageType } from "@/app/api/events/route";
 import { createWifiActions } from "./wifiScanner";
 
@@ -336,18 +332,25 @@ export async function runSurveyTests(
               }
             }
             const currentBand: "2.4" | "5" = newWifiData.band < 5 ? "2.4" : "5";
-            bandMeasurements = Array.from(bandMap.entries()).map(([band, bss]) => {
-              const bm: BandMeasurement = { band: band as "2.4" | "5", signal: bss.signal };
-              if (band === currentBand) {
-                bm.tcpDown = newIperfData.tcpDownload.bitsPerSecond / 1e6;
-                bm.tcpUp = newIperfData.tcpUpload.bitsPerSecond / 1e6;
-                bm.udpDown = newIperfData.udpDownload.bitsPerSecond / 1e6;
-                bm.udpUp = newIperfData.udpUpload.bitsPerSecond / 1e6;
-              }
-              return bm;
-            });
+            bandMeasurements = Array.from(bandMap.entries()).map(
+              ([band, bss]) => {
+                const bm: BandMeasurement = {
+                  band: band as "2.4" | "5",
+                  signal: bss.signal,
+                };
+                if (band === currentBand) {
+                  bm.tcpDown = newIperfData.tcpDownload.bitsPerSecond / 1e6;
+                  bm.tcpUp = newIperfData.tcpUpload.bitsPerSecond / 1e6;
+                  bm.udpDown = newIperfData.udpDownload.bitsPerSecond / 1e6;
+                  bm.udpUp = newIperfData.udpUpload.bitsPerSecond / 1e6;
+                }
+                return bm;
+              },
+            );
           } catch (dbErr) {
-            logger.warn(`Band measurement / scannedBSSList extraction failed: ${dbErr}`);
+            logger.warn(
+              `Band measurement / scannedBSSList extraction failed: ${dbErr}`,
+            );
           }
         }
 
