@@ -19,7 +19,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { PopoverHelper } from "@/components/PopoverHelpText";
-import { HeatmapSettings } from "@/lib/types";
+import { HeatmapSettings, AdapterRoles } from "@/lib/types";
 import { rgbaToHex, hexToRgba } from "@/lib/utils-gradient";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -119,6 +119,7 @@ function pickDraftFields(s: HeatmapSettings) {
     gradient: s.gradient,
     snapRadius: s.snapRadius,
     sudoerPassword: s.sudoerPassword,
+    adapterRoles: s.adapterRoles ?? { scan: "", connect: "" },
   };
 }
 
@@ -165,14 +166,22 @@ function SettingsPanel() {
     setDraft(pickDraftFields(settings));
   }, [settings]);
 
+  // Adapter roles — härledd från draft
+  const adapterRoles: AdapterRoles = draft.adapterRoles ?? {
+    scan: "",
+    connect: "",
+  };
+  const sameAdapterWarning =
+    adapterRoles.scan !== "" &&
+    adapterRoles.connect !== "" &&
+    adapterRoles.scan === adapterRoles.connect;
+
   // Network management state
   const [networkDevices, setNetworkDevices] = useState<NetworkDevice[]>([]);
-  const [hotspotIface, setHotspotIface] = useState("");
   const [hotspotSsid, setHotspotSsid] = useState("Buster");
   const [hotspotPassword, setHotspotPassword] = useState("");
   const [hotspotActive, setHotspotActive] = useState(false);
   const [hotspotLoading, setHotspotLoading] = useState(false);
-  const [connectIface, setConnectIface] = useState("");
   const [scannedNetworks, setScannedNetworks] = useState<ScannedNetwork[]>([]);
   const [scanning, setScanning] = useState(false);
   const [connectDialogOpen, setConnectDialogOpen] = useState(false);
@@ -212,6 +221,10 @@ function SettingsPanel() {
 
   const sudoerPassword = draft.sudoerPassword || "";
 
+  // Derived interface values from adapter roles
+  const hotspotIface = adapterRoles.connect;
+  const connectIface = adapterRoles.connect;
+
   // Fetch WiFi interfaces
   const fetchInterfaces = useCallback(async () => {
     try {
@@ -219,10 +232,6 @@ function SettingsPanel() {
       const data = await res.json();
       const ifaces: string[] = data.interfaces || [];
       setWifiInterfaces(ifaces);
-      if (ifaces.length > 0) {
-        setHotspotIface((prev) => prev || ifaces[0]);
-        setConnectIface((prev) => prev || ifaces[0]);
-      }
     } catch {
       setWifiInterfaces([]);
     }
@@ -270,11 +279,11 @@ function SettingsPanel() {
     }
   }, [connectIface]);
 
-  // Skanna nätverk för Survey Target SSID (använder scan-interfacet)
+  // Skanna nätverk för Survey Target SSID (använder scan-adaptern från adapterRoles)
   const scanSurveyNetworks = useCallback(async () => {
     setSurveyScanning(true);
     try {
-      const iface = draft.wifiInterface || "";
+      const iface = adapterRoles.scan || "";
       const params = iface ? `?iface=${encodeURIComponent(iface)}` : "";
       const res = await fetch(`/api/wifi-scan${params}`);
       const data = await res.json();
@@ -284,7 +293,7 @@ function SettingsPanel() {
     } finally {
       setSurveyScanning(false);
     }
-  }, [draft.wifiInterface]);
+  }, [adapterRoles.scan]);
 
   // Hämta known networks från API
   const fetchKnownNetworks = useCallback(async () => {
@@ -673,30 +682,24 @@ function SettingsPanel() {
   };
 
   // Hjälpfunktion: kolla om ett interface redan används av en annan funktion
-  // Kollar BÅDE UI-state OCH live nmcli-status
   const ifaceUsedBy = (
     iface: string,
-    exclude: "scan" | "hotspot" | "connect",
+    exclude: "scan" | "connect",
   ): string | null => {
-    // Kolla live-status: om interfacet har en aktiv anslutning (station eller AP)
     const device = networkDevices.find((d) => d.device === iface);
     if (device && device.connection && device.state === "connected") {
-      // Kolla om det är hotspot (AP-mode)
       if (
         device.connection === "rf-survey-fallback" ||
         device.connection === "rf-survey-hotspot"
       ) {
-        if (exclude !== "hotspot") return `Hotspot (${device.connection})`;
+        if (exclude !== "connect") return `Hotspot (${device.connection})`;
       } else {
-        // Station-mode — ansluten till WiFi
         if (exclude !== "connect") return `Connected (${device.connection})`;
       }
     }
-    // Kolla UI-state
-    if (exclude !== "scan" && draft.wifiInterface === iface) return "Scan";
-    if (exclude !== "hotspot" && hotspotIface === iface && hotspotActive)
-      return "Hotspot";
-    if (exclude !== "connect" && connectIface === iface) return "WiFi Connect";
+    if (exclude !== "scan" && adapterRoles.scan === iface) return "Scan";
+    if (exclude !== "connect" && adapterRoles.connect === iface)
+      return "Connect/Hotspot";
     return null;
   };
 
@@ -734,7 +737,119 @@ function SettingsPanel() {
 
         {/* ═══ NETWORK TAB ═══ */}
         <Tabs.Content value="network" className="space-y-4">
-          {/* Devices */}
+          {/* Adapter Roles */}
+          <div className="bg-gray-50 border border-gray-200 rounded-md p-3 space-y-2">
+            <p className="text-sm font-semibold text-gray-700">Adapter Roles</p>
+            {wifiInterfaces.length === 0 && (
+              <p className="text-xs text-gray-500">
+                No WiFi adapters detected.
+              </p>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1">
+                <Label className="text-xs font-semibold">
+                  Scan Adapter&nbsp;
+                  <PopoverHelper text="Dedicated adapter for WiFi scanning/measurement (iw scan). Should not be used for hotspot or connection." />
+                </Label>
+                <select
+                  className="w-full border border-gray-200 rounded-md p-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  value={adapterRoles.scan}
+                  onChange={(e) =>
+                    updateDraft({
+                      adapterRoles: {
+                        ...adapterRoles,
+                        scan: e.target.value,
+                      },
+                      wifiInterface: e.target.value,
+                    })
+                  }
+                >
+                  <option value="">Auto (first available)</option>
+                  {wifiInterfaces.map((iface) => {
+                    const usedBy = ifaceUsedBy(iface, "scan");
+                    return (
+                      <option key={iface} value={iface}>
+                        {iface}
+                        {usedBy ? ` (— ${usedBy})` : ""}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <Label className="text-xs font-semibold">
+                  Connect Adapter&nbsp;
+                  <PopoverHelper text="Adapter for WiFi connection and hotspot fallback. Used for connecting to networks and running the hotspot." />
+                </Label>
+                <select
+                  className="w-full border border-gray-200 rounded-md p-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  value={adapterRoles.connect}
+                  onChange={(e) =>
+                    updateDraft({
+                      adapterRoles: {
+                        ...adapterRoles,
+                        connect: e.target.value,
+                      },
+                    })
+                  }
+                >
+                  <option value="">Auto (first available)</option>
+                  {wifiInterfaces.map((iface) => {
+                    const usedBy = ifaceUsedBy(iface, "connect");
+                    return (
+                      <option key={iface} value={iface}>
+                        {iface}
+                        {usedBy ? ` (— ${usedBy})` : ""}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            </div>
+            {sameAdapterWarning && (
+              <p className="text-xs text-red-600 font-medium">
+                Same adapter cannot be used for both scan and connect
+              </p>
+            )}
+            {/* Adapter status overview */}
+            {wifiInterfaces.length > 0 && (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {wifiInterfaces.map((iface) => {
+                  const device = networkDevices.find((d) => d.device === iface);
+                  const isConnected =
+                    device?.state?.includes("connected") && device?.connection;
+                  const isScan = adapterRoles.scan === iface;
+                  const isConnect = adapterRoles.connect === iface;
+                  const roleLabel = isScan
+                    ? "Scan"
+                    : isConnect
+                      ? "Connect"
+                      : "Unassigned";
+                  return (
+                    <span
+                      key={iface}
+                      className={`inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-md border ${
+                        isScan || isConnect
+                          ? "border-blue-200 bg-blue-50 text-blue-800"
+                          : "border-gray-200 bg-white text-gray-500"
+                      }`}
+                    >
+                      <span
+                        className={`inline-block w-2 h-2 rounded-full ${
+                          isConnected ? "bg-green-500" : "bg-gray-300"
+                        }`}
+                      />
+                      <span className="font-mono">{iface}</span>
+                      <span className="text-gray-400">—</span>
+                      <span>{roleLabel}</span>
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Devices + Hotspot + WiFi Connect + Known Networks */}
           <Accordion
             type="multiple"
             defaultValue={["devices"]}
@@ -810,35 +925,6 @@ function SettingsPanel() {
               <AccordionContent>
                 <div className="space-y-3">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div className="flex flex-col gap-1">
-                      <Label className="text-xs font-semibold">
-                        Interface&nbsp;
-                        <PopoverHelper text="Select which WiFi adapter to use for the hotspot. Leave empty to auto-select the first available." />
-                      </Label>
-                      <select
-                        className="w-full border border-gray-200 rounded-md p-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                        value={hotspotIface}
-                        onChange={(e) => setHotspotIface(e.target.value)}
-                        disabled={hotspotActive}
-                      >
-                        {wifiInterfaces.length === 0 && (
-                          <option value="">Auto (first available)</option>
-                        )}
-                        {wifiInterfaces.map((iface) => {
-                          const usedBy = ifaceUsedBy(iface, "hotspot");
-                          return (
-                            <option
-                              key={iface}
-                              value={iface}
-                              disabled={!!usedBy}
-                            >
-                              {iface}
-                              {usedBy ? ` (used by ${usedBy})` : ""}
-                            </option>
-                          );
-                        })}
-                      </select>
-                    </div>
                     <div className="flex flex-col gap-1">
                       <Label className="text-xs font-semibold">SSID</Label>
                       <Input
@@ -931,30 +1017,6 @@ function SettingsPanel() {
               </AccordionTrigger>
               <AccordionContent>
                 <div className="space-y-3">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div className="flex flex-col gap-1">
-                      <Label className="text-xs font-semibold">Interface</Label>
-                      <select
-                        className="w-full border border-gray-200 rounded-md p-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                        value={connectIface}
-                        onChange={(e) => setConnectIface(e.target.value)}
-                      >
-                        {wifiInterfaces.map((iface) => {
-                          const usedBy = ifaceUsedBy(iface, "connect");
-                          return (
-                            <option
-                              key={iface}
-                              value={iface}
-                              disabled={!!usedBy}
-                            >
-                              {iface}
-                              {usedBy ? ` (used by ${usedBy})` : ""}
-                            </option>
-                          );
-                        })}
-                      </select>
-                    </div>
-                  </div>
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
@@ -1282,28 +1344,6 @@ function SettingsPanel() {
         {/* ═══ SURVEY TAB ═══ */}
         <Tabs.Content value="survey" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1">
-              <Label className="text-xs font-semibold">
-                Scan Interface&nbsp;
-                <PopoverHelper text="Select which WiFi interface to use for scanning. 'Auto' picks the first available." />
-              </Label>
-              <select
-                className="w-full border border-gray-200 rounded-md p-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                value={draft.wifiInterface || ""}
-                onChange={(e) => updateDraft({ wifiInterface: e.target.value })}
-              >
-                <option value="">Auto</option>
-                {wifiInterfaces.map((iface) => {
-                  const usedBy = ifaceUsedBy(iface, "scan");
-                  return (
-                    <option key={iface} value={iface} disabled={!!usedBy}>
-                      {iface}
-                      {usedBy ? ` (used by ${usedBy})` : ""}
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
             <div className="flex flex-col gap-1">
               <Label className="text-xs font-semibold">
                 Target SSID&nbsp;
@@ -1666,6 +1706,7 @@ function SettingsPanel() {
                   targetSSID: "",
                   snapRadius: defaults.snapRadius,
                   sudoerPassword: "",
+                  adapterRoles: { scan: "", connect: "" },
                 });
               }}
             >

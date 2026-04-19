@@ -131,6 +131,7 @@ export interface GlobalAppSettings {
   targetSSID: string;
   snapRadius: number;
   knownWifiNetworks: KnownWifi[];
+  adapterRoles: AdapterRoles;
 }
 
 /**
@@ -282,6 +283,17 @@ export interface KnownWifi {
   password?: string; // tom = öppet nätverk
   priority: number; // högre = försök först
   autoConnect: boolean;
+}
+
+/**
+ * Adapter Roles — vilken WiFi-adapter som används för vilken funktion.
+ * scan: Dedikerad adapter för iw scan (mätning) — får ej köra hotspot/connect
+ * connect: Adapter för WiFi-anslutning + hotspot fallback
+ * Tom sträng = auto-detect (första tillgängliga)
+ */
+export interface AdapterRoles {
+  scan: string;
+  connect: string;
 }
 
 /**

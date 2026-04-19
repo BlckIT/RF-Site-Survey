@@ -29,6 +29,7 @@ import {
   SurveyPoint,
   SurveyPointActions,
   KnownWifi,
+  AdapterRoles,
 } from "../lib/types";
 import { join } from "path";
 
@@ -118,6 +119,7 @@ function extractGlobals(settings: HeatmapSettings) {
     targetSSID: settings.targetSSID,
     snapRadius: settings.snapRadius,
     knownWifiNetworks: settings.knownWifiNetworks,
+    adapterRoles: settings.adapterRoles,
   };
 }
 
@@ -151,6 +153,7 @@ const DEFAULT_GLOBALS = {
   targetSSID: "",
   snapRadius: 8,
   knownWifiNetworks: [] as KnownWifi[],
+  adapterRoles: { scan: "", connect: "" } as AdapterRoles,
 };
 
 /**
@@ -211,6 +214,7 @@ function migrateOldFormat(data: any, fileName: string): HeatmapSettings {
     snapRadius: data.snapRadius ?? DEFAULT_GLOBALS.snapRadius,
     knownWifiNetworks:
       data.knownWifiNetworks ?? DEFAULT_GLOBALS.knownWifiNetworks,
+    adapterRoles: data.adapterRoles ?? DEFAULT_GLOBALS.adapterRoles,
   };
 
   return buildSettings(site, globals);
