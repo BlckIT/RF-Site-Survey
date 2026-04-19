@@ -8,7 +8,6 @@ import { execAsync, delay } from "./server-utils";
 import {
   channelToBand,
   getDefaultWifiResults,
-  percentageToRssi,
   bySignalStrength,
   normalizeMacAddress,
   rssiToPercentage,
@@ -18,79 +17,46 @@ import { getLogger } from "./logger";
 const logger = getLogger("wifi-Linux");
 
 export class LinuxWifiActions implements WifiActions {
-  nameOfWifi: string = ""; // OS-specific name of the current wifi interface
-  currentSSIDName: string = ""; // name of the current SSID
-  strongestSSID: WifiResults | null = null; // strongest SSID if not currentSSID
+  nameOfWifi: string = "";
+  currentSSIDName: string = "";
+  strongestSSID: WifiResults | null = null;
 
-  /**
-   * preflightSettings - check whether the settings are "primed" to run a test
-   * Tests:
-   *   * iperfServerAdrs - non-empty
-   *   * testDuration - greater than zero
-   *   * sudoerPassword - non-empty and correct
-   *
-   * @param settings
-   * @returns empty array of SSIDs, plus "" or error string
-   */
   async preflightSettings(
     settings: PartialHeatmapSettings,
   ): Promise<WifiScanResults> {
-    const response: WifiScanResults = {
-      SSIDs: [],
-      reason: "",
-    };
+    const response: WifiScanResults = { SSIDs: [], reason: "" };
+    let reason = "";
 
-    let reason: string = "";
-
-    // Check for required Linux tools
     logger.info("Checking for required Linux tools...");
-    const missingTools: string[] = [];
 
     try {
       await execAsync("which iw");
       logger.info("  ✓ iw found");
     } catch {
-      logger.warn("  ✗ iw not found");
-      missingTools.push("iw");
-    }
-
-    try {
-      await execAsync("which nmcli");
-      logger.info("  ✓ nmcli found");
-    } catch {
-      logger.warn("  ✗ nmcli not found");
-      missingTools.push("nmcli (NetworkManager)");
-    }
-
-    if (missingTools.length > 0) {
-      reason = `Missing required tools: ${missingTools.join(", ")}. Install them with your package manager (e.g., apt install iw network-manager).`;
+      reason =
+        "Missing required tool: iw. Install with: apt install iw";
       logger.error(reason);
     }
 
-    // check that iperf3 is really installed if it's needed
-    if (!reason && settings.iperfServerAdrs != "localhost") {
+    if (!reason && settings.iperfServerAdrs !== "localhost") {
       try {
         await execAsync("iperf3 --version");
         logger.info("  ✓ iperf3 found");
       } catch {
         reason =
           "iperf3 not installed. Install it,\n or set the iperfServer to 'localhost'.";
-        logger.warn("  ✗ iperf3 not found");
         logger.error(reason);
       }
     }
-    // test duration must be > 0 - otherwise iperf3 runs forever
+
     if (!reason && settings.testDuration <= 0) {
       reason = "Test duration must be greater than zero.";
     }
 
-    // iperfServerAddress must not be empty or ""
     if (!reason && !settings.iperfServerAdrs) {
       reason = "Please set iperf3 server address";
     }
 
-    // Sudo-lösenord är valfritt — sudoers NOPASSWD hanterar det vid behov.
-    // Om lösenord anges, verifiera att det fungerar.
     if (!reason && !isDocker() && settings.sudoerPassword) {
       try {
         await execAsync(
@@ -100,42 +66,23 @@ export class LinuxWifiActions implements WifiActions {
         reason = "Please enter a valid sudo password.";
       }
     }
-    // fill in the reason and return it
+
     response.reason = reason;
     return response;
   }
 
-  /**
-   * checkIperfServer() - test if an iperf3 server is available at the address
-   * @param settings includes the iperfServerAddress
-   * @returns empty array of SSIDs, plus "" or error string
-   */
   async checkIperfServer(
     settings: PartialHeatmapSettings,
   ): Promise<WifiScanResults> {
-    const response: WifiScanResults = {
-      SSIDs: [],
-      reason: "",
-    };
-    let reason: string = "";
-
-    // check that we can actually connect to the iperf3 server
-    // command throws if there is an error
+    const response: WifiScanResults = { SSIDs: [], reason: "" };
     try {
       await execAsync(`nc -vz ${settings.iperfServerAdrs} 5201`);
     } catch {
-      reason = "Cannot connect to iperf3 server.";
+      response.reason = "Cannot connect to iperf3 server.";
     }
-    response.reason = reason;
     return response;
   }
 
-  /**
-   * findWifiInterface() - find the name of the wifi interface
-   * save in a class variable
-   * @param preferredInterface - if set, use this interface instead of auto-detecting
-   * @returns name of the wifi interface (string)
-   */
   async findWifiInterface(preferredInterface?: string): Promise<string> {
     if (preferredInterface) {
       logger.debug(`Using preferred WLAN interface: ${preferredInterface}`);
@@ -143,7 +90,6 @@ export class LinuxWifiActions implements WifiActions {
       return this.nameOfWifi;
     }
     logger.debug("Inferring WLAN interface ID on Linux");
-
     const { stdout } = await execAsync(
       "iw dev | awk '$1==\"Interface\"{print $2}' | head -n1",
     );
@@ -152,120 +98,81 @@ export class LinuxWifiActions implements WifiActions {
   }
 
   /**
-   * scanWifi() - return an array of available wifi SSIDs plus a reason string
-   * These are sorted by the strongest RSSI
+   * scanWifi() — trigga iw scan och returnera alla synliga AP:er.
+   * Rå dBm direkt från adaptern, ingen nmcli-konvertering.
    */
-  async scanWifi(_settings: PartialHeatmapSettings): Promise<WifiScanResults> {
-    const response: WifiScanResults = {
-      SSIDs: [],
-      reason: "",
-    };
-
+  async scanWifi(settings: PartialHeatmapSettings): Promise<WifiScanResults> {
+    const response: WifiScanResults = { SSIDs: [], reason: "" };
     try {
-      // Tvinga rescan innan listning för färska resultat
-      const wlanInterface = await inferWifiDeviceIdOnLinux(
-        _settings.wifiInterface,
-      );
-      await forceRescan(wlanInterface, _settings.sudoerPassword);
+      const iface = await inferWifiDeviceIdOnLinux(settings.wifiInterface);
+      await forceRescan(iface, settings.sudoerPassword);
 
-      const result = await execAsync(
-        `nmcli -t -f IN-USE,BSSID,SSID,MODE,CHAN,RATE,SIGNAL,BARS,SECURITY dev wifi list ifname ${wlanInterface}`,
-      );
-
-      response.SSIDs = getCandidateSSIDs(result.stdout);
-      logger.debug(`Local SSIDs: ${response.SSIDs.length}`);
-      logger.debug(`Local SSIDs: ${JSON.stringify(response.SSIDs, null, 2)}`);
+      const dump = await iwScanDump(iface, settings.sudoerPassword);
+      response.SSIDs = parseIwScanDump(dump);
+      logger.debug(`iw scan: ${response.SSIDs.length} APs found`);
     } catch (err) {
       response.reason = `Cannot get wifi info: ${err}`;
     }
-    return response; // WifiScanResults which is array of WifiResults and error code
+    return response;
   }
 
-  /**
-   * setWifi(settings, newWifiSettings) - associate with the named SSID
-   * @param settings - same as always
-   * @param newWifiSettings - .ssid has the new SSID to associate with
-   * @returns either:
-   *    WifiScanResults
-   *    or throw("reason explaining the error")
-   */
   async setWifi(
     _settings: PartialHeatmapSettings,
     _newWifiSettings: WifiResults,
   ): Promise<WifiScanResults> {
-    //
-    // NOT IMPLEMENTED - DON'T USE THIS FUNCTION
     throw "wifi-heatmapper does not implement setWifi()";
-
-    const response: WifiScanResults = {
-      SSIDs: [],
-      reason: "",
-    };
-    return response;
   }
 
   /**
-   * getWifi - return the WifiResults for the currently-associated SSID
-   *   or for a specific target SSID (passive scanning)
-   *
-   * Tvingar en aktiv rescan via nmcli innan avläsning för att undvika
-   * "sticky" cachade värden från kerneln.
-   *
-   * @param settings
-   * @returns
+   * getWifi() — hämta WiFi-data för ansluten eller target SSID via iw scan dump.
+   * Rå dBm, ingen dubbel konvertering.
    */
   async getWifi(settings: PartialHeatmapSettings): Promise<WifiScanResults> {
-    const response: WifiScanResults = {
-      SSIDs: [],
-      reason: "",
-    };
+    const response: WifiScanResults = { SSIDs: [], reason: "" };
     try {
-      const wlanInterface = await inferWifiDeviceIdOnLinux(
-        settings.wifiInterface,
-      );
+      const iface = await inferWifiDeviceIdOnLinux(settings.wifiInterface);
+      await forceRescan(iface, settings.sudoerPassword);
 
-      // Tvinga en aktiv rescan så att vi får färska RSSI-värden
-      await forceRescan(wlanInterface, settings.sudoerPassword);
+      const dump = await iwScanDump(iface, settings.sudoerPassword);
+      const allAPs = parseIwScanDump(dump);
 
       if (settings.targetSSID) {
-        // Hämta färska scan-resultat via nmcli för target SSID
-        logger.debug(
-          `Target SSID set: "${settings.targetSSID}", using scan results`,
-        );
-        const parsed = await getWifiFromScan(
-          settings.targetSSID,
-          wlanInterface,
-        );
-        if (parsed) {
-          response.SSIDs.push(parsed);
+        // Hitta starkaste AP:n för target SSID
+        logger.debug(`Target SSID set: "${settings.targetSSID}", filtering scan results`);
+        const match = allAPs
+          .filter((ap) => ap.ssid.toLowerCase() === settings.targetSSID.toLowerCase())
+          .sort(bySignalStrength)[0];
+
+        if (match) {
+          response.SSIDs.push(match);
         } else {
           response.reason = `Target SSID "${settings.targetSSID}" not found in scan results`;
         }
       } else {
-        // Hämta färsk RSSI från nmcli scan-resultat för anslutna nätverket
-        const freshScan = await getFreshScanForConnected(wlanInterface);
+        // Hämta ansluten BSSID via iw dev link, matcha mot scan dump
+        const linkOutput = await iwDevLink(iface, settings.sudoerPassword);
+        const connectedBssid = parseConnectedBssid(linkOutput);
 
-        // Hämta extra metadata (tx_rate, channel_width) från iw dev link
-        const [linkOutput, infoOutput] = await Promise.all([
-          iwDevLink(wlanInterface, settings.sudoerPassword),
-          iwDevInfo(wlanInterface, settings.sudoerPassword),
-        ]);
-
-        logger.trace("IW output:", linkOutput);
-        logger.trace("IW info:", infoOutput);
-        const parsed = parseIwOutput(linkOutput, infoOutput);
-
-        // Skriv över RSSI/signalStrength med färska nmcli-värden om tillgängliga
-        if (freshScan) {
-          logger.debug(
-            `Overriding iw RSSI (${parsed.rssi}) with nmcli RSSI (${freshScan.rssi})`,
+        if (connectedBssid) {
+          const match = allAPs.find(
+            (ap) => normalizeMacAddress(ap.bssid) === normalizeMacAddress(connectedBssid),
           );
-          parsed.rssi = freshScan.rssi;
-          parsed.signalStrength = freshScan.signalStrength;
+          if (match) {
+            match.currentSSID = true;
+            // Komplettera med tx bitrate från iw dev link
+            const txRate = parseTxBitrate(linkOutput);
+            if (txRate) match.txRate = txRate;
+            response.SSIDs.push(match);
+          } else {
+            // Fallback: parsa iw dev link + iw dev info direkt
+            const infoOutput = await iwDevInfo(iface, settings.sudoerPassword);
+            const parsed = parseIwOutput(linkOutput, infoOutput);
+            parsed.currentSSID = true;
+            response.SSIDs.push(parsed);
+          }
+        } else {
+          response.reason = "Not connected to any WiFi network";
         }
-
-        logger.trace("Final WiFi data:", parsed);
-        response.SSIDs.push(parsed);
       }
     } catch (err) {
       response.reason = String(err);
@@ -275,57 +182,377 @@ export class LinuxWifiActions implements WifiActions {
 
   /**
    * getSurveyDump — hämta noise floor och kanalanvändning via `iw dev survey dump`.
-   * Parsar bara den aktiva kanalen (markerad med [in use]).
    */
   async getSurveyDump(
     settings: PartialHeatmapSettings,
   ): Promise<SurveyData | null> {
     try {
-      const wlanInterface = await inferWifiDeviceIdOnLinux(
-        settings.wifiInterface,
-      );
-      return await getSurveyDump(wlanInterface, settings.sudoerPassword);
+      const iface = await inferWifiDeviceIdOnLinux(settings.wifiInterface);
+      return await getSurveyDump(iface, settings.sudoerPassword);
     } catch (err) {
       logger.warn(`getSurveyDump failed: ${err}`);
       return null;
     }
   }
 }
-/**
- * END OF LinuxOSWifiActions - the remainder is a set of helper functions
- */
+
+// ─── Helper types ───────────────────────────────────────────────────────────
+
+export interface SurveyData {
+  noiseFloor: number;
+  channelUtilization: number;
+  channelActiveTime: number;
+  channelBusyTime: number;
+  channelReceiveTime: number;
+  channelTransmitTime: number;
+}
+
+// ─── iw scan dump parser ────────────────────────────────────────────────────
 
 /**
- * SurveyData — resultat från `iw dev survey dump` för den aktiva kanalen.
+ * parseIwScanDump() — parsar hela outputen från `iw dev <iface> scan dump`
+ * till en array av WifiResults med rå dBm och utökade capabilities.
  */
-export interface SurveyData {
-  noiseFloor: number; // dBm (t.ex. -95)
-  channelUtilization: number; // 0-100% (busy/active * 100)
-  channelActiveTime: number; // ms
-  channelBusyTime: number; // ms
-  channelReceiveTime: number; // ms
-  channelTransmitTime: number; // ms
+export function parseIwScanDump(dump: string): WifiResults[] {
+  const results: WifiResults[] = [];
+
+  // Dela upp i BSS-block. Varje block börjar med "BSS xx:xx:xx:xx:xx:xx"
+  const blocks = dump.split(/^BSS /m).filter((b) => b.trim().length > 0);
+
+  for (const block of blocks) {
+    const ap = getDefaultWifiResults();
+
+    // BSSID — första raden: "aa:bb:cc:dd:ee:ff(on wlxXXX)"
+    const bssidMatch = block.match(/^([0-9a-fA-F:]{17})/);
+    if (!bssidMatch) continue;
+    ap.bssid = bssidMatch[1].toLowerCase();
+
+    // Signal (dBm) — rå värde direkt
+    const signalMatch = block.match(/signal:\s*(-?[\d.]+)\s*dBm/);
+    if (signalMatch) {
+      ap.rssi = Math.round(parseFloat(signalMatch[1]));
+      ap.signalStrength = rssiToPercentage(ap.rssi);
+    }
+
+    // Frekvens (MHz)
+    const freqMatch = block.match(/freq:\s*([\d.]+)/);
+    if (freqMatch) {
+      ap.frequency = Math.round(parseFloat(freqMatch[1]));
+      ap.band = ap.frequency < 3000 ? 2.4 : 5;
+      const chan = frequencyToChannel(ap.frequency);
+      if (chan) ap.channel = chan;
+    }
+
+    // SSID
+    const ssidMatch = block.match(/^\s+SSID:\s*(.*)$/m);
+    if (ssidMatch) {
+      ap.ssid = ssidMatch[1].trim();
+    }
+
+    // DS Parameter set: channel
+    const dsMatch = block.match(/DS Parameter set:\s*channel\s+(\d+)/);
+    if (dsMatch && !ap.channel) {
+      ap.channel = parseInt(dsMatch[1]);
+      if (!ap.band) ap.band = channelToBand(ap.channel);
+    }
+
+    // Last seen
+    const lastSeenMatch = block.match(/last seen:\s*(\d+)\s*ms/);
+    if (lastSeenMatch) {
+      ap.lastSeen = parseInt(lastSeenMatch[1]);
+    }
+
+    // Supported rates
+    const ratesMatch = block.match(/Supported rates:\s*(.+)/);
+    if (ratesMatch) {
+      ap.supportedRates = ratesMatch[1]
+        .split(/\s+/)
+        .map((r) => parseFloat(r.replace("*", "")))
+        .filter((r) => !isNaN(r));
+    }
+
+    // Security — RSN (WPA2/WPA3) eller WPA
+    const securityParts: string[] = [];
+    if (block.includes("RSN:")) {
+      const authMatch = block.match(
+        /RSN:[\s\S]*?Authentication suites:\s*(.+)/,
+      );
+      if (authMatch) {
+        const auths = authMatch[1].trim();
+        if (auths.includes("SAE")) securityParts.push("WPA3");
+        else if (auths.includes("PSK")) securityParts.push("WPA2");
+        else securityParts.push("RSN:" + auths);
+      } else {
+        securityParts.push("WPA2");
+      }
+    }
+    if (/^\s+WPA:\s/m.test(block) && !securityParts.includes("WPA2")) {
+      securityParts.push("WPA");
+    }
+    if (securityParts.length === 0 && block.includes("Privacy")) {
+      securityParts.push("WEP");
+    }
+    ap.security = securityParts.length > 0 ? securityParts.join("/") : "Open";
+
+    // ─── HT capabilities ───
+    const htCapsBlock = block.match(/HT capabilities:[\s\S]*?(?=\n\s{8}\w|\n\s{0,7}\S|$)/);
+    if (htCapsBlock) {
+      if (htCapsBlock[0].includes("HT20/HT40")) {
+        ap.htCapabilities = "HT20/HT40";
+      } else if (htCapsBlock[0].includes("HT20")) {
+        ap.htCapabilities = "HT20";
+      }
+    }
+
+    // ─── HT operation — kanalbredd (fallback om VHT saknas) ───
+    const htOpBlock = block.match(/HT operation:[\s\S]*?(?=\n\s{8}\w|\n\s{0,7}\S|$)/);
+    if (htOpBlock) {
+      const staWidth = htOpBlock[0].match(/STA channel width:\s*(.+)/);
+      if (staWidth) {
+        const w = staWidth[1].trim();
+        if (w.includes("any") || w.includes("40")) {
+          ap.channelWidth = 40;
+        } else {
+          ap.channelWidth = 20;
+        }
+      }
+      // Kolla secondary channel offset
+      const secOffset = htOpBlock[0].match(/secondary channel offset:\s*(.+)/);
+      if (secOffset && secOffset[1].trim() === "no secondary") {
+        ap.channelWidth = 20;
+      }
+    }
+
+    // ─── VHT capabilities ───
+    const vhtCapsBlock = block.match(/VHT capabilities:[\s\S]*?VHT TX highest supported:.*$/m);
+    if (vhtCapsBlock) {
+      ap.vhtCapabilities = true;
+
+      // Beamforming
+      ap.beamforming =
+        vhtCapsBlock[0].includes("SU Beamformer") ||
+        vhtCapsBlock[0].includes("SU Beamformee") ||
+        vhtCapsBlock[0].includes("MU Beamformer") ||
+        vhtCapsBlock[0].includes("MU Beamformee");
+
+      // Spatial streams — räkna "MCS 0-" rader i VHT RX MCS set
+      const rxMcsBlock = vhtCapsBlock[0].match(
+        /VHT RX MCS set:([\s\S]*?)VHT RX highest/,
+      );
+      if (rxMcsBlock) {
+        const streamLines = rxMcsBlock[1].match(/\d+ streams:\s*MCS\s+0-\d+/g);
+        if (streamLines) {
+          ap.spatialStreams = streamLines.length;
+        }
+      }
+    }
+
+    // ─── VHT operation — kanalbredd (överskriver HT) ───
+    const vhtOpBlock = block.match(/VHT operation:[\s\S]*?(?=\n\s{8}\w|\n\s{0,7}\S|$)/);
+    if (vhtOpBlock) {
+      const cwMatch = vhtOpBlock[0].match(/channel width:\s*(\d+)\s*\(([^)]+)\)/);
+      if (cwMatch) {
+        const desc = cwMatch[2].trim();
+        if (desc.includes("80+80")) ap.channelWidth = 160;
+        else if (desc.includes("160")) ap.channelWidth = 160;
+        else if (desc.includes("80")) ap.channelWidth = 80;
+        // channel width: 0 = 20 or 40 MHz — behåll HT-värdet
+      }
+    }
+
+    // ─── HE (Wi-Fi 6) capabilities ───
+    if (/HE capabilities/i.test(block) || /HE Phy Capabilities/i.test(block)) {
+      ap.heCapabilities = true;
+    }
+
+    // Skippa AP:er utan signal
+    if (ap.rssi === 0) continue;
+
+    results.push(ap);
+  }
+
+  return results.sort(bySignalStrength);
+}
+
+// ─── iw command helpers ─────────────────────────────────────────────────────
+
+function buildSudoCmd(cmd: string, pw: string): string {
+  if (isDocker()) return cmd;
+  if (pw) {
+    const escaped = pw.replace(/'/g, "'\\''");
+    return `echo '${escaped}' | sudo -S ${cmd}`;
+  }
+  return `sudo ${cmd}`;
 }
 
 /**
- * getSurveyDump() — kör `sudo iw dev <iface> survey dump` och parsar
- * den aktiva kanalens noise floor och kanalanvändning.
- * Returnerar null om data saknas eller är ogiltig.
+ * forceRescan() — trigga en aktiv WiFi-scan via `iw scan trigger`
+ * och vänta tills scan är klar via poll-loop.
  */
+async function forceRescan(iface: string, pw: string): Promise<void> {
+  const triggerCmd = buildSudoCmd(`iw dev ${iface} scan trigger`, pw);
+  try {
+    logger.debug(`Triggering WiFi scan on ${iface}`);
+    await execAsync(triggerCmd);
+  } catch (err) {
+    // "Device or resource busy" = scan pågår redan, det är OK
+    const msg = String(err);
+    if (!msg.includes("busy") && !msg.includes("-16")) {
+      logger.warn(`Scan trigger failed: ${msg}`);
+    }
+  }
+
+  // Smart poll-loop: vänta tills scan dump lyckas (= scan klar)
+  await waitForScanComplete(iface, pw);
+}
+
+/**
+ * waitForScanComplete() — pollar `iw scan dump` tills det lyckas,
+ * vilket indikerar att en pågående scan har slutförts.
+ */
+async function waitForScanComplete(
+  iface: string,
+  pw: string,
+  timeoutMs = 10000,
+): Promise<void> {
+  const start = Date.now();
+  const dumpCmd = buildSudoCmd(`iw dev ${iface} scan dump`, pw);
+
+  while (Date.now() - start < timeoutMs) {
+    try {
+      await execAsync(dumpCmd);
+      logger.debug(`Scan complete after ${Date.now() - start}ms`);
+      return;
+    } catch {
+      await delay(200);
+    }
+  }
+  // Timeout — fortsätt ändå, dump kan ha partiell data
+  logger.warn(`Scan poll timed out after ${timeoutMs}ms, continuing`);
+}
+
+/**
+ * iwScanDump() — kör `iw dev <iface> scan dump` och returnerar rå output.
+ */
+async function iwScanDump(iface: string, pw: string): Promise<string> {
+  const cmd = buildSudoCmd(`iw dev ${iface} scan dump`, pw);
+  const { stdout } = await execAsync(cmd);
+  return stdout;
+}
+
+async function iwDevLink(iface: string, pw: string): Promise<string> {
+  const cmd = buildSudoCmd(`iw dev ${iface} link`, pw);
+  const { stdout } = await execAsync(cmd);
+  return stdout;
+}
+
+async function iwDevInfo(iface: string, pw: string): Promise<string> {
+  const cmd = buildSudoCmd(`iw dev ${iface} info`, pw);
+  const { stdout } = await execAsync(cmd);
+  return stdout;
+}
+
+// ─── Parsing helpers ────────────────────────────────────────────────────────
+
+function parseConnectedBssid(linkOutput: string): string | null {
+  const m = linkOutput.match(/Connected to\s+([0-9a-fA-F:]{17})/);
+  return m ? m[1].toLowerCase() : null;
+}
+
+function parseTxBitrate(linkOutput: string): number | null {
+  const m = linkOutput.match(/tx bitrate:\s*([\d.]+)\s*MBit/);
+  return m ? parseFloat(m[1]) : null;
+}
+
+export async function inferWifiDeviceIdOnLinux(
+  preferredInterface?: string,
+): Promise<string> {
+  if (preferredInterface) {
+    logger.debug(`Using preferred WLAN interface: ${preferredInterface}`);
+    return preferredInterface;
+  }
+  logger.debug("Inferring WLAN interface ID on Linux");
+  const { stdout } = await execAsync(
+    "iw dev | awk '$1==\"Interface\"{print $2}' | head -n1",
+  );
+  return stdout.trim();
+}
+
+/**
+ * parseIwOutput — parsa `iw dev link` + `iw dev info` till WifiResults.
+ * Används som fallback när scan dump inte matchar ansluten BSSID.
+ */
+export function parseIwOutput(
+  linkOutput: string,
+  infoOutput: string,
+): WifiResults {
+  const networkInfo = getDefaultWifiResults();
+  const linkLines = linkOutput.split("\n");
+  linkLines.forEach((line) => {
+    const trimmedLine = line.trim();
+    if (trimmedLine.startsWith("SSID:")) {
+      networkInfo.ssid = trimmedLine.split("SSID:")[1]?.trim() || "";
+    } else if (trimmedLine.startsWith("Connected to")) {
+      networkInfo.bssid = normalizeMacAddress(
+        trimmedLine.split(" ")[2]?.trim() || "",
+      );
+    } else if (trimmedLine.startsWith("signal:")) {
+      const signalMatch = trimmedLine.match(/signal:\s*(-?\d+)\s*dBm/);
+      if (signalMatch) {
+        networkInfo.rssi = parseInt(signalMatch[1]);
+      }
+    } else if (trimmedLine.startsWith("freq:")) {
+      const freqMatch = trimmedLine.match(/freq:\s*(\d+)/);
+      if (freqMatch) {
+        const freqMhz = parseInt(freqMatch[1]);
+        networkInfo.frequency = freqMhz;
+        const chan = frequencyToChannel(freqMhz);
+        if (chan) {
+          networkInfo.channel = chan;
+          networkInfo.band = channelToBand(chan);
+        }
+      }
+    } else if (trimmedLine.startsWith("tx bitrate:")) {
+      const txRate = trimmedLine.split("tx bitrate:")[1]?.trim() || "";
+      networkInfo.txRate = parseFloat(txRate.split(" ")[0]);
+    } else if (trimmedLine.includes("width:")) {
+      const width = trimmedLine.split("width:")[1]?.trim() || "";
+      networkInfo.channelWidth = parseInt(width.split(" ")[0]);
+    }
+  });
+
+  const infoLines = infoOutput.split("\n");
+  infoLines.forEach((line) => {
+    const trimmedLine = line.trim();
+    if (trimmedLine.startsWith("channel")) {
+      const channelMatch = trimmedLine.match(
+        /channel\s+(\d+)\s+\((\d+)\s*MHz\),\s*width:\s*(\d+)\s*MHz/,
+      );
+      if (channelMatch) {
+        networkInfo.channel = parseInt(channelMatch[1]);
+        if (!networkInfo.band) {
+          const freqMhz = parseInt(channelMatch[2]);
+          networkInfo.band = Math.round((freqMhz / 1000) * 100) / 100;
+        }
+        networkInfo.channelWidth = parseInt(channelMatch[3]);
+      }
+    }
+  });
+
+  networkInfo.signalStrength = rssiToPercentage(networkInfo.rssi);
+  return networkInfo;
+}
+
+// ─── getSurveyDump ──────────────────────────────────────────────────────────
+
 async function getSurveyDump(
   wlanInterface: string,
   pw: string,
 ): Promise<SurveyData | null> {
-  const escapedPw = pw ? pw.replace(/'/g, "'\\''") : "";
-  const cmd = pw
-    ? `echo '${escapedPw}' | sudo -S iw dev ${wlanInterface} survey dump`
-    : `sudo iw dev ${wlanInterface} survey dump`;
-
+  const cmd = buildSudoCmd(`iw dev ${wlanInterface} survey dump`, pw);
   try {
     const { stdout } = await execAsync(cmd);
-    // Dela upp i block per frekvens
     const blocks = stdout.split(/Survey data from/);
-    // Hitta blocket med [in use]
     const activeBlock = blocks.find((b) => b.includes("[in use]"));
     if (!activeBlock) {
       logger.debug("No [in use] block found in survey dump");
@@ -344,7 +571,6 @@ async function getSurveyDump(
     const receiveTime = getVal("channel receive time");
     const transmitTime = getVal("channel transmit time");
 
-    // Noise floor 0 eller saknas → ogiltig
     if (noise === null || noise === 0) {
       logger.debug(`Invalid noise floor: ${noise}`);
       return null;
@@ -373,193 +599,7 @@ async function getSurveyDump(
   }
 }
 
-/**
- * forceRescan() — tvinga en aktiv WiFi-scan via nmcli så att
- * kernel-cachen uppdateras med färska RSSI-värden.
- */
-async function forceRescan(wlanInterface: string, pw: string): Promise<void> {
-  const escapedPw = pw ? pw.replace(/'/g, "'\\''") : "";
-  const cmd = pw
-    ? `echo '${escapedPw}' | sudo -S nmcli dev wifi rescan ifname ${wlanInterface}`
-    : `sudo nmcli dev wifi rescan ifname ${wlanInterface}`;
-  try {
-    logger.debug(`Forcing WiFi rescan on ${wlanInterface}`);
-    await execAsync(cmd);
-    // Vänta på att scan-resultaten uppdateras i kerneln
-    await delay(1500);
-    logger.debug("Rescan complete");
-  } catch {
-    // Rescan kan misslyckas om en scan redan pågår — ignorera
-    logger.debug("Rescan failed (likely already scanning), continuing");
-  }
-}
-
-/**
- * getFreshScanForConnected() — hämta färsk RSSI för det anslutna nätverket
- * via nmcli scan-resultat istället för cachade iw-värden.
- */
-async function getFreshScanForConnected(
-  wlanInterface: string,
-): Promise<{ rssi: number; signalStrength: number } | null> {
-  try {
-    const { stdout } = await execAsync(
-      `nmcli -t -f IN-USE,BSSID,SSID,MODE,CHAN,RATE,SIGNAL,BARS,SECURITY dev wifi list ifname ${wlanInterface}`,
-    );
-    const candidates = getCandidateSSIDs(stdout);
-    // Hitta det anslutna nätverket (markerat med * i IN-USE)
-    const connected = candidates.find((c) => c.currentSSID);
-    if (connected) {
-      logger.debug(
-        `Fresh nmcli scan for connected SSID "${connected.ssid}": RSSI=${connected.rssi}, signal=${connected.signalStrength}%`,
-      );
-      return { rssi: connected.rssi, signalStrength: connected.signalStrength };
-    }
-    logger.debug("No connected SSID found in nmcli scan results");
-    return null;
-  } catch (err) {
-    logger.debug(`Failed to get fresh scan for connected: ${err}`);
-    return null;
-  }
-}
-
-async function inferWifiDeviceIdOnLinux(
-  preferredInterface?: string,
-): Promise<string> {
-  if (preferredInterface) {
-    logger.debug(`Using preferred WLAN interface: ${preferredInterface}`);
-    return preferredInterface;
-  }
-  logger.debug("Inferring WLAN interface ID on Linux");
-  const { stdout } = await execAsync(
-    "iw dev | awk '$1==\"Interface\"{print $2}' | head -n1",
-  );
-  return stdout.trim();
-}
-
-async function iwDevLink(interfaceId: string, pw: string): Promise<string> {
-  let command = `iw dev ${interfaceId} link`;
-  if (!isDocker()) {
-    // Om lösenord finns, använd sudo -S med pipe. Annars kör sudo utan lösenord (NOPASSWD).
-    if (pw) {
-      command = `echo '${pw.replace(/'/g, "'\\\\''")}'  | sudo -S ` + command;
-    } else {
-      command = `sudo ` + command;
-    }
-  }
-
-  const { stdout } = await execAsync(command);
-  return stdout;
-}
-
-async function iwDevInfo(interfaceId: string, pw: string): Promise<string> {
-  let command = `iw dev ${interfaceId} info`;
-  if (!isDocker()) {
-    if (pw) {
-      command = `echo '${pw.replace(/'/g, "'\\''")}'  | sudo -S ` + command;
-    } else {
-      command = `sudo ` + command;
-    }
-  }
-  const { stdout } = await execAsync(command);
-  return stdout;
-}
-
-/**
- * getWifiFromScan() - get WiFi data for a specific SSID from nmcli scan results
- * Used for passive scanning when targetSSID is set
- */
-async function getWifiFromScan(
-  targetSSID: string,
-  wlanInterface: string,
-): Promise<WifiResults | null> {
-  const { stdout } = await execAsync(
-    `nmcli -t -f IN-USE,BSSID,SSID,MODE,CHAN,RATE,SIGNAL,BARS,SECURITY dev wifi list ifname ${wlanInterface}`,
-  );
-  const candidates = getCandidateSSIDs(stdout);
-  // Find the strongest match for the target SSID
-  const match = candidates.find(
-    (c) => c.ssid.toLowerCase() === targetSSID.toLowerCase(),
-  );
-  if (match) {
-    logger.debug(
-      `Found target SSID "${targetSSID}": RSSI=${match.rssi}, ch=${match.channel}`,
-    );
-  }
-  return match || null;
-}
-
-/**
- * parseIwOutput from Linux host
- * @param linkOutput
- * @param infoOutput
- * @returns
- */
-export function parseIwOutput(
-  linkOutput: string,
-  infoOutput: string,
-): WifiResults {
-  const networkInfo = getDefaultWifiResults();
-  const linkLines = linkOutput.split("\n");
-  linkLines.forEach((line) => {
-    const trimmedLine = line.trim();
-    if (trimmedLine.startsWith("SSID:")) {
-      networkInfo.ssid = trimmedLine.split("SSID:")[1]?.trim() || "";
-    } else if (trimmedLine.startsWith("Connected to")) {
-      networkInfo.bssid = normalizeMacAddress(
-        trimmedLine.split(" ")[2]?.trim() || "",
-      );
-    } else if (trimmedLine.startsWith("signal:")) {
-      const signalMatch = trimmedLine.match(/signal:\s*(-?\d+)\s*dBm/);
-      if (signalMatch) {
-        networkInfo.rssi = parseInt(signalMatch[1]);
-      }
-    } else if (trimmedLine.startsWith("freq:")) {
-      const freqMatch = trimmedLine.match(/freq:\s*(\d+)/);
-      if (freqMatch) {
-        const freqMhz = parseInt(freqMatch[1]);
-        const chan = frequencyToChannel(freqMhz);
-        logger.debug(`freq/channel: ${freqMhz} ${chan}`);
-        if (chan) {
-          networkInfo.channel = chan;
-          networkInfo.band = channelToBand(chan);
-        } else {
-          networkInfo.channel = 0;
-          networkInfo.band = 0;
-        }
-        // networkInfo.band = Math.round((freqMhz / 1000) * 100) / 100; // Convert MHz to GHz with 2 decimal places
-      }
-    } else if (trimmedLine.startsWith("tx bitrate:")) {
-      const txRate = trimmedLine.split("tx bitrate:")[1]?.trim() || "";
-      networkInfo.txRate = parseFloat(txRate.split(" ")[0]);
-    } else if (trimmedLine.includes("width:")) {
-      const width = trimmedLine.split("width:")[1]?.trim() || "";
-      networkInfo.channelWidth = parseInt(width.split(" ")[0]);
-    }
-  });
-
-  const infoLines = infoOutput.split("\n");
-  infoLines.forEach((line) => {
-    const trimmedLine = line.trim();
-    if (trimmedLine.startsWith("channel")) {
-      const channelMatch = trimmedLine.match(
-        /channel\s+(\d+)\s+\((\d+)\s*MHz\),\s*width:\s*(\d+)\s*MHz/,
-      );
-      if (channelMatch) {
-        networkInfo.channel = parseInt(channelMatch[1]);
-        // Update frequency band if not already set from linkOutput
-        if (!networkInfo.band) {
-          const freqMhz = parseInt(channelMatch[2]);
-          networkInfo.band = Math.round((freqMhz / 1000) * 100) / 100;
-        }
-        networkInfo.channelWidth = parseInt(channelMatch[3]);
-      }
-    }
-  });
-  // Always set signalStrength, too
-  networkInfo.signalStrength = rssiToPercentage(networkInfo.rssi);
-
-  return networkInfo;
-}
+// ─── splitColonDelimited — behålls för bakåtkompatibilitet (iperfRunner) ────
 
 /**
  * splitColonDelimited() - split a colon-delimited string
@@ -572,102 +612,41 @@ export function splitColonDelimited(line: string) {
   let i = 0;
 
   const str = line.trim();
-  if (str.length == 0) return [];
-  str.concat(":");
+  if (str.length === 0) return [];
   while (i < str.length) {
     if (str[i] === "\\" && i + 1 < str.length) {
-      // Handle escaped characters
-      current += str[i + 1]; // Add the escaped character
-      i += 2; // Skip both the backslash and the escaped character
+      current += str[i + 1];
+      i += 2;
     } else if (str[i] === ":") {
-      // Unescaped colon - end of field
       result.push(current);
       current = "";
       i++;
     } else {
-      // Regular character
       current += str[i];
       i++;
     }
   }
-
-  // Add the last field
   result.push(current);
-
   return result;
 }
 
-/**
- * getCandidates(nmcliData) - pluck up the local SSIDs from nmcli output
- * @param - Object that contains output of system_profiler for Wifi
- * @returns WifiResults[] sorted by signalStrength
- */
-export const getCandidateSSIDs = (nmcliData: string): WifiResults[] => {
-  const candidates = [];
-  const lines = nmcliData.split("\n");
-  for (const line of lines) {
-    if (line.startsWith("//")) continue;
-    const cols = splitColonDelimited(line);
-    if (cols.length == 0) continue;
+// ─── frequencyToChannel ─────────────────────────────────────────────────────
 
-    // now do something with the columns
-    const candidate = getDefaultWifiResults();
-    candidate.currentSSID = cols[0] == "*";
-    candidate.bssid = cols[1];
-    candidate.ssid = cols[2];
-    candidate.channel = parseInt(cols[4]);
-    candidate.txRate = stripMbps(cols[5]);
-    candidate.signalStrength = parseInt(cols[6]);
-    candidate.rssi = percentageToRssi(candidate.signalStrength);
-    candidate.band = channelToBand(candidate.channel);
-    candidate.security = cols[8];
-    // skip phymode, channelWidth
-
-    candidates.push(candidate);
-  }
-  // eliminate any RSSI=0 (no reading), then sort by RSSI
-  const nonZeroCandidates = candidates.filter((item) => item.rssi != 0);
-  // eliminate any SSIDs to be ignored
-  // const nonIgnoredCandidates = nonZeroCandidates.filter(
-  //   (item) => !ignoredSSIDs.includes(item.ssid),
-  // );
-  // sort the remainder by signal strength
-  const sortedCandidates = nonZeroCandidates.sort(bySignalStrength);
-  return sortedCandidates;
-};
-
-/**
- * stripMbps() - retain the number at head of a string
- * @param string - "123 Mbits/s"
- * @result numeric 123
- */
-function stripMbps(str: string): number {
-  const strs = str.split(" ");
-  return parseInt(strs[0]);
-}
-
-/**
- * frequencyToChannel(freq)
- * @param frequency (as number)
- * @returns channel (number)
- */
 export function frequencyToChannel(freqMHz: number): number | null {
   // 2.4 GHz band
   if (freqMHz >= 2412 && freqMHz <= 2472) {
-    return (freqMHz - 2407) / 5; // 1–13
+    return (freqMHz - 2407) / 5;
   }
-  if (freqMHz === 2484) {
-    return 14;
-  }
+  if (freqMHz === 2484) return 14;
 
   // 5 GHz band
   if (freqMHz >= 5180 && freqMHz <= 5895) {
-    return (freqMHz - 5000) / 5; // 36–177+
+    return (freqMHz - 5000) / 5;
   }
 
-  // 6 GHz band (Wi-Fi 6E, 5955–7115 MHz)
+  // 6 GHz band (Wi-Fi 6E)
   if (freqMHz >= 5955 && freqMHz <= 7115) {
-    return (freqMHz - 5950) / 5; // 1–233
+    return (freqMHz - 5950) / 5;
   }
 
   return null;

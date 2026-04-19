@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useSettings } from "@/components/GlobalSettings";
 
@@ -26,6 +26,7 @@ import { getLogger } from "@/lib/logger";
 import createHeatmapWebGLRenderer from "../app/webGL/renderers/mainRenderer";
 import HeatmapImage from "./HeatmapImage";
 import HeatmapModal from "./HeatmapModal";
+import { ApFilterList } from "./ApFilterList";
 
 const logger = getLogger("Heatmaps");
 
@@ -135,14 +136,91 @@ export function Heatmaps({ showWalls = true }: { showWalls?: boolean } = {}) {
   );
   const [bandFilter, setBandFilter] = useState<BandFilter>("combined");
 
+  // AP filter state
+  const hasScannedBSSData = points.some(
+    (p) => p.scannedBSSList && p.scannedBSSList.length > 0,
+  );
+  const [enabledBSSIDs, setEnabledBSSIDs] = useState<Set<string>>(new Set());
+
+  // Initialisera enabledBSSIDs med alla BSSID:er vid mount/data-ändring
+  useEffect(() => {
+    const allBSSIDs = new Set<string>();
+    points.forEach((p) => {
+      p.scannedBSSList?.forEach((bss) => allBSSIDs.add(bss.bssid));
+    });
+    setEnabledBSSIDs(allBSSIDs);
+  }, [points]);
+
+  const handleApToggle = (bssid: string) => {
+    setEnabledBSSIDs((prev) => {
+      const next = new Set(prev);
+      if (next.has(bssid)) next.delete(bssid);
+      else next.add(bssid);
+      return next;
+    });
+  };
+
+  const handleSelectAllAps = () => {
+    const allBSSIDs = new Set<string>();
+    points.forEach((p) =>
+      p.scannedBSSList?.forEach((bss) => allBSSIDs.add(bss.bssid)),
+    );
+    setEnabledBSSIDs(allBSSIDs);
+  };
+
+  const handleSelectNoneAps = () => {
+    setEnabledBSSIDs(new Set());
+  };
+
   /**
-   * Filtrera och transformera surveyPoints baserat på valt band.
+   * Steg 1: Applicera AP-filter (scannedBSSList).
+   * Om scannedBSSList finns, välj starkaste bland aktiva AP:er.
+   */
+  const apFilteredPoints = useMemo(() => {
+    if (!hasScannedBSSData) return points;
+    if (enabledBSSIDs.size === 0) return [];
+
+    return points
+      .map((point) => {
+        if (!point.scannedBSSList || point.scannedBSSList.length === 0) {
+          // Bakåtkompatibilitet: punkt utan scannedBSSList, visa som den är
+          return point;
+        }
+
+        const activeBSSes = point.scannedBSSList.filter((bss) =>
+          enabledBSSIDs.has(bss.bssid),
+        );
+        if (activeBSSes.length === 0) return null;
+
+        const best = activeBSSes.reduce((a, b) =>
+          a.signal > b.signal ? a : b,
+        );
+
+        return {
+          ...point,
+          wifiData: {
+            ...point.wifiData,
+            rssi: best.signal,
+            signalStrength: Math.round(((best.signal + 100) / 60) * 100),
+            bssid: best.bssid,
+            channel: best.channel,
+            band: best.band,
+            frequency: best.frequency,
+            channelWidth: best.channelWidth,
+          },
+        };
+      })
+      .filter((p): p is SurveyPoint => p !== null);
+  }, [points, enabledBSSIDs, hasScannedBSSData]);
+
+  /**
+   * Steg 2: Applicera band-filter ovanpå AP-filtrerade punkter.
    * Om dual-band data saknas returneras punkterna oförändrade.
    */
   const filteredPoints = React.useMemo(() => {
-    if (!hasDualBandData) return points;
+    if (!hasDualBandData) return apFilteredPoints;
 
-    return points
+    return apFilteredPoints
       .map((p) => {
         if (!p.bandMeasurements || p.bandMeasurements.length === 0) return p;
 
@@ -159,7 +237,7 @@ export function Heatmaps({ showWalls = true }: { showWalls?: boolean } = {}) {
         return applyBandOverlay(p, match);
       })
       .filter((p): p is SurveyPoint => p !== null);
-  }, [points, bandFilter, hasDualBandData]);
+  }, [apFilteredPoints, bandFilter, hasDualBandData]);
 
   const r2 = calculateRadiusByBoundingBox;
 
@@ -630,6 +708,7 @@ export function Heatmaps({ showWalls = true }: { showWalls?: boolean } = {}) {
     selectedProperties,
     showSignalStrengthAsPercentage,
     bandFilter,
+    enabledBSSIDs,
   ]);
 
   const toggleMetric = (metric: MeasurementTestType) => {
@@ -730,6 +809,18 @@ export function Heatmaps({ showWalls = true }: { showWalls?: boolean } = {}) {
             ))}
           </div>
         </div>
+      )}
+
+      {/* AP Filter — visas bara om scannedBSSList-data finns */}
+      {hasScannedBSSData && (
+        <ApFilterList
+          surveyPoints={points}
+          apMapping={settings.apMapping}
+          enabledBSSIDs={enabledBSSIDs}
+          onToggle={handleApToggle}
+          onSelectAll={handleSelectAllAps}
+          onSelectNone={handleSelectNoneAps}
+        />
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -24,10 +24,17 @@ export interface WifiResults {
   band: number; // frequency band - 2.4 or 5 (GHz)
   currentSSID: boolean; // true if this is the SSID currently in use
   strongestSSID: WifiResults | null;
-  // frequency: number; // exact frequency (as number) - xxxx GHz
   noiseFloor?: number; // dBm (t.ex. -95)
   snr?: number; // dB (RSSI - noiseFloor)
   channelUtilization?: number; // 0-100%
+  frequency?: number; // exakt frekvens i MHz (t.ex. 5220)
+  spatialStreams?: number; // antal streams från MCS set
+  beamforming?: boolean; // SU/MU beamformer/beamformee
+  htCapabilities?: string; // "HT20" | "HT20/HT40"
+  vhtCapabilities?: boolean; // true om VHT stöds
+  heCapabilities?: boolean; // true om HE (Wi-Fi 6) stöds
+  supportedRates?: number[]; // Mbps
+  lastSeen?: number; // ms sedan senaste beacon
 }
 
 /**
@@ -124,7 +131,6 @@ export interface GlobalAppSettings {
   targetSSID: string;
   snapRadius: number;
   knownWifiNetworks: KnownWifi[];
-  dualBand: DualBandConfig;
 }
 
 /**
@@ -162,7 +168,6 @@ export interface PartialHeatmapSettings {
   iperfCommands: IperfCommands;
   wifiInterface: string;
   targetSSID: string;
-  dualBand?: DualBandConfig;
   // sameSSID: SsidStrategy;
 }
 
@@ -178,6 +183,7 @@ export type SurveyPoint = {
   id: string;
   isEnabled: boolean;
   bandMeasurements?: BandMeasurement[]; // dual-band mätdata
+  scannedBSSList?: ScannedBSS[];         // ALLA BSS:er för target SSID vid denna punkt
 };
 
 /**
@@ -187,6 +193,7 @@ export interface SurveyResults {
   wifiData: WifiResults;
   iperfData: IperfResults;
   bandMeasurements?: BandMeasurement[];
+  scannedBSSList?: ScannedBSS[];
 }
 
 /**
@@ -278,13 +285,21 @@ export interface KnownWifi {
 }
 
 /**
- * Dual-band mätningskonfiguration
+ * ScannedBSS — en enskild BSS (access point radio) sedd vid en mätpunkt.
+ * Sparar rå data från iw scan dump.
  */
-export interface DualBandConfig {
-  enabled: boolean;
-  mode: "simultaneous" | "sequential";
-  interface24?: string; // NIC för 2.4 GHz (simultaneous mode)
-  interface5?: string; // NIC för 5 GHz (simultaneous mode)
+export interface ScannedBSS {
+  bssid: string;
+  ssid: string;
+  signal: number;           // dBm, rå från adaptern
+  frequency: number;        // MHz
+  channel: number;
+  band: number;             // 2.4 | 5
+  channelWidth: number;     // 20/40/80/160 MHz
+  spatialStreams?: number;
+  beamforming?: boolean;
+  security?: string;
+  lastSeen?: number;        // ms sedan senaste beacon
 }
 
 /**

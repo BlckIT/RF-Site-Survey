@@ -98,7 +98,6 @@ export default function ClickableFloorplan({
         sudoerPassword: settings.sudoerPassword,
         wifiInterface: overrideInterface || settings.wifiInterface || "",
         targetSSID: settings.targetSSID || "",
-        dualBand: settings.dualBand,
       },
     };
 
@@ -152,7 +151,7 @@ export default function ClickableFloorplan({
       cleanupFailedTest("Measurement cancelled");
       return;
     }
-    const { wifiData, iperfData, bandMeasurements } = result.results;
+    const { wifiData, iperfData, bandMeasurements, scannedBSSList } = result.results;
     const newPoint: SurveyPoint = {
       wifiData,
       iperfData,
@@ -162,6 +161,7 @@ export default function ClickableFloorplan({
       isEnabled: true,
       id: `Point_${settings.nextPointNum}`,
       bandMeasurements,
+      scannedBSSList,
     };
     addSurveyPoint(newPoint, x, y, settings);
   };

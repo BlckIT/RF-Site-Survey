@@ -46,6 +46,12 @@ type FlattenedSurveyPoint = {
   phyMode: string;
   channelWidth: number;
   band: string;
+  frequency: number | undefined;
+  spatialStreams: number | undefined;
+  beamforming: string;
+  snr: number | undefined;
+  noiseFloor: number | undefined;
+  channelUtilization: number | undefined;
   tcpDownloadMbps: number;
   tcpUploadMbps: number;
   udpDownloadMbps: number;
@@ -76,20 +82,28 @@ const SurveyPointsTable: React.FC<SurveyPointsTableProps> = ({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
     select: true,
     id: true,
-    signalQuality: true,
-    bssid: true,
+    rssi: true,
+    channel: true,
     band: true,
+    channelWidth: true,
     tcpDownloadMbps: true,
     tcpUploadMbps: true,
     timestamp: true,
     disable: true,
-    rssi: false,
+    signalQuality: false,
     ssid: false,
+    bssid: false,
     security: false,
     txRate: false,
     phyMode: false,
-    channelWidth: false,
-    channel: false,
+    udpDownloadMbps: false,
+    udpUploadMbps: false,
+    snr: false,
+    noiseFloor: false,
+    frequency: false,
+    spatialStreams: false,
+    beamforming: false,
+    channelUtilization: false,
     x: false,
     y: false,
   });
@@ -202,7 +216,31 @@ const SurveyPointsTable: React.FC<SurveyPointsTableProps> = ({
       },
       {
         accessorKey: "channelWidth",
-        header: "Channel Width",
+        header: "Channel Width [MHz]",
+      },
+      {
+        accessorKey: "frequency",
+        header: "Frequency [MHz]",
+      },
+      {
+        accessorKey: "snr",
+        header: "SNR [dB]",
+      },
+      {
+        accessorKey: "noiseFloor",
+        header: "Noise Floor [dBm]",
+      },
+      {
+        accessorKey: "channelUtilization",
+        header: "Ch. Util [%]",
+      },
+      {
+        accessorKey: "spatialStreams",
+        header: "Spatial Streams",
+      },
+      {
+        accessorKey: "beamforming",
+        header: "Beamforming",
       },
 
       {
@@ -250,6 +288,12 @@ const SurveyPointsTable: React.FC<SurveyPointsTableProps> = ({
           point.wifiData.signalStrength ||
           rssiToPercentage(point.wifiData.rssi),
         band: `${point.wifiData.band} GHz`,
+        frequency: point.wifiData.frequency,
+        spatialStreams: point.wifiData.spatialStreams,
+        beamforming: point.wifiData.beamforming ? "Ja" : "Nej",
+        snr: point.wifiData.snr,
+        noiseFloor: point.wifiData.noiseFloor,
+        channelUtilization: point.wifiData.channelUtilization,
         timestamp: new Date(point.timestamp).toLocaleString(),
       };
     });

@@ -30,41 +30,15 @@ const PopupDetails: React.FC<PopupDetailsProps> = ({
 
   const toMbps = (bps: number) => `${(bps / 1e6).toFixed(1)} Mbps`;
 
-  // Grundläggande rader — alltid dBm som primärt signalvärde
+  // Grundläggande rader — ny ordning enligt spec
   const rows: { label: string; value: string | number | undefined }[] = [
     { label: "ID", value: point.id },
     { label: "SSID", value: point.wifiData?.ssid },
-    { label: "RSSI", value: `${point.wifiData.rssi} dBm` },
+    {
+      label: "BSSID",
+      value: formatMacAddress(point.wifiData?.bssid || ""),
+    },
   ];
-
-  // Noise floor och SNR om tillgängligt
-  if (point.wifiData.noiseFloor != null) {
-    rows.push({
-      label: "Noise Floor",
-      value: `${point.wifiData.noiseFloor} dBm`,
-    });
-  }
-  if (point.wifiData.snr != null) {
-    rows.push({ label: "SNR", value: `${point.wifiData.snr} dB` });
-  }
-  if (point.wifiData.channelUtilization != null) {
-    rows.push({
-      label: "Channel Utilization",
-      value: `${point.wifiData.channelUtilization}%`,
-    });
-  }
-
-  rows.push({ label: "Channel", value: point.wifiData?.channel });
-
-  // Band visas bara om inga bandMeasurements finns (annars visas per-band nedan)
-  if (!point.bandMeasurements || point.bandMeasurements.length === 0) {
-    rows.push({ label: "Band", value: `${point.wifiData?.band} GHz` });
-  }
-
-  rows.push({
-    label: "BSSID",
-    value: formatMacAddress(point.wifiData?.bssid || ""),
-  });
 
   // AP-namn från mapping
   const apName = settings.apMapping.find(
@@ -74,9 +48,55 @@ const PopupDetails: React.FC<PopupDetailsProps> = ({
     rows.push({ label: "AP Name", value: apName });
   }
 
-  // WiFi interface om tillgängligt
-  if (settings.wifiInterface) {
-    rows.push({ label: "Interface", value: settings.wifiInterface });
+  // Signal section
+  rows.push({ label: "RSSI", value: `${point.wifiData.rssi} dBm` });
+  if (point.wifiData.snr != null) {
+    rows.push({ label: "SNR", value: `${point.wifiData.snr} dB` });
+  }
+  if (point.wifiData.noiseFloor != null) {
+    rows.push({
+      label: "Noise Floor",
+      value: `${point.wifiData.noiseFloor} dBm`,
+    });
+  }
+  if (point.wifiData.channelUtilization != null) {
+    rows.push({
+      label: "Channel Utilization",
+      value: `${point.wifiData.channelUtilization}%`,
+    });
+  }
+
+  // Radio section
+  if (point.wifiData.frequency) {
+    rows.push({
+      label: "Frequency",
+      value: `${point.wifiData.frequency} MHz`,
+    });
+  }
+  rows.push({ label: "Channel", value: point.wifiData?.channel });
+  rows.push({ label: "Band", value: `${point.wifiData?.band} GHz` });
+  if (point.wifiData.channelWidth) {
+    rows.push({
+      label: "Channel Width",
+      value: `${point.wifiData.channelWidth} MHz`,
+    });
+  }
+
+  // Capabilities section
+  if (point.wifiData.spatialStreams != null) {
+    rows.push({
+      label: "Spatial Streams",
+      value: point.wifiData.spatialStreams,
+    });
+  }
+  if (point.wifiData.beamforming) {
+    rows.push({ label: "Beamforming", value: "Yes" });
+  }
+  if (point.wifiData.security) {
+    rows.push({ label: "Security", value: point.wifiData.security });
+  }
+  if (point.wifiData.txRate) {
+    rows.push({ label: "TX Rate", value: `${point.wifiData.txRate} Mbps` });
   }
 
   // TCP/UDP — visa varje metric en gång

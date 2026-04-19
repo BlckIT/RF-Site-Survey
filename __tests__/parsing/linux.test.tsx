@@ -2,7 +2,6 @@ import { expect, test } from "vitest";
 import { parseIwOutput } from "../../src/lib/wifiScanner-linux";
 import {
   splitColonDelimited,
-  getCandidateSSIDs,
 } from "../../src/lib/wifiScanner-linux";
 
 import fs from "fs";
@@ -107,58 +106,4 @@ test("Parsing 'nmlcli -t' output with non-empty first column and no security", (
   ]);
 });
 
-test("Handling 'nmcli dev wifi list'", () => {
-  const nmcliOutput = fs.readFileSync(
-    path.join(__dirname, "../data/linux-nmcli-dev-wifi-list.txt"),
-    "utf-8",
-  );
-  const candidates = getCandidateSSIDs(nmcliOutput);
-
-  expect(candidates.length).toEqual(11);
-
-  expect(candidates[0]).toStrictEqual({
-    ssid: "SSID-1",
-    bssid: "FE:DC:BA:09:87:01",
-    rssi: -40,
-    signalStrength: 100,
-    channel: 6,
-    band: 2.4,
-    channelWidth: 0,
-    txRate: 130,
-    phyMode: "",
-    security: "WPA1 WPA2",
-    currentSSID: false,
-    strongestSSID: null,
-  });
-
-  // checking that the "\" and ":" are escaped properly in the SSID
-  expect(candidates[1]).toStrictEqual({
-    ssid: "SSID-2-\\foo:bar", // only one "\" in the SSID
-    bssid: "FE:DC:BA:09:87:02",
-    rssi: -40,
-    signalStrength: 100,
-    channel: 6,
-    band: 2.4,
-    channelWidth: 0,
-    txRate: 130,
-    phyMode: "",
-    security: "WPA2",
-    currentSSID: false,
-    strongestSSID: null,
-  });
-
-  expect(candidates[10]).toStrictEqual({
-    ssid: "SSID-11",
-    bssid: "FE:DC:BA:09:87:0B",
-    rssi: -91,
-    signalStrength: 15,
-    channel: 11,
-    band: 2.4,
-    channelWidth: 0,
-    txRate: 130,
-    phyMode: "",
-    security: "WPA2 WPA3",
-    currentSSID: false,
-    strongestSSID: null,
-  });
-});
+// getCandidateSSIDs test removed — nmcli no longer used

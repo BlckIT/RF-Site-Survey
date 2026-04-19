@@ -124,7 +124,6 @@ function pickDraftFields(s: HeatmapSettings) {
     gradient: s.gradient,
     snapRadius: s.snapRadius,
     sudoerPassword: s.sudoerPassword,
-    dualBand: s.dualBand,
   };
 }
 
@@ -1471,178 +1470,6 @@ function SettingsPanel() {
                 />
               </AccordionContent>
             </AccordionItem>
-            <AccordionItem value="dual-band" className="border-gray-200">
-              <AccordionTrigger className="text-xs font-semibold text-gray-600 py-2 hover:no-underline">
-                Dual-Band Measurement
-              </AccordionTrigger>
-              <AccordionContent>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <Switch
-                      checked={draft.dualBand?.enabled ?? false}
-                      onCheckedChange={(checked) =>
-                        updateDraft({
-                          dualBand: {
-                            ...(draft.dualBand ?? {
-                              enabled: false,
-                              mode: "sequential",
-                            }),
-                            enabled: checked,
-                          },
-                        })
-                      }
-                      aria-label="Enable dual-band measurement"
-                    />
-                    <span className="text-sm">
-                      Enable dual-band measurement
-                    </span>
-                    <PopoverHelper text="When enabled, measurements are taken on both 2.4 GHz and 5 GHz bands at each survey point." />
-                  </div>
-
-                  {draft.dualBand?.enabled && (
-                    <div className="space-y-3 pl-1">
-                      {/* Mätläge */}
-                      <div className="flex flex-col gap-1">
-                        <Label className="text-xs font-semibold">Mode</Label>
-                        <div className="flex gap-4">
-                          <label className="flex items-center gap-2 text-sm cursor-pointer">
-                            <input
-                              type="radio"
-                              name="dualBandMode"
-                              value="sequential"
-                              checked={draft.dualBand.mode === "sequential"}
-                              onChange={() =>
-                                updateDraft({
-                                  dualBand: {
-                                    ...draft.dualBand,
-                                    mode: "sequential",
-                                  },
-                                })
-                              }
-                            />
-                            Sequential
-                          </label>
-                          <label
-                            className={`flex items-center gap-2 text-sm ${
-                              wifiInterfaces.length < 2
-                                ? "opacity-50 cursor-not-allowed"
-                                : "cursor-pointer"
-                            }`}
-                            title={
-                              wifiInterfaces.length < 2
-                                ? "Requires 2 WiFi interfaces"
-                                : undefined
-                            }
-                          >
-                            <input
-                              type="radio"
-                              name="dualBandMode"
-                              value="simultaneous"
-                              checked={draft.dualBand.mode === "simultaneous"}
-                              disabled={wifiInterfaces.length < 2}
-                              onChange={() =>
-                                updateDraft({
-                                  dualBand: {
-                                    ...draft.dualBand,
-                                    mode: "simultaneous",
-                                  },
-                                })
-                              }
-                            />
-                            Simultaneous
-                          </label>
-                        </div>
-                        {draft.dualBand.mode === "sequential" && (
-                          <p className="text-xs text-gray-500 mt-1">
-                            Uses a single interface. Scans 2.4 GHz first, then 5
-                            GHz at each point.
-                          </p>
-                        )}
-                        {draft.dualBand.mode === "simultaneous" && (
-                          <p className="text-xs text-gray-500 mt-1">
-                            Uses two interfaces in parallel. One per band.
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Interface-val för simultaneous */}
-                      {draft.dualBand.mode === "simultaneous" && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div className="flex flex-col gap-1">
-                            <Label className="text-xs font-semibold">
-                              2.4 GHz Interface
-                            </Label>
-                            <select
-                              className={inputClass}
-                              value={draft.dualBand.interface24 || ""}
-                              onChange={(e) =>
-                                updateDraft({
-                                  dualBand: {
-                                    ...draft.dualBand,
-                                    interface24: e.target.value || undefined,
-                                  },
-                                })
-                              }
-                            >
-                              <option value="">Select interface</option>
-                              {wifiInterfaces
-                                .filter(
-                                  (iface) =>
-                                    iface !== draft.dualBand.interface5,
-                                )
-                                .map((iface) => (
-                                  <option key={iface} value={iface}>
-                                    {iface}
-                                  </option>
-                                ))}
-                            </select>
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <Label className="text-xs font-semibold">
-                              5 GHz Interface
-                            </Label>
-                            <select
-                              className={inputClass}
-                              value={draft.dualBand.interface5 || ""}
-                              onChange={(e) =>
-                                updateDraft({
-                                  dualBand: {
-                                    ...draft.dualBand,
-                                    interface5: e.target.value || undefined,
-                                  },
-                                })
-                              }
-                            >
-                              <option value="">Select interface</option>
-                              {wifiInterfaces
-                                .filter(
-                                  (iface) =>
-                                    iface !== draft.dualBand.interface24,
-                                )
-                                .map((iface) => (
-                                  <option key={iface} value={iface}>
-                                    {iface}
-                                  </option>
-                                ))}
-                            </select>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Info om sequential — använder Scan Interface */}
-                      {draft.dualBand.mode === "sequential" && (
-                        <div className="bg-blue-50 border border-blue-200 rounded-sm px-3 py-2">
-                          <p className="text-xs text-blue-700">
-                            Sequential mode uses the Scan Interface selected
-                            above.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </AccordionContent>
-            </AccordionItem>
           </Accordion>
         </Tabs.Content>
 
@@ -1844,7 +1671,6 @@ function SettingsPanel() {
                   targetSSID: "",
                   snapRadius: defaults.snapRadius,
                   sudoerPassword: "",
-                  dualBand: defaults.dualBand,
                 });
               }}
             >
