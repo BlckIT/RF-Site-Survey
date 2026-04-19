@@ -4,6 +4,7 @@ import { PopoverHelper } from "@/components/PopoverHelpText";
 import { useState, useEffect, useCallback } from "react";
 import { WifiResults } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { groupNetworksBySSID } from "@/lib/groupNetworks";
 import SSIDDropdown from "@/components/SSIDDropdown";
 
@@ -35,13 +36,10 @@ export default function SurveySettingsBar() {
 
   const grouped = groupNetworksBySSID(scannedSSIDs);
 
-  const inputClass =
-    "w-full border border-gray-200 rounded-sm p-1.5 text-sm focus:outline-none focus:ring focus:ring-blue-300 focus:border-blue-400";
-
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-gray-50 border border-gray-200 rounded-md mb-4">
+    <div className="flex items-end gap-2 p-2 bg-gray-50 border border-gray-200 rounded-md mb-2">
       {/* Target SSID */}
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-1 flex-1 min-w-0">
         <Label className="text-xs font-semibold">
           Target SSID&nbsp;
           <PopoverHelper text="Measure a specific SSID without being connected to it (passive scanning). Leave empty to use the currently connected network." />
@@ -66,14 +64,13 @@ export default function SurveySettingsBar() {
       </div>
 
       {/* Test Duration */}
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-1 w-32 shrink-0">
         <Label className="text-xs font-semibold">
           Duration (s)&nbsp;
           <PopoverHelper text="Duration of the speed test (in seconds)." />
         </Label>
-        <input
+        <Input
           type="number"
-          className={inputClass}
           value={settings.testDuration}
           onChange={(e) =>
             updateSettings({ testDuration: Number(e.target.value.trim()) })

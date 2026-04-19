@@ -20,10 +20,8 @@ import {
 } from "@/lib/types";
 import { getColorAt, objectToRGBAString } from "@/lib/utils-gradient";
 
-import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import { HeatmapSlider } from "./Slider";
 
 import { IperfTestProperty } from "@/lib/types";
@@ -747,137 +745,143 @@ export function Heatmaps({ showWalls = true }: { showWalls?: boolean } = {}) {
     });
   };
 
+  const [apFilterOpen, setApFilterOpen] = useState(false);
+
+  // Räkna totalt antal unika APs för badge
+  const totalApCount = useMemo(() => {
+    const allBSSIDs = new Set<string>();
+    points.forEach((p) =>
+      p.scannedBSSList?.forEach((bss) => allBSSIDs.add(bss.bssid)),
+    );
+    return allBSSIDs.size;
+  }, [points]);
+
+  const pillClass =
+    "px-2 py-0.5 text-xs rounded-full border cursor-pointer select-none transition-colors";
+  const pillActive = "bg-gray-900 text-white border-gray-900";
+  const pillInactive =
+    "bg-white text-gray-700 border-gray-300 hover:border-gray-400";
+
   return (
-    <div>
-      <div className="mb-4">
-        <h3 className="text-sm font-semibold text-gray-700 mb-2">
-          Select Metrics
-        </h3>
-        <div className="flex flex-wrap gap-4">
-          {Object.values(testTypes).map((metric) => (
-            <div key={metric} className="flex items-center space-x-2">
-              <Checkbox
-                id={`metric-${metric}`}
-                checked={selectedMetrics.includes(metric)}
-                onCheckedChange={() => toggleMetric(metric)}
-              />
-              <Label
-                htmlFor={`metric-${metric}`}
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                {metricTitles[metric]}
-              </Label>
-            </div>
+    <div className="flex flex-col gap-2">
+      {/* Rad 1: Metrics + separator + Properties + Signal % toggle */}
+      <div className="flex flex-wrap items-center gap-1">
+        {Object.values(testTypes).map((metric) => (
+          <button
+            key={metric}
+            type="button"
+            onClick={() => toggleMetric(metric)}
+            className={`${pillClass} ${selectedMetrics.includes(metric) ? pillActive : pillInactive}`}
+          >
+            {metricTitles[metric]}
+          </button>
+        ))}
+
+        <span className="text-gray-300 mx-1 select-none">|</span>
+
+        {Object.values(testProperties)
+          .filter((property) => property !== "signalStrength")
+          .map((property) => (
+            <button
+              key={property}
+              type="button"
+              onClick={() => toggleProperty(property)}
+              className={`${pillClass} ${selectedProperties.includes(property) ? pillActive : pillInactive}`}
+            >
+              {propertyTitles[property]}
+            </button>
           ))}
+
+        <span className="text-gray-300 mx-1 select-none">|</span>
+
+        <div className="flex items-center gap-1">
+          <Switch
+            id="signal-pct-toggle"
+            checked={showSignalStrengthAsPercentage}
+            onCheckedChange={setShowSignalStrengthAsPercentage}
+            className="scale-75"
+          />
+          <Label htmlFor="signal-pct-toggle" className="text-xs text-gray-600">
+            %
+          </Label>
         </div>
       </div>
 
-      <div className="mb-6">
-        <h3 className="text-sm font-semibold text-gray-700 mb-2">
-          Select Properties
-        </h3>
-        <div className="flex flex-wrap gap-4">
-          {Object.values(testProperties)
-            .filter((property) => property != "signalStrength")
-            .map((property) => (
-              <div key={property} className="flex items-center space-x-2">
-                <Checkbox
-                  id={`property-${property}`}
-                  checked={selectedProperties.includes(property)}
-                  onCheckedChange={() => toggleProperty(property)}
-                />
-                <Label
-                  htmlFor={`property-${property}`}
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  {propertyTitles[property]}
-                </Label>
-              </div>
-            ))}
+      {/* Rad 2: Band Filter + Radius slider */}
+      <div className="flex items-center gap-2">
+        {hasDualBandData &&
+          (["2.4", "5", "combined"] as const).map((band) => (
+            <button
+              key={band}
+              type="button"
+              onClick={() => setBandFilter(band)}
+              className={`${pillClass} ${bandFilter === band ? pillActive : pillInactive}`}
+            >
+              {band === "combined" ? "Combined" : `${band} GHz`}
+            </button>
+          ))}
+        <div className="flex-1">
+          <HeatmapSlider
+            value={displayedRadius}
+            onChange={handleRadiusChange}
+          />
         </div>
       </div>
 
-      <HeatmapSlider value={displayedRadius} onChange={handleRadiusChange} />
-
-      {/* Band-toggle — visas bara om dual-band data finns */}
-      {hasDualBandData && (
-        <div className="mb-4">
-          <h3 className="text-sm font-semibold text-gray-700 mb-2">
-            Band Filter
-          </h3>
-          <div className="flex gap-2">
-            {(["2.4", "5", "combined"] as const).map((band) => (
-              <Button
-                key={band}
-                variant={bandFilter === band ? "default" : "outline"}
-                size="sm"
-                onClick={() => setBandFilter(band)}
-                className="text-xs"
-              >
-                {band === "combined" ? "Combined" : `${band} GHz`}
-              </Button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* AP Filter — visas bara om scannedBSSList-data finns */}
+      {/* Rad 3: AP Filter (collapsible) */}
       {hasScannedBSSData && (
-        <ApFilterList
-          surveyPoints={points}
-          apMapping={settings.apMapping}
-          enabledBSSIDs={enabledBSSIDs}
-          onToggle={handleApToggle}
-          onSelectAll={handleSelectAllAps}
-          onSelectNone={handleSelectNoneAps}
-        />
+        <div>
+          <button
+            type="button"
+            onClick={() => setApFilterOpen((v) => !v)}
+            className={`${pillClass} ${apFilterOpen ? pillActive : pillInactive}`}
+          >
+            APs ({totalApCount})
+          </button>
+          {apFilterOpen && (
+            <div className="mt-1">
+              <ApFilterList
+                surveyPoints={points}
+                apMapping={settings.apMapping}
+                enabledBSSIDs={enabledBSSIDs}
+                onToggle={handleApToggle}
+                onSelectAll={handleSelectAllAps}
+                onSelectNone={handleSelectNoneAps}
+              />
+            </div>
+          )}
+        </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Heatmap grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {selectedMetrics.map((metric) => (
-          <div key={metric} className="bg-gray-50 p-4 rounded-md">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">
+          <div key={metric} className="bg-gray-50 p-3 rounded-md">
+            <h3 className="text-sm font-semibold text-gray-700 mb-2">
               {metricTitles[metric]}
             </h3>
             {metric === "signalStrength" ? (
               heatmaps[metric] && (
-                <div>
-                  <div className="mb-4 flex items-center space-x-2">
-                    <Switch
-                      id="signal-strength-percentage"
-                      checked={showSignalStrengthAsPercentage}
-                      onCheckedChange={setShowSignalStrengthAsPercentage}
-                    />
-                    <Label
-                      htmlFor="signal-strength-percentage"
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                      Show Signal Strength as Percentage
-                    </Label>
-                  </div>
-                  <HeatmapImage
-                    src={heatmaps[metric]}
-                    alt={`Heatmap for ${metricTitles[metric]}`}
-                    onClick={() =>
-                      openHeatmapModal(
-                        heatmaps[metric]!,
-                        `Heatmap for ${metricTitles[metric]}`,
-                      )
-                    }
-                  />
-                </div>
+                <HeatmapImage
+                  src={heatmaps[metric]}
+                  alt={`Heatmap for ${metricTitles[metric]}`}
+                  onClick={() =>
+                    openHeatmapModal(
+                      heatmaps[metric]!,
+                      `Heatmap for ${metricTitles[metric]}`,
+                    )
+                  }
+                />
               )
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {selectedProperties.map((testType) => {
                   const heatmap = heatmaps[`${metric}-${testType}`];
-                  if (!heatmap) {
-                    return null;
-                  }
+                  if (!heatmap) return null;
                   const alt = `Heatmap for ${metricTitles[metric]} - ${propertyTitles[testType]}`;
                   return (
                     <div key={`${metric}-${testType}`}>
-                      <h4 className="text-sm font-medium mb-2 text-gray-600">
+                      <h4 className="text-xs font-medium mb-1 text-gray-600">
                         {propertyTitles[testType]}
                       </h4>
                       <HeatmapImage

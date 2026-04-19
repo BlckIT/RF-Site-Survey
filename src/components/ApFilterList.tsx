@@ -82,9 +82,8 @@ export function ApFilterList({
   if (apItems.length === 0) return null;
 
   return (
-    <div className="mb-4">
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-semibold text-gray-700">AP Filter</h3>
+    <div>
+      <div className="flex items-center justify-between mb-1">
         <div className="flex gap-1">
           <Button
             variant="outline"
@@ -106,17 +105,21 @@ export function ApFilterList({
       </div>
 
       {bands.map(([band, items]) => (
-        <div key={band} className="mb-2">
-          <div className="text-xs font-medium text-gray-500 mb-1">
+        <div key={band} className="mb-1">
+          <div className="text-xs font-medium text-gray-500 mb-0.5">
             {band} GHz
           </div>
-          <div className="space-y-1">
+          <div
+            className={`grid gap-x-4 gap-y-0.5 ${
+              items.length > 4 ? "grid-cols-2 lg:grid-cols-3" : "grid-cols-1"
+            }`}
+          >
             {items.map((item) => (
               <div
                 key={item.bssid}
-                className="flex items-center justify-between py-1 px-2 rounded hover:bg-gray-50 text-xs"
+                className="flex items-center justify-between py-0.5 px-2 rounded hover:bg-gray-50 text-xs"
               >
-                <div className="flex items-center gap-2 min-w-0">
+                <div className="flex items-center gap-1.5 min-w-0">
                   <Switch
                     checked={enabledBSSIDs.has(item.bssid)}
                     onCheckedChange={() => onToggle(item.bssid)}
@@ -126,7 +129,7 @@ export function ApFilterList({
                     {item.displayName}
                   </span>
                 </div>
-                <div className="flex gap-3 text-gray-500 shrink-0 ml-2">
+                <div className="flex gap-2 text-gray-500 shrink-0 ml-1">
                   <span>Ch {item.channel}</span>
                   <span>{item.bestSignal} dBm</span>
                 </div>

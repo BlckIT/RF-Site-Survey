@@ -45,9 +45,9 @@ export default function SiteSetupCanvas() {
   ];
 
   return (
-    <div className="mt-4">
+    <div className="flex flex-col gap-2">
       {/* Toolbar */}
-      <div className="flex items-center gap-1 mb-3">
+      <div className="flex items-center gap-1">
         {tools.map((tool) => (
           <Button
             key={tool.id}

@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSettings } from "@/components/GlobalSettings";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { PopoverHelper } from "@/components/PopoverHelpText";
 import MediaDropdown from "./MediaDropdown";
@@ -14,9 +13,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-
-const inputClass =
-  "w-full border border-gray-200 rounded-sm p-1.5 text-sm focus:outline-none focus:ring focus:ring-blue-300 focus:border-blue-400";
 
 /**
  * SiteManager — site/project and floor management panel.
@@ -76,7 +72,7 @@ export default function SiteManager() {
     const siteName = settings.site.name;
     await deleteSite(siteName);
     // Load default after deletion
-    loadSite("Planritning_nybyggnad");
+    loadSite("Sample_Site");
     setTimeout(fetchSurveys, 500);
   };
 
@@ -98,126 +94,122 @@ export default function SiteManager() {
   const activeFloor = settings.site.floors[settings.site.activeFloorIndex];
 
   return (
-    <div className="space-y-4">
-      {/* ── Site Selector ── */}
-      <div className="space-y-2">
-        <Label className="text-xs font-semibold">
-          Site / Project&nbsp;
+    <div className="flex flex-col gap-2">
+      {/* Row 1: Site selector + Rename/Delete */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-gray-500 shrink-0">
+          Site
           <PopoverHelper text="Select an existing site or create a new one. Each site can contain multiple floors." />
-        </Label>
-        <div className="flex items-center gap-2">
-          <select
-            className={`flex-1 ${inputClass}`}
-            value={settings.site.name}
-            onChange={(e) => {
-              const val = e.target.value;
-              if (val === "__new__") {
-                setNewName("");
-                setShowNewSiteDialog(true);
-              } else {
-                loadSite(val);
-              }
-            }}
-          >
-            {surveys.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-            <option value="__new__">+ New Site...</option>
-          </select>
+        </span>
+        <select
+          className="flex-1 border border-gray-200 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          value={settings.site.name}
+          onChange={(e) => {
+            const val = e.target.value;
+            if (val === "__new__") {
+              setNewName("");
+              setShowNewSiteDialog(true);
+            } else {
+              loadSite(val);
+            }
+          }}
+        >
+          {surveys.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+          <option value="__new__">+ New Site...</option>
+        </select>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setNewName(settings.site.name);
+            setShowRenameSiteDialog(true);
+          }}
+          title="Rename site"
+        >
+          Rename
+        </Button>
+        <AlertDialogModal
+          title="Delete Site"
+          description={`Are you sure you want to delete "${settings.site.name}"? This cannot be undone.`}
+          onConfirm={handleDeleteSite}
+          onCancel={() => {}}
+        >
+          <Button variant="destructive" size="sm" title="Delete site">
+            Delete
+          </Button>
+        </AlertDialogModal>
+      </div>
+
+      {/* Row 2: Floor tabs + Add/Remove */}
+      <div className="flex items-center gap-1 flex-wrap">
+        <span className="text-xs text-gray-500 shrink-0 mr-1">
+          Floors
+          <PopoverHelper text="Each floor has its own floor plan image, walls, and survey points. Click a tab to switch floors." />
+        </span>
+        {settings.site.floors.map((floor, idx) => (
           <Button
+            key={idx}
             variant="outline"
             size="sm"
-            onClick={() => {
-              setNewName(settings.site.name);
-              setShowRenameSiteDialog(true);
+            onClick={() => setActiveFloor(idx)}
+            onDoubleClick={() => {
+              setRenameFloorIndex(idx);
+              setNewName(floor.name);
+              setShowRenameFloorDialog(true);
             }}
-            title="Rename site"
+            className={`px-2 py-1 text-sm rounded-t-md border-b-0 h-auto ${
+              idx === settings.site.activeFloorIndex
+                ? "bg-white font-semibold border-gray-400 text-black"
+                : "bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-50"
+            }`}
+            title={`Switch to ${floor.name}. Double-click to rename.`}
           >
-            Rename
+            {floor.name}
           </Button>
+        ))}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            setNewFloorName(`Floor ${settings.site.floors.length + 1}`);
+            setNewFloorImage("");
+            setShowAddFloorDialog(true);
+          }}
+          className="text-gray-500 hover:text-gray-700 px-2 py-1 h-auto"
+          title="Add a new floor"
+        >
+          + Add
+        </Button>
+        {settings.site.floors.length > 1 && (
           <AlertDialogModal
-            title="Delete Site"
-            description={`Are you sure you want to delete "${settings.site.name}"? This cannot be undone.`}
-            onConfirm={handleDeleteSite}
+            title="Remove Floor"
+            description={`Remove "${activeFloor?.name}"? All walls and survey points on this floor will be lost.`}
+            onConfirm={() => removeFloor(settings.site.activeFloorIndex)}
             onCancel={() => {}}
           >
-            <Button variant="destructive" size="sm" title="Delete site">
-              Delete
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-red-400 hover:text-red-600 px-2 py-1 h-auto"
+              title="Remove active floor"
+            >
+              Remove
             </Button>
           </AlertDialogModal>
-        </div>
+        )}
       </div>
 
-      {/* ── Floor Tabs ── */}
-      <div className="space-y-2">
-        <Label className="text-xs font-semibold">
-          Floors&nbsp;
-          <PopoverHelper text="Each floor has its own floor plan image, walls, and survey points. Click a tab to switch floors." />
-        </Label>
-        <div className="flex items-center gap-1 flex-wrap">
-          {settings.site.floors.map((floor, idx) => (
-            <Button
-              key={idx}
-              variant="outline"
-              size="sm"
-              onClick={() => setActiveFloor(idx)}
-              onDoubleClick={() => {
-                setRenameFloorIndex(idx);
-                setNewName(floor.name);
-                setShowRenameFloorDialog(true);
-              }}
-              className={`px-3 py-1.5 text-sm rounded-t-md border-b-0 h-auto ${
-                idx === settings.site.activeFloorIndex
-                  ? "bg-white font-semibold border-gray-400 text-black"
-                  : "bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-50"
-              }`}
-              title={`Switch to ${floor.name}. Double-click to rename.`}
-            >
-              {floor.name}
-            </Button>
-          ))}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setNewFloorName(`Floor ${settings.site.floors.length + 1}`);
-              setNewFloorImage("");
-              setShowAddFloorDialog(true);
-            }}
-            className="text-gray-500 hover:text-gray-700"
-            title="Add a new floor"
-          >
-            + Add
-          </Button>
-          {settings.site.floors.length > 1 && (
-            <AlertDialogModal
-              title="Remove Floor"
-              description={`Remove "${activeFloor?.name}"? All walls and survey points on this floor will be lost.`}
-              onConfirm={() => removeFloor(settings.site.activeFloorIndex)}
-              onCancel={() => {}}
-            >
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-red-400 hover:text-red-600"
-                title="Remove active floor"
-              >
-                Remove
-              </Button>
-            </AlertDialogModal>
-          )}
-        </div>
-      </div>
-
-      {/* ── Floor Plan Image ── */}
-      <div className="space-y-2">
-        <Label className="text-xs font-semibold">
-          Floor Plan Image&nbsp;
+      {/* Row 3: Floor Plan Image */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-gray-500 shrink-0">
+          Image
           <PopoverHelper text="Choose or upload a floor plan image for the active floor." />
-        </Label>
-        <div className="w-full max-w-sm">
+        </span>
+        <div className="flex-1 max-w-sm">
           <MediaDropdown
             defaultValue={activeFloor?.floorplanImageName || ""}
             onChange={(val) =>
@@ -227,7 +219,6 @@ export default function SiteManager() {
               .map((f) => f.floorplanImageName)
               .filter(Boolean)}
             onMultiPageImport={(pages) => {
-              // Första sidan uppdaterar aktiv floor, resten skapar nya floors
               pages.forEach((p, i) => {
                 if (i === 0) {
                   updateFloorImage(settings.site.activeFloorIndex, p.imageName);
@@ -250,7 +241,7 @@ export default function SiteManager() {
             <DialogTitle>Create New Site</DialogTitle>
           </DialogHeader>
           <div className="space-y-2">
-            <Label className="text-xs font-semibold">Site Name</Label>
+            <label className="text-xs text-gray-500">Site Name</label>
             <Input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
@@ -283,7 +274,7 @@ export default function SiteManager() {
             <DialogTitle>Rename Site</DialogTitle>
           </DialogHeader>
           <div className="space-y-2">
-            <Label className="text-xs font-semibold">New Name</Label>
+            <label className="text-xs text-gray-500">New Name</label>
             <Input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
@@ -313,7 +304,7 @@ export default function SiteManager() {
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-2">
-              <Label className="text-xs font-semibold">Floor Name</Label>
+              <label className="text-xs text-gray-500">Floor Name</label>
               <Input
                 value={newFloorName}
                 onChange={(e) => setNewFloorName(e.target.value)}
@@ -323,7 +314,7 @@ export default function SiteManager() {
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-xs font-semibold">Floor Plan Image</Label>
+              <label className="text-xs text-gray-500">Floor Plan Image</label>
               <MediaDropdown
                 defaultValue={newFloorImage}
                 onChange={(val) => setNewFloorImage(val)}
@@ -354,7 +345,7 @@ export default function SiteManager() {
             <DialogTitle>Rename Floor</DialogTitle>
           </DialogHeader>
           <div className="space-y-2">
-            <Label className="text-xs font-semibold">New Name</Label>
+            <label className="text-xs text-gray-500">New Name</label>
             <Input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}

@@ -104,11 +104,6 @@ const settingsTriggerClass =
 const subTabClass =
   "px-3 py-1.5 text-xs font-medium rounded-sm transition-colors data-[state=active]:bg-gray-900 data-[state=active]:text-white data-[state=inactive]:text-gray-500 data-[state=inactive]:hover:text-gray-700";
 
-const sectionHeaderClass = "text-sm font-semibold text-gray-700 mb-2 mt-0";
-
-const inputClass =
-  "w-full border border-gray-200 rounded-sm p-1.5 text-sm focus:outline-none focus:ring focus:ring-blue-300 focus:border-blue-400";
-
 /** Extrahera de settings-fält som buffras lokalt (inte nätverksoperationer) */
 function pickDraftFields(s: HeatmapSettings) {
   return {
@@ -821,7 +816,7 @@ function SettingsPanel() {
                         <PopoverHelper text="Select which WiFi adapter to use for the hotspot. Leave empty to auto-select the first available." />
                       </Label>
                       <select
-                        className={inputClass}
+                        className="w-full border border-gray-200 rounded-md p-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                         value={hotspotIface}
                         onChange={(e) => setHotspotIface(e.target.value)}
                         disabled={hotspotActive}
@@ -848,7 +843,6 @@ function SettingsPanel() {
                       <Label className="text-xs font-semibold">SSID</Label>
                       <Input
                         type="text"
-                        className={inputClass}
                         value={hotspotSsid}
                         onChange={(e) => setHotspotSsid(e.target.value)}
                         placeholder="Buster"
@@ -941,7 +935,7 @@ function SettingsPanel() {
                     <div className="flex flex-col gap-1">
                       <Label className="text-xs font-semibold">Interface</Label>
                       <select
-                        className={inputClass}
+                        className="w-full border border-gray-200 rounded-md p-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                         value={connectIface}
                         onChange={(e) => setConnectIface(e.target.value)}
                       >
@@ -1139,7 +1133,6 @@ function SettingsPanel() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                       <Input
                         type="text"
-                        className={inputClass}
                         placeholder="SSID"
                         value={newKnownSsid}
                         onChange={(e) => setNewKnownSsid(e.target.value)}
@@ -1151,7 +1144,7 @@ function SettingsPanel() {
                       <div className="flex gap-2">
                         <input
                           type="number"
-                          className={inputClass + " w-20"}
+                          className="w-full border border-gray-200 rounded-md p-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none w-20"
                           placeholder="Priority"
                           value={newKnownPriority}
                           onChange={(e) =>
@@ -1212,7 +1205,6 @@ function SettingsPanel() {
                   <Label className="text-xs font-semibold">SSID</Label>
                   <Input
                     type="text"
-                    className={inputClass}
                     value={hiddenSsid}
                     onChange={(e) => setHiddenSsid(e.target.value)}
                     placeholder="Network name"
@@ -1296,7 +1288,7 @@ function SettingsPanel() {
                 <PopoverHelper text="Select which WiFi interface to use for scanning. 'Auto' picks the first available." />
               </Label>
               <select
-                className={inputClass}
+                className="w-full border border-gray-200 rounded-md p-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                 value={draft.wifiInterface || ""}
                 onChange={(e) => updateDraft({ wifiInterface: e.target.value })}
               >
@@ -1347,7 +1339,6 @@ function SettingsPanel() {
               <Input
                 type="text"
                 placeholder="192.168.1.10"
-                className={inputClass}
                 value={draft.iperfServerAdrs}
                 onChange={(e) =>
                   updateDraft({ iperfServerAdrs: e.target.value.trim() })
@@ -1363,7 +1354,7 @@ function SettingsPanel() {
                 type="number"
                 min={1}
                 max={60}
-                className={inputClass}
+                className="w-full border border-gray-200 rounded-md p-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                 value={draft.testDuration}
                 onChange={(e) =>
                   updateDraft({
@@ -1390,7 +1381,7 @@ function SettingsPanel() {
                     </Label>
                     <Input
                       type="text"
-                      className={inputClass + " font-mono"}
+                      className="font-mono"
                       value={draft.iperfCommands?.tcpDownload || ""}
                       onChange={(e) =>
                         updateDraft({
@@ -1406,7 +1397,7 @@ function SettingsPanel() {
                     <Label className="text-xs font-semibold">TCP Upload</Label>
                     <Input
                       type="text"
-                      className={inputClass + " font-mono"}
+                      className="font-mono"
                       value={draft.iperfCommands?.tcpUpload || ""}
                       onChange={(e) =>
                         updateDraft({
@@ -1425,7 +1416,7 @@ function SettingsPanel() {
                     </Label>
                     <Input
                       type="text"
-                      className={inputClass + " font-mono"}
+                      className="font-mono"
                       value={draft.iperfCommands?.udpDownload || ""}
                       onChange={(e) =>
                         updateDraft({
@@ -1444,7 +1435,7 @@ function SettingsPanel() {
                     </Label>
                     <Input
                       type="text"
-                      className={inputClass + " font-mono"}
+                      className="font-mono"
                       value={draft.iperfCommands?.udpUpload || ""}
                       onChange={(e) =>
                         updateDraft({
@@ -1476,7 +1467,9 @@ function SettingsPanel() {
         {/* ═══ DISPLAY TAB ═══ */}
         <Tabs.Content value="display" className="space-y-4">
           <section className="space-y-3">
-            <h3 className={sectionHeaderClass}>Heatmap</h3>
+            <h3 className="text-sm font-semibold text-gray-700 mb-2">
+              Heatmap
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="flex flex-col gap-1">
                 <Label className="text-xs font-semibold">
@@ -1488,7 +1481,7 @@ function SettingsPanel() {
                   min="0"
                   max="1"
                   step="0.1"
-                  className={inputClass}
+                  className="w-full border border-gray-200 rounded-md p-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   value={draft.minOpacity}
                   onChange={(e) =>
                     updateDraft({ minOpacity: parseFloat(e.target.value) })
@@ -1505,7 +1498,7 @@ function SettingsPanel() {
                   min="0"
                   max="1"
                   step="0.1"
-                  className={inputClass}
+                  className="w-full border border-gray-200 rounded-md p-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   value={draft.maxOpacity}
                   onChange={(e) =>
                     updateDraft({ maxOpacity: parseFloat(e.target.value) })
@@ -1522,7 +1515,7 @@ function SettingsPanel() {
                   min="0"
                   max="1"
                   step="0.01"
-                  className={inputClass}
+                  className="w-full border border-gray-200 rounded-md p-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   value={draft.blur}
                   onChange={(e) =>
                     updateDraft({ blur: parseFloat(e.target.value) })
@@ -1558,7 +1551,7 @@ function SettingsPanel() {
                           newGradient[parseInt(e.target.value)] = value;
                           updateDraft({ gradient: newGradient });
                         }}
-                        className={inputClass + " w-20"}
+                        className="w-20"
                       />
                       <input
                         type="color"
@@ -1588,7 +1581,7 @@ function SettingsPanel() {
                           };
                           updateDraft({ gradient: newGradient });
                         }}
-                        className={inputClass + " w-20"}
+                        className="w-full border border-gray-200 rounded-md p-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none w-20"
                       />
                       <Button
                         variant="ghost"
@@ -1627,7 +1620,9 @@ function SettingsPanel() {
           </section>
 
           <section className="space-y-3">
-            <h3 className={sectionHeaderClass}>Wall Editor</h3>
+            <h3 className="text-sm font-semibold text-gray-700 mb-2">
+              Wall Editor
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
                 <Label className="text-xs font-semibold">
@@ -1647,7 +1642,7 @@ function SettingsPanel() {
                       ),
                     })
                   }
-                  className={inputClass}
+                  className="w-full border border-gray-200 rounded-md p-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                 />
               </div>
             </div>
@@ -1866,6 +1861,41 @@ function SurveyHeatmapOverlayWrapper() {
   );
 }
 
+/** Report-flik med heatmaps + collapsible PointsTable */
+function ReportPanel() {
+  const { settings, surveyPointActions } = useSettings();
+  const [pointsOpen, setPointsOpen] = useState(false);
+
+  return (
+    <div className="flex flex-col gap-2">
+      <FloorSelector />
+      <Heatmaps showWalls={false} />
+      <div>
+        <button
+          type="button"
+          onClick={() => setPointsOpen((v) => !v)}
+          className={`px-2 py-0.5 text-xs rounded-full border cursor-pointer select-none transition-colors ${
+            pointsOpen
+              ? "bg-gray-900 text-white border-gray-900"
+              : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
+          }`}
+        >
+          Survey Points ({settings.surveyPoints.length})
+        </button>
+        {pointsOpen && (
+          <div className="mt-1">
+            <PointsTable
+              data={settings.surveyPoints}
+              surveyPointActions={surveyPointActions}
+              apMapping={settings.apMapping}
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function TabPanel() {
   const [activeTab, setActiveTab] = useState("site-setup");
 
@@ -1923,12 +1953,12 @@ export default function TabPanel() {
         </Tabs.List>
 
         {/* Settings tab — organized configuration sections */}
-        <Tabs.Content value="settings" className="p-4">
+        <Tabs.Content value="settings" className="p-2">
           <SettingsPanel />
         </Tabs.Content>
 
         {/* Tab 1: Site Setup — site manager + verktygsväljare */}
-        <Tabs.Content value="site-setup" className="p-4">
+        <Tabs.Content value="site-setup" className="p-2">
           <div className="mb-4">
             <SiteManager />
           </div>
@@ -1936,14 +1966,13 @@ export default function TabPanel() {
         </Tabs.Content>
 
         {/* Tab 2: Survey — floor selector, compact settings bar, floor plan + sidebar */}
-        <Tabs.Content value="survey" className="p-4">
+        <Tabs.Content value="survey" className="p-2">
           <SurveyHeatmapOverlayWrapper />
         </Tabs.Content>
 
-        {/* Tab 3: Report — floor selector + heatmaps (utan väggar) */}
-        <Tabs.Content value="report" className="p-4">
-          <FloorSelector />
-          <Heatmaps showWalls={false} />
+        {/* Tab 3: Report — floor selector + heatmaps + points table */}
+        <Tabs.Content value="report" className="p-2">
+          <ReportPanel />
         </Tabs.Content>
       </Tabs.Root>
     </div>

@@ -496,20 +496,7 @@ export default function ClickableFloorplan({
   };
 
   return (
-    <div className="bg-white p-4 rounded-md shadow-md">
-      <h2 className="text-lg font-semibold text-gray-800">
-        Interactive Floorplan
-      </h2>
-      <div className="p-2 rounded-md text-sm">
-        <p>Click on the floor plan to start a new measurement.</p>
-        <p>Click on existing points to see the measurement details.</p>
-
-        <div className="space-y-2 flex flex-col">
-          {settings.surveyPoints?.length > 0 && (
-            <div>Total Measurements: {settings.surveyPoints.length}</div>
-          )}
-        </div>
-      </div>
+    <div className="bg-white rounded-md">
       {alertMessage != "" && (
         <Alert variant="destructive">
           <AlertTitle>Error Summary</AlertTitle>
