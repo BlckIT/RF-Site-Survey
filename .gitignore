@@ -36,7 +36,6 @@ yarn-error.log*
 next-env.d.ts
 
 /data/*.json
-!/data/settings.json
 /data/surveys/*.json
 !/data/surveys/Demo_Apartment.json
 !/data/surveys/Planritning_nybyggnad.json
