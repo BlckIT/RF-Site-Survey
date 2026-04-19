@@ -138,7 +138,7 @@ export function Heatmaps({ showWalls = true }: { showWalls?: boolean } = {}) {
   // Dual-band filter: '2.4' | '5' | 'combined' | null (null = inga dual-band data)
   type BandFilter = "2.4" | "5" | "combined";
   const hasDualBandData = points.some(
-    (p) => p.bandMeasurements && p.bandMeasurements.length > 0,
+    (p) => Array.isArray(p.bandMeasurements) && p.bandMeasurements.length > 0,
   );
   const [bandFilter, setBandFilter] = useState<BandFilter>("combined");
 
@@ -228,7 +228,11 @@ export function Heatmaps({ showWalls = true }: { showWalls?: boolean } = {}) {
 
     return apFilteredPoints
       .map((p) => {
-        if (!p.bandMeasurements || p.bandMeasurements.length === 0) return p;
+        if (
+          !Array.isArray(p.bandMeasurements) ||
+          p.bandMeasurements.length === 0
+        )
+          return p;
 
         if (bandFilter === "combined") {
           // Välj bästa signalvärde per punkt

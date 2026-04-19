@@ -128,7 +128,10 @@ const PopupDetails: React.FC<PopupDetailsProps> = ({
   }
 
   // Dual-band sektion — tydlig per-band visning utan felaktig "(connected)"
-  if (point.bandMeasurements && point.bandMeasurements.length > 0) {
+  if (
+    Array.isArray(point.bandMeasurements) &&
+    point.bandMeasurements.length > 0
+  ) {
     rows.push({ label: "── Per Band ──", value: "" });
     for (const bm of point.bandMeasurements) {
       rows.push({

@@ -37,8 +37,8 @@ next-env.d.ts
 
 /data/*.json
 /data/surveys/*.json
-!/data/surveys/Demo_Apartment.json
-!/data/surveys/Planritning_nybyggnad.json
+
+!/data/surveys/Sample_Site.json
 /data/surveys-*/
 public/media/
 !public/media/DemoOffice.png
